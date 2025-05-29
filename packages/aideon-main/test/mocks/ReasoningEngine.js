@@ -1,63 +1,105 @@
 /**
- * @fileoverview Mock implementation of the ReasoningEngine for testing purposes.
- * 
- * This file provides mock implementations of all components required for system-wide
- * integration testing, allowing tests to run without requiring the actual implementations.
+ * @fileoverview Mock Reasoning Engine for testing.
+ * Provides mock implementations of Reasoning Engine methods.
  * 
  * @author Aideon AI Team
  * @version 1.0.0
  */
 
-class ReasoningEngine {
-  constructor(options) {
-    this.logger = options.logger;
-    this.configService = options.configService;
-    this.performanceMonitor = options.performanceMonitor;
-    this.securityManager = options.securityManager;
-    this.cacheManager = options.cacheManager;
-    this.eventBus = options.eventBus;
+/**
+ * Create a mock Reasoning Engine for testing.
+ * @returns {Object} Mock Reasoning Engine
+ */
+function createMockReasoningEngine() {
+  return {
+    /**
+     * Extract patterns from demonstrations.
+     * @param {Object} options Options
+     * @returns {Promise<Object>} Extraction result
+     */
+    extractPatterns: jest.fn(async (options) => {
+      const { demonstrations } = options;
+      
+      // Create mock patterns
+      const patterns = demonstrations.map((demo, index) => ({
+        id: `pattern_${Date.now()}_${index}`,
+        name: `Pattern ${index + 1}`,
+        description: `Automatically extracted pattern from demonstration ${demo.id}`,
+        events: demo.properties?.events || [],
+        confidence: 0.8,
+        occurrenceCount: 1,
+        demonstrationIds: [demo.id],
+        createdAt: Date.now()
+      }));
+      
+      return {
+        patterns,
+        demonstrationCount: demonstrations.length,
+        patternsExtracted: patterns.length
+      };
+    }),
     
-    this.strategies = new Map();
-    this.initialized = false;
-  }
-  
-  async initialize() {
-    this.initialized = true;
-    return true;
-  }
-  
-  async registerStrategy(type, strategy) {
-    this.strategies.set(type, strategy);
-    return true;
-  }
-  
-  async processTask(task) {
-    return {
-      result: {
-        conclusion: 'Socrates is mortal',
-        confidence: 0.95,
-        reasoning: 'Since all humans are mortal, and Socrates is a human, it follows logically that Socrates is mortal.',
-        valid: true
-      },
-      explanation: {
-        explanation: 'The system used deductive reasoning to conclude that Socrates is mortal based on the premises that all humans are mortal and Socrates is a human.',
-        format: 'detailed',
-        reasoningTrace: [
-          { step: 1, description: 'Identified premise: All humans are mortal' },
-          { step: 2, description: 'Identified premise: Socrates is a human' },
-          { step: 3, description: 'Applied syllogistic reasoning' },
-          { step: 4, description: 'Derived conclusion: Socrates is mortal' }
-        ]
-      },
-      metadata: {
-        taskId: task.id || 'task-123',
-        strategy: task.type || 'deductive',
-        modelId: 'llama',
-        executionTime: 250,
-        timestamp: Date.now()
+    /**
+     * Generate workflow refinements.
+     * @param {Object} options Options
+     * @returns {Promise<Object>} Refinement result
+     */
+    generateWorkflowRefinements: jest.fn(async (options) => {
+      const { workflow, analysis } = options;
+      
+      // Create mock refinements
+      const refinements = [];
+      
+      // Add refinements based on analysis
+      if (analysis?.problematicSteps?.length > 0) {
+        for (const step of analysis.problematicSteps) {
+          refinements.push({
+            type: 'stepRefinement',
+            stepId: step.stepId,
+            action: 'modify',
+            reason: `Step failed ${step.failureCount} times`,
+            confidence: 0.8,
+            properties: {
+              errorHandling: true,
+              retryCount: 3
+            }
+          });
+        }
       }
-    };
-  }
+      
+      // Add workflow-level refinements
+      if (analysis?.feedbackMetrics?.averageRating < 4) {
+        refinements.push({
+          type: 'workflowRefinement',
+          action: 'optimize',
+          reason: 'Low average rating',
+          confidence: 0.7
+        });
+      }
+      
+      return {
+        workflowId: workflow.id,
+        refinements,
+        analysisId: `analysis_${Date.now()}`
+      };
+    }),
+    
+    /**
+     * Optimize a workflow.
+     * @param {Object} workflow Workflow to optimize
+     * @returns {Promise<Object>} Optimized workflow
+     */
+    optimizeWorkflow: jest.fn(async (workflow) => {
+      // Create optimized workflow
+      return {
+        ...workflow,
+        optimized: true,
+        optimizationTimestamp: Date.now()
+      };
+    })
+  };
 }
 
-module.exports = ReasoningEngine;
+module.exports = {
+  createMockReasoningEngine
+};
