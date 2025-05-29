@@ -694,7 +694,7 @@ class DeductiveReasoner extends EventEmitter {
       // Call LLM to generate rules
       const llmResult = await this.modelStrategyManager.executePrompt({
         prompt,
-        model: 'llama3-70b', // Use Llama 3 70B for complex rule generation
+        model: 'llama-multilingual', // Use Llama Multilingual for complex rule generation with multilingual support
         temperature: 0.2,
         maxTokens: 2000,
         stopSequences: [']'],
@@ -1525,7 +1525,7 @@ class DeductiveReasoner extends EventEmitter {
       // Call LLM to generate conclusion
       const llmResult = await this.modelStrategyManager.executePrompt({
         prompt,
-        model: 'llama3-70b', // Use Llama 3 70B for complex reasoning
+        model: 'llama-multilingual', // Use Llama Multilingual for complex reasoning with multilingual support
         temperature: 0.1,
         maxTokens: 1000,
         responseFormat: 'json'
@@ -1965,7 +1965,7 @@ class DeductiveReasoner extends EventEmitter {
       // Call LLM to generate explanation
       const llmResult = await this.modelStrategyManager.executePrompt({
         prompt,
-        model: 'llama3-70b', // Use Llama 3 70B for complex explanation
+        model: 'llama-multilingual', // Use Llama Multilingual for complex explanation with multilingual support
         temperature: 0.2,
         maxTokens: detailed ? 2000 : 1000,
         responseFormat: format === 'json' ? 'json' : 'text'

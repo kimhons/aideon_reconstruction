@@ -547,7 +547,7 @@ class InductiveReasoner extends EventEmitter {
       // Call LLM to detect patterns
       const llmResult = await this.modelStrategyManager.executePrompt({
         prompt,
-        model: 'mistral-large', // Use Mistral Large for pattern recognition
+        model: 'llama-multilingual', // Use Llama Multilingual for pattern recognition with multilingual support
         temperature: 0.3,
         maxTokens: 1500,
         responseFormat: 'json'
@@ -695,7 +695,7 @@ class InductiveReasoner extends EventEmitter {
       // Call LLM to generate hypotheses
       const llmResult = await this.modelStrategyManager.executePrompt({
         prompt,
-        model: 'mistral-large', // Use Mistral Large for hypothesis generation
+        model: 'llama-multilingual', // Use Llama Multilingual for hypothesis generation with multilingual support
         temperature: 0.5,
         maxTokens: 2000,
         responseFormat: 'json'
@@ -735,7 +735,7 @@ class InductiveReasoner extends EventEmitter {
             confidence: h.confidence,
             evidence: patterns.map(p => p.description), // Use patterns as initial evidence
             source: 'llm_induction',
-            sourceModel: 'mistral-large'
+            sourceModel: 'llama-multilingual'
           });
         }
       }
@@ -908,7 +908,7 @@ class InductiveReasoner extends EventEmitter {
       // Call LLM to validate hypothesis
       const llmResult = await this.modelStrategyManager.executePrompt({
         prompt,
-        model: 'llama3-70b', // Use Llama 3 70B for complex validation
+        model: 'llama-multilingual', // Use Llama Multilingual for complex validation with multilingual support
         temperature: 0.1,
         maxTokens: 1500,
         responseFormat: 'json'
@@ -1374,7 +1374,7 @@ class InductiveReasoner extends EventEmitter {
       // Call LLM to generate explanation
       const llmResult = await this.modelStrategyManager.executePrompt({
         prompt,
-        model: 'llama3-70b', // Use Llama 3 70B for complex explanation
+        model: 'llama-multilingual', // Use Llama Multilingual for complex explanation with multilingual support
         temperature: 0.2,
         maxTokens: detailed ? 2000 : 1000,
         responseFormat: format === 'json' ? 'json' : 'text'
