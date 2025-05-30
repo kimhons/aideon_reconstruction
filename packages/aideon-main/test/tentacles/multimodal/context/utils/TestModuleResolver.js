@@ -1,8 +1,8 @@
 /**
- * @fileoverview Test Module Resolver for MCP integration tests.
+ * @fileoverview Test Module Resolver for Knowledge Context tests.
  * 
- * This utility resolves module paths for MCP integration tests, ensuring
- * that the correct modules are loaded regardless of the test execution context.
+ * This utility resolves module paths for tests, ensuring proper imports
+ * regardless of the test execution context.
  * 
  * @author Aideon AI Team
  * @version 1.0.0
@@ -12,112 +12,71 @@ const path = require('path');
 const fs = require('fs');
 
 /**
- * Resolves module paths for MCP integration tests.
+ * Resolves the path to a module relative to the project root.
+ * 
+ * @param {string} modulePath - Relative path from src or test directory
+ * @returns {string} - Resolved absolute path to the module
  */
-class TestModuleResolver {
-  /**
-   * Creates a new Test Module Resolver.
-   */
-  constructor() {
-    this.rootDir = this.findProjectRoot();
-    this.srcDir = path.join(this.rootDir, 'src');
-    this.testDir = path.join(this.rootDir, 'test');
-  }
-
-  /**
-   * Finds the project root directory.
-   * 
-   * @returns {string} The absolute path to the project root directory
-   */
-  findProjectRoot() {
-    let currentDir = __dirname;
-    
-    // Traverse up until we find the package.json file
-    while (currentDir !== '/') {
-      if (fs.existsSync(path.join(currentDir, 'package.json'))) {
-        // Found the package.json, this is the project root
-        return currentDir;
+function resolveModulePath(modulePath) {
+  // Determine if we're looking for a src or test module
+  const isSrcModule = modulePath.startsWith('src/');
+  const isTestModule = modulePath.startsWith('test/');
+  
+  // Find the project root directory
+  let currentDir = __dirname;
+  let projectRoot = null;
+  
+  // Navigate up until we find the packages/aideon-main directory
+  while (currentDir !== '/') {
+    if (fs.existsSync(path.join(currentDir, 'package.json'))) {
+      const packageJson = require(path.join(currentDir, 'package.json'));
+      if (packageJson.name === 'aideon-main') {
+        projectRoot = currentDir;
+        break;
       }
-      
-      // Move up one directory
-      currentDir = path.dirname(currentDir);
     }
     
-    // If we couldn't find the project root, use a reasonable default
-    return path.resolve(path.join(__dirname, '..', '..', '..', '..', '..'));
-  }
-
-  /**
-   * Resolves a module path relative to the project root.
-   * 
-   * @param {string} modulePath - The module path to resolve
-   * @returns {string} The absolute path to the module
-   */
-  resolvePath(modulePath) {
-    if (modulePath.startsWith('./') || modulePath.startsWith('../')) {
-      // Relative path, resolve from the current directory
-      return path.resolve(path.join(__dirname, modulePath));
-    } else if (modulePath.startsWith('/')) {
-      // Absolute path, use as is
-      return modulePath;
-    } else {
-      // Module path, resolve from the project root
-      return path.join(this.rootDir, modulePath);
+    // Check if we're in the packages/aideon-main directory
+    if (path.basename(currentDir) === 'aideon-main' && 
+        path.basename(path.dirname(currentDir)) === 'packages') {
+      projectRoot = currentDir;
+      break;
     }
+    
+    currentDir = path.dirname(currentDir);
   }
-
-  /**
-   * Resolves a source module path.
-   * 
-   * @param {string} modulePath - The module path relative to the src directory
-   * @returns {string} The absolute path to the module
-   */
-  resolveSourcePath(modulePath) {
-    return path.join(this.srcDir, modulePath);
+  
+  if (!projectRoot) {
+    throw new Error('Could not find project root directory');
   }
-
-  /**
-   * Resolves a test module path.
-   * 
-   * @param {string} modulePath - The module path relative to the test directory
-   * @returns {string} The absolute path to the module
-   */
-  resolveTestPath(modulePath) {
-    return path.join(this.testDir, modulePath);
+  
+  // Resolve the module path
+  let resolvedPath;
+  
+  if (isSrcModule) {
+    resolvedPath = path.join(projectRoot, modulePath);
+  } else if (isTestModule) {
+    resolvedPath = path.join(projectRoot, modulePath);
+  } else {
+    // If no prefix is provided, assume it's a src module
+    resolvedPath = path.join(projectRoot, 'src', modulePath);
   }
-
-  /**
-   * Requires a module using the resolved path.
-   * 
-   * @param {string} modulePath - The module path to require
-   * @returns {Object} The required module
-   */
-  require(modulePath) {
-    const resolvedPath = this.resolvePath(modulePath);
-    return require(resolvedPath);
-  }
-
-  /**
-   * Requires a source module using the resolved path.
-   * 
-   * @param {string} modulePath - The module path relative to the src directory
-   * @returns {Object} The required module
-   */
-  requireSource(modulePath) {
-    const resolvedPath = this.resolveSourcePath(modulePath);
-    return require(resolvedPath);
-  }
-
-  /**
-   * Requires a test module using the resolved path.
-   * 
-   * @param {string} modulePath - The module path relative to the test directory
-   * @returns {Object} The required module
-   */
-  requireTest(modulePath) {
-    const resolvedPath = this.resolveTestPath(modulePath);
-    return require(resolvedPath);
-  }
+  
+  return resolvedPath;
 }
 
-module.exports = new TestModuleResolver();
+/**
+ * Requires a module using its path relative to the project root.
+ * 
+ * @param {string} modulePath - Relative path from src or test directory
+ * @returns {Object} - Required module
+ */
+function requireModule(modulePath) {
+  const resolvedPath = resolveModulePath(modulePath);
+  return require(resolvedPath);
+}
+
+module.exports = {
+  resolveModulePath,
+  requireModule
+};
