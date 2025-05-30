@@ -7,11 +7,13 @@
  */
 
 const { EnhancedAsyncLock } = require('./EnhancedAsyncLock');
+const { EnhancedAsyncLockAdapter } = require('./EnhancedAsyncLockAdapter');
 const { EnhancedCancellationToken } = require('./EnhancedCancellationToken');
 const { EnhancedAsyncOperation } = require('./EnhancedAsyncOperation');
 
 module.exports = {
   EnhancedAsyncLock,
+  EnhancedAsyncLockAdapter,
   EnhancedCancellationToken,
   EnhancedAsyncOperation
 };

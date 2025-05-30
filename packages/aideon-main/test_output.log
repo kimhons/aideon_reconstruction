@@ -1,0 +1,42 @@
+Adding test file: /home/ubuntu/aideon-repo/packages/aideon-main/test/tentacles/multimodal/input/screen/IsolatedLifecycleTests.js
+Running isolated lifecycle tests with verbose logging...
+Using spec reporter for detailed test output...
+Loading ScreenRecordingManager from: /home/ubuntu/aideon-repo/packages/aideon-main/src/tentacles/multimodal/input/screen/EnhancedScreenRecordingManager.js
+Loading constants from: /home/ubuntu/aideon-repo/packages/aideon-main/src/tentacles/multimodal/input/screen/constants.js
+
+
+  Enhanced Screen Recording Manager - Isolated Lifecycle Tests
+    ✔ should initialize and shutdown cleanly
+    ✔ should update configuration correctly
+    ✔ should capture a single frame
+    1) should start and stop recording correctly
+    ✔ should pause and resume recording correctly (104ms)
+    ✔ should complete the full recording lifecycle (106ms)
+    ✔ should handle errors gracefully
+    2) "after each" hook for "should handle errors gracefully"
+
+
+  6 passing (30s)
+  2 failing
+
+  1) Enhanced Screen Recording Manager - Isolated Lifecycle Tests
+       should start and stop recording correctly:
+
+      AssertionError: expected false to be true
+      + expected - actual
+
+      -false
+      +true
+      
+      at Context.<anonymous> (test/tentacles/multimodal/input/screen/IsolatedLifecycleTests.js:241:55)
+
+  2) Enhanced Screen Recording Manager - Isolated Lifecycle Tests
+       "after each" hook for "should handle errors gracefully":
+     Error: Operation cancelled: Operation timed out after 30000ms
+      at /home/ubuntu/aideon-repo/packages/aideon-main/src/tentacles/multimodal/input/screen/utils/EnhancedAsyncOperation.js:63:19
+      at async EnhancedAsyncOperation.execute (src/tentacles/multimodal/input/screen/utils/EnhancedAsyncOperation.js:60:24)
+      at async Context.<anonymous> (test/tentacles/multimodal/input/screen/IsolatedLifecycleTests.js:172:7)
+
+
+
+Tests completed with 2 failures.

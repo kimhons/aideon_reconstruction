@@ -1,150 +1,218 @@
 /**
- * @fileoverview Test utilities for Aideon AI tests.
- * Provides mock objects and helper functions for testing.
+ * @fileoverview Test utilities for Aideon AI Desktop Agent tests.
+ * Provides mock implementations of common services and utilities.
  * 
  * @author Aideon AI Team
  * @version 1.0.0
  */
 
+const sinon = require('sinon');
+const { EventEmitter } = require('events');
+
 /**
- * Create a mock logger for testing.
+ * Create a mock logger
  * @returns {Object} Mock logger
  */
 function createMockLogger() {
   return {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    trace: jest.fn()
-  };
-}
-
-/**
- * Create a mock configuration service for testing.
- * @param {Object} configOverrides Optional configuration overrides
- * @returns {Object} Mock configuration service
- */
-function createMockConfigService(configOverrides = {}) {
-  const defaultConfig = {
-    "lfd.recording.maxDuration": 3600000,
-    "lfd.patternExtraction.minConfidence": 0.6,
-    "lfd.workflowSynthesis.optimizationEnabled": true,
-    "lfd.performanceMonitoring.metricsIntervalMs": 1000,
-    "lfd.selfImprovement.refinementConfidenceThreshold": 0.7,
-    "lfd.continuousLearning.autoExtractPatterns": true,
-    "lfd.continuousLearning.autoRefineWorkflows": true
-  };
-  
-  const config = { ...defaultConfig, ...configOverrides };
-  
-  return {
-    get: jest.fn((key, defaultValue) => {
-      return config[key] !== undefined ? config[key] : defaultValue;
-    }),
-    set: jest.fn()
-  };
-}
-
-/**
- * Create a mock event bus for testing.
- * @returns {Object} Mock event bus
- */
-function createMockEventBus() {
-  const listeners = new Map();
-  
-  return {
-    on: jest.fn((event, handler) => {
-      if (!listeners.has(event)) {
-        listeners.set(event, []);
-      }
-      listeners.get(event).push(handler);
-    }),
-    
-    off: jest.fn((event, handler) => {
-      if (!listeners.has(event)) {
-        return;
-      }
-      
-      const eventListeners = listeners.get(event);
-      const index = eventListeners.indexOf(handler);
-      
-      if (index !== -1) {
-        eventListeners.splice(index, 1);
-      }
-    }),
-    
-    emit: jest.fn((event, data) => {
-      if (!listeners.has(event)) {
-        return;
-      }
-      
-      for (const handler of listeners.get(event)) {
-        handler(data);
-      }
+    debug: sinon.stub(),
+    info: sinon.stub(),
+    warn: sinon.stub(),
+    error: sinon.stub(),
+    child: sinon.stub().returns({
+      debug: sinon.stub(),
+      info: sinon.stub(),
+      warn: sinon.stub(),
+      error: sinon.stub()
     })
   };
 }
 
 /**
- * Create a mock storage adapter for testing.
- * @returns {Object} Mock storage adapter
+ * Create a mock config manager
+ * @returns {Object} Mock config manager
  */
-function createMockStorageAdapter() {
-  const storage = new Map();
-  
+function createMockConfigManager() {
   return {
-    get: jest.fn(async (key) => {
-      return storage.get(key);
-    }),
-    
-    set: jest.fn(async (key, value) => {
-      storage.set(key, value);
-    }),
-    
-    delete: jest.fn(async (key) => {
-      storage.delete(key);
-    }),
-    
-    clear: jest.fn(async () => {
-      storage.clear();
-    }),
-    
-    getAll: jest.fn(async () => {
-      return Array.from(storage.entries()).map(([key, value]) => ({ key, value }));
+    getConfig: sinon.stub().resolves({}),
+    setConfig: sinon.stub().resolves(),
+    getInstance: sinon.stub().returns({
+      getConfig: sinon.stub().resolves({}),
+      setConfig: sinon.stub().resolves()
     })
   };
 }
 
 /**
- * Create a mock HTTP client for testing.
- * @param {Object} responseOverrides Optional response overrides
- * @returns {Object} Mock HTTP client
+ * Create a mock security manager
+ * @returns {Object} Mock security manager
  */
-function createMockHttpClient(responseOverrides = {}) {
+function createMockSecurityManager() {
   return {
-    get: jest.fn(async () => {
-      return { data: responseOverrides.get || {} };
+    checkPermission: sinon.stub().resolves({ granted: true }),
+    checkAuthentication: sinon.stub().resolves({ 
+      authenticated: true,
+      isAdmin: false,
+      isSystem: false
     }),
-    
-    post: jest.fn(async () => {
-      return { data: responseOverrides.post || {} };
-    }),
-    
-    put: jest.fn(async () => {
-      return { data: responseOverrides.put || {} };
-    }),
-    
-    delete: jest.fn(async () => {
-      return { data: responseOverrides.delete || {} };
+    getInstance: sinon.stub().returns({
+      checkPermission: sinon.stub().resolves({ granted: true }),
+      checkAuthentication: sinon.stub().resolves({ 
+        authenticated: true,
+        isAdmin: false,
+        isSystem: false
+      })
     })
   };
+}
+
+/**
+ * Create a mock performance tracker
+ * @returns {Object} Mock performance tracker
+ */
+function createMockPerformanceTracker() {
+  return {
+    startTracking: sinon.stub(),
+    stopTracking: sinon.stub(),
+    getMetrics: sinon.stub().returns({})
+  };
+}
+
+/**
+ * Create a mock network manager
+ * @returns {Object} Mock network manager
+ */
+function createMockNetworkManager() {
+  return {
+    isOnline: sinon.stub().resolves(true),
+    getNetworkInfo: sinon.stub().resolves({
+      connected: true,
+      type: 'wifi',
+      strength: 100
+    }),
+    getInstance: sinon.stub().returns({
+      isOnline: sinon.stub().resolves(true),
+      getNetworkInfo: sinon.stub().resolves({
+        connected: true,
+        type: 'wifi',
+        strength: 100
+      })
+    })
+  };
+}
+
+/**
+ * Create a mock platform manager
+ * @returns {Object} Mock platform manager
+ */
+function createMockPlatformManager() {
+  return {
+    getPlatformInfo: sinon.stub().returns({
+      os: 'linux',
+      arch: 'x64',
+      version: '1.0.0',
+      capabilities: {
+        audioCapture: true,
+        videoCapture: true,
+        screenCapture: true
+      }
+    }),
+    getAudioInputDevices: sinon.stub().resolves([
+      { id: 'device1', name: 'Microphone 1', isDefault: true },
+      { id: 'device2', name: 'Microphone 2', isDefault: false }
+    ]),
+    getAudioContext: sinon.stub().returns(function() {
+      return {
+        sampleRate: 44100,
+        state: 'running',
+        createMediaStreamSource: sinon.stub().returns({
+          connect: sinon.stub()
+        }),
+        createAnalyser: sinon.stub().returns({
+          fftSize: 0,
+          frequencyBinCount: 128,
+          getByteFrequencyData: sinon.stub()
+        }),
+        close: sinon.stub().resolves()
+      };
+    }),
+    getInstance: sinon.stub().returns({
+      getPlatformInfo: sinon.stub().returns({
+        os: 'linux',
+        arch: 'x64',
+        version: '1.0.0',
+        capabilities: {
+          audioCapture: true,
+          videoCapture: true,
+          screenCapture: true
+        }
+      }),
+      getAudioInputDevices: sinon.stub().resolves([
+        { id: 'device1', name: 'Microphone 1', isDefault: true },
+        { id: 'device2', name: 'Microphone 2', isDefault: false }
+      ])
+    })
+  };
+}
+
+/**
+ * Create a mock knowledge graph
+ * @returns {Object} Mock knowledge graph
+ */
+function createMockKnowledgeGraph() {
+  return {
+    queryEntity: sinon.stub().resolves({
+      id: 'entity1',
+      name: 'Test Entity',
+      type: 'person',
+      confidence: 0.9
+    }),
+    addEntity: sinon.stub().resolves(true),
+    updateEntity: sinon.stub().resolves(true),
+    deleteEntity: sinon.stub().resolves(true)
+  };
+}
+
+/**
+ * Create a mock language model integration
+ * @returns {Object} Mock language model integration
+ */
+function createMockLanguageModelIntegration() {
+  return {
+    enhanceUnderstanding: sinon.stub().resolves({
+      intent: 'enhanced_intent',
+      intentConfidence: 0.95,
+      entities: [
+        {
+          type: 'person',
+          value: 'John Doe',
+          confidence: 0.9
+        }
+      ]
+    }),
+    generateResponse: sinon.stub().resolves({
+      text: 'Generated response',
+      confidence: 0.9
+    })
+  };
+}
+
+/**
+ * Create a mock event emitter
+ * @returns {EventEmitter} Mock event emitter
+ */
+function createMockEventEmitter() {
+  return new EventEmitter();
 }
 
 module.exports = {
   createMockLogger,
-  createMockConfigService,
-  createMockEventBus,
-  createMockStorageAdapter,
-  createMockHttpClient
+  createMockConfigManager,
+  createMockSecurityManager,
+  createMockPerformanceTracker,
+  createMockNetworkManager,
+  createMockPlatformManager,
+  createMockKnowledgeGraph,
+  createMockLanguageModelIntegration,
+  createMockEventEmitter
 };
