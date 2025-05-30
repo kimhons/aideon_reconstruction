@@ -1,94 +1,84 @@
 /**
- * @fileoverview Mock core dependencies for integration tests.
+ * @fileoverview Mock dependencies for MCP UI integration tests.
+ * 
+ * This module provides mock implementations of core dependencies used in the
+ * MCP UI integration tests.
  * 
  * @author Aideon AI Team
- * @copyright 2025 AlienNova
- * @license Proprietary
+ * @version 1.0.0
  */
 
-// Mock Logger
-class Logger {
-  constructor(name) {
-    this.name = name;
-  }
-  
-  debug(...args) {
-    // console.log(`[DEBUG][${this.name}]`, ...args);
-  }
-  
-  info(...args) {
-    // console.log(`[INFO][${this.name}]`, ...args);
-  }
-  
-  warn(...args) {
-    // console.log(`[WARN][${this.name}]`, ...args);
-  }
-  
-  error(...args) {
-    // console.log(`[ERROR][${this.name}]`, ...args);
-  }
+const { EventEmitter } = require('events');
+
+/**
+ * Mock Logger implementation.
+ */
+class MockLogger {
+  info() {}
+  debug() {}
+  warn() {}
+  error() {}
 }
 
-// Mock ConfigurationService
-class ConfigurationService {
+/**
+ * Mock Configuration Service implementation.
+ */
+class MockConfigService {
+  get() { return {}; }
+  set() { return true; }
+}
+
+/**
+ * Mock Performance Monitor implementation.
+ */
+class MockPerformanceMonitor {
+  startTimer() { return Date.now(); }
+  endTimer() { return 0; }
+  recordMetric() {}
+}
+
+/**
+ * Mock Security Manager implementation.
+ */
+class MockSecurityManager {
+  checkAccess() { return true; }
+  hasPermission() { return true; }
+}
+
+/**
+ * Mock MCP Context Manager implementation.
+ */
+class MockMCPContextManager extends EventEmitter {
   constructor() {
-    this.configs = new Map();
+    super();
+    this.registeredProviders = new Map();
+    this.persistedContext = new Map();
   }
   
-  getConfig(key, defaultValue) {
-    return this.configs.get(key) || defaultValue;
+  async registerContextProvider(contextType, provider) {
+    this.registeredProviders.set(contextType, provider);
+    return true;
   }
   
-  setConfig(key, value) {
-    this.configs.set(key, value);
+  async persistContext(data) {
+    this.persistedContext.set(data.contextType, data);
+    return true;
+  }
+  
+  async loadPersistedContext(contextType) {
+    return this.persistedContext.get(contextType);
+  }
+  
+  async respondToContextRequest(requestId, response) {
+    this.emit('contextResponse', { requestId, response });
+    return true;
   }
 }
-
-// Mock PerformanceMonitor
-class PerformanceMonitor {
-  constructor(options = {}) {
-    this.timers = new Map();
-  }
-  
-  startTimer(name) {
-    const timerId = `${name}_${Date.now()}`;
-    this.timers.set(timerId, {
-      name,
-      startTime: Date.now()
-    });
-    return timerId;
-  }
-  
-  endTimer(timerId) {
-    const timer = this.timers.get(timerId);
-    if (timer) {
-      timer.endTime = Date.now();
-      timer.duration = timer.endTime - timer.startTime;
-      return timer.duration;
-    }
-    return 0;
-  }
-}
-
-// Mock EnhancedAsyncLock
-class EnhancedAsyncLock {
-  constructor() {}
-  
-  async withLock(fn, ...args) {
-    return fn(...args);
-  }
-}
-
-// Mock EnhancedAsyncLockAdapter
-const EnhancedAsyncLockAdapter = {
-  withLock: async (lockName, fn, ...args) => fn(...args),
-  acquire: async (fn, ...args) => fn(...args)
-};
 
 module.exports = {
-  Logger,
-  ConfigurationService,
-  PerformanceMonitor,
-  EnhancedAsyncLock,
-  EnhancedAsyncLockAdapter
+  MockLogger,
+  MockConfigService,
+  MockPerformanceMonitor,
+  MockSecurityManager,
+  MockMCPContextManager
 };

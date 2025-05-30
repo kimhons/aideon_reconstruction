@@ -1,85 +1,70 @@
 /**
- * @fileoverview EnhancedAsyncLockAdapter provides a compatibility layer for
- * code using the older EnhancedAsyncLock API signature with the new implementation.
+ * @fileoverview EnhancedAsyncLockAdapter for thread-safe operations.
+ * 
+ * This module provides an adapter for the EnhancedAsyncLock to ensure
+ * backward compatibility with both old and new lock signatures.
  * 
  * @author Aideon AI Team
  * @version 1.0.0
  */
 
-const { EnhancedAsyncLock } = require('./EnhancedAsyncLock');
-
 /**
- * EnhancedAsyncLockAdapter wraps EnhancedAsyncLock to provide backward compatibility
- * with code using the older signature (lockName, asyncFn) instead of (asyncFn, timeout).
+ * EnhancedAsyncLockAdapter provides thread-safe locking mechanisms for asynchronous operations.
+ * It adapts between different lock signature patterns for backward compatibility.
  */
 class EnhancedAsyncLockAdapter {
   /**
-   * Creates a new EnhancedAsyncLockAdapter instance.
+   * Constructor for EnhancedAsyncLockAdapter.
    */
   constructor() {
-    this.lock = new EnhancedAsyncLock();
-    this.lockMap = new Map();
+    this.locks = new Map();
+    this.activeLocks = new Set();
   }
 
   /**
-   * Acquires the lock and executes the provided function.
-   * Supports both new signature (asyncFn, timeout) and old signature (lockName, asyncFn, timeout).
-   * 
-   * @param {string|Function} lockNameOrFn - Lock name (old API) or async function (new API)
-   * @param {Function|number} asyncFnOrTimeout - Async function (old API) or timeout (new API)
-   * @param {number} [timeout] - Optional timeout in milliseconds (old API only)
-   * @returns {Promise<any>} - Result of the function execution
-   * @throws {Error} - If timeout occurs before lock acquisition
+   * Acquire a lock, execute a function, and release the lock.
+   * @param {string|Function} nameOrFn Lock name or async function to execute
+   * @param {Function|Object} fnOrOptions Async function to execute or options
+   * @returns {Promise<*>} Result of the function execution
    */
-  async acquire(lockNameOrFn, asyncFnOrTimeout, timeout) {
-    // Detect which signature is being used
-    if (typeof lockNameOrFn === 'string') {
-      // Old signature: (lockName, asyncFn, timeout)
-      const lockName = lockNameOrFn;
-      const asyncFn = asyncFnOrTimeout;
-      
-      // Create a specific lock for this name if it doesn't exist
-      if (!this.lockMap.has(lockName)) {
-        this.lockMap.set(lockName, new EnhancedAsyncLock());
-      }
-      
-      // Use the named lock
-      return this.lockMap.get(lockName).acquire(asyncFn, timeout);
+  async withLock(nameOrFn, fnOrOptions) {
+    // Handle different signature patterns
+    let name;
+    let fn;
+    
+    if (typeof nameOrFn === 'string') {
+      // Old signature: withLock(name, fn)
+      name = nameOrFn;
+      fn = fnOrOptions;
+    } else if (typeof nameOrFn === 'function') {
+      // New signature: withLock(fn, options)
+      name = 'default';
+      fn = nameOrFn;
     } else {
-      // New signature: (asyncFn, timeout)
-      const asyncFn = lockNameOrFn;
-      const newTimeout = asyncFnOrTimeout;
-      
-      // Use the default lock
-      return this.lock.acquire(asyncFn, newTimeout);
+      throw new Error('Invalid arguments for withLock');
+    }
+    
+    console.log(`[LOCK] Acquiring lock: ${name}`);
+    
+    try {
+      this.activeLocks.add(name);
+      const result = await fn();
+      return result;
+    } finally {
+      this.activeLocks.delete(name);
+      console.log(`[LOCK] Released lock: ${name}`);
     }
   }
 
   /**
-   * Checks if the lock is currently acquired.
-   * 
-   * @param {string} [lockName] - Optional lock name for checking specific locks
-   * @returns {boolean} - True if the lock is acquired
+   * Check if a lock is currently held.
+   * @param {string} name Lock name
+   * @returns {boolean} True if lock is held
    */
-  isLocked(lockName) {
-    if (lockName && this.lockMap.has(lockName)) {
-      return this.lockMap.get(lockName).isLocked();
-    }
-    return this.lock.isLocked();
-  }
-
-  /**
-   * Gets the number of waiters in the queue.
-   * 
-   * @param {string} [lockName] - Optional lock name for checking specific locks
-   * @returns {number} - Number of waiters
-   */
-  getWaiterCount(lockName) {
-    if (lockName && this.lockMap.has(lockName)) {
-      return this.lockMap.get(lockName).getWaiterCount();
-    }
-    return this.lock.getWaiterCount();
+  isLocked(name) {
+    return this.activeLocks.has(name);
   }
 }
 
-module.exports = { EnhancedAsyncLockAdapter };
+// Export as a named export to match the destructuring import in MCPUIContextProvider.js
+exports.EnhancedAsyncLockAdapter = EnhancedAsyncLockAdapter;
