@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aideon-deployment
+  labels:
+    app: aideon
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aideon
+  template:
+    metadata:
+      labels:
+        app: aideon
+    spec:
+      containers:
+      - name: aideon-container
+        image: gcr.io/PROJECT_ID/aideon:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: STORAGE_BUCKET
+          value: "aideon-storage"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aideon-service
+spec:
+  selector:
+    app: aideon
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer

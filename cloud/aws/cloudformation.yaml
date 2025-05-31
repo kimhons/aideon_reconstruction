@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Aideon AI Desktop Agent - AWS Deployment Template'
+
+Resources:
+  AideonLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  AideonDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: AideonStateTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  AideonS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'aideon-storage-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            AllowedOrigins:
+              - '*'
+            MaxAge: 3600
+
+  AideonAPIGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: AideonAPI
+      Description: API Gateway for Aideon AI Desktop Agent
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  AideonLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: AideonServiceHandler
+      Handler: index.handler
+      Role: !GetAtt AideonLambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            console.log('Received event:', JSON.stringify(event, null, 2));
+            return {
+              statusCode: 200,
+              body: JSON.stringify({ message: 'Aideon AI Desktop Agent API' }),
+              headers: { 'Content-Type': 'application/json' }
+            };
+          };
+      Runtime: nodejs14.x
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref AideonDynamoDBTable
+          S3_BUCKET: !Ref AideonS3Bucket
+
+Outputs:
+  AideonAPIEndpoint:
+    Description: URL of the Aideon API Gateway endpoint
+    Value: !Sub 'https://${AideonAPIGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/'
+  AideonS3BucketName:
+    Description: Name of the S3 bucket for Aideon storage
+    Value: !Ref AideonS3Bucket
