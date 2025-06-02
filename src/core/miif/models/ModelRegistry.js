@@ -1,289 +1,544 @@
 /**
- * @fileoverview Model Registry for the Model Integration and Intelligence Framework (MIIF)
- * Manages registration, discovery, and lifecycle of all embedded models
+ * @fileoverview Model Registry for Aideon Core
+ * Provides centralized registration and management of all available models
  * 
  * @module src/core/miif/models/ModelRegistry
  */
 
-const EventEmitter = require('events');
-const { ModelTier, ModelModality, ModelTaskType } = require('./ModelEnums');
+const { ModelType, ModelTier } = require('./ModelEnums');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * Model Registry
- * Manages registration, discovery, and lifecycle of all embedded models
- * @extends EventEmitter
+ * Manages registration and discovery of all available models in the system
  */
-class ModelRegistry extends EventEmitter {
+class ModelRegistry {
   /**
    * Create a new Model Registry
    * @param {Object} options - Configuration options
    * @param {Object} dependencies - System dependencies
    */
   constructor(options = {}, dependencies = {}) {
-    super();
-    
-    this.options = {
-      enableModelCaching: true,
-      maxCachedModels: 5,
-      ...options
-    };
-    
+    this.options = options;
     this.dependencies = dependencies;
     this.logger = dependencies.logger || console;
     
-    // Registry of all available models
-    this.availableModels = new Map();
+    // Initialize model registries
+    this.textModels = new Map();
+    this.imageModels = new Map();
+    this.videoModels = new Map();
+    this.multimodalModels = new Map();
     
-    // Registry of initialized models
-    this.initializedModels = new Map();
+    // Track loaded models
+    this.loadedModels = new Map();
     
-    // Model adapter classes by modality
-    this.adapterClasses = {
-      [ModelModality.TEXT]: {},
-      [ModelModality.IMAGE]: {},
-      [ModelModality.VIDEO]: {},
-      [ModelModality.AUDIO]: {},
-      [ModelModality.MULTIMODAL]: {}
-    };
-    
-    this.logger.info('[ModelRegistry] Model Registry initialized');
+    this.logger.info(`[ModelRegistry] Initialized`);
   }
   
   /**
-   * Register a model adapter class
+   * Register a model adapter
    * @param {string} modelId - Unique identifier for the model
-   * @param {Function} adapterClass - Model adapter class
-   * @param {string} modality - Model modality
+   * @param {Object} modelAdapter - Model adapter instance
    * @returns {boolean} Success status
    */
-  registerModelAdapterClass(modelId, adapterClass, modality) {
-    if (!Object.values(ModelModality).includes(modality)) {
-      this.logger.error(`[ModelRegistry] Invalid modality: ${modality}`);
+  registerModel(modelId, modelAdapter) {
+    try {
+      if (!modelId || !modelAdapter) {
+        throw new Error('Model ID and adapter are required');
+      }
+      
+      if (this.getModel(modelId)) {
+        throw new Error(`Model with ID ${modelId} is already registered`);
+      }
+      
+      // Register model in appropriate registry based on type
+      switch (modelAdapter.modelType) {
+        case ModelType.TEXT:
+          this.textModels.set(modelId, modelAdapter);
+          break;
+        case ModelType.IMAGE:
+          this.imageModels.set(modelId, modelAdapter);
+          break;
+        case ModelType.VIDEO:
+          this.videoModels.set(modelId, modelAdapter);
+          break;
+        case ModelType.MULTIMODAL:
+          this.multimodalModels.set(modelId, modelAdapter);
+          break;
+        default:
+          throw new Error(`Unknown model type: ${modelAdapter.modelType}`);
+      }
+      
+      this.logger.info(`[ModelRegistry] Registered model: ${modelId} (${modelAdapter.modelName})`);
+      return true;
+      
+    } catch (error) {
+      this.logger.error(`[ModelRegistry] Failed to register model ${modelId}: ${error.message}`);
       return false;
     }
-    
-    if (this.adapterClasses[modality][modelId]) {
-      this.logger.warn(`[ModelRegistry] Model adapter class already registered for ${modelId}`);
-      return false;
-    }
-    
-    this.adapterClasses[modality][modelId] = adapterClass;
-    this.logger.info(`[ModelRegistry] Registered model adapter class for ${modelId} (${modality})`);
-    return true;
   }
   
   /**
-   * Register a model
+   * Unregister a model adapter
    * @param {string} modelId - Unique identifier for the model
-   * @param {Object} modelInfo - Model information
    * @returns {boolean} Success status
    */
-  registerModel(modelId, modelInfo) {
-    if (this.availableModels.has(modelId)) {
-      this.logger.warn(`[ModelRegistry] Model already registered: ${modelId}`);
+  unregisterModel(modelId) {
+    try {
+      if (!modelId) {
+        throw new Error('Model ID is required');
+      }
+      
+      // Check if model is loaded
+      if (this.loadedModels.has(modelId)) {
+        throw new Error(`Cannot unregister model ${modelId} while it is loaded`);
+      }
+      
+      // Find and remove model from appropriate registry
+      let removed = false;
+      
+      if (this.textModels.has(modelId)) {
+        this.textModels.delete(modelId);
+        removed = true;
+      } else if (this.imageModels.has(modelId)) {
+        this.imageModels.delete(modelId);
+        removed = true;
+      } else if (this.videoModels.has(modelId)) {
+        this.videoModels.delete(modelId);
+        removed = true;
+      } else if (this.multimodalModels.has(modelId)) {
+        this.multimodalModels.delete(modelId);
+        removed = true;
+      }
+      
+      if (!removed) {
+        throw new Error(`Model with ID ${modelId} is not registered`);
+      }
+      
+      this.logger.info(`[ModelRegistry] Unregistered model: ${modelId}`);
+      return true;
+      
+    } catch (error) {
+      this.logger.error(`[ModelRegistry] Failed to unregister model ${modelId}: ${error.message}`);
       return false;
     }
-    
-    this.availableModels.set(modelId, {
-      ...modelInfo,
-      registeredAt: new Date()
-    });
-    
-    this.logger.info(`[ModelRegistry] Registered model: ${modelId}`);
-    this.emit('modelRegistered', modelId, modelInfo);
-    return true;
   }
   
   /**
-   * Get model by ID
-   * @param {string} modelId - Model ID
-   * @returns {Object|null} Model information or null if not found
+   * Get a registered model adapter
+   * @param {string} modelId - Unique identifier for the model
+   * @returns {Object|null} Model adapter or null if not found
    */
   getModel(modelId) {
-    return this.availableModels.get(modelId) || null;
+    if (!modelId) {
+      return null;
+    }
+    
+    // Check all registries
+    if (this.textModels.has(modelId)) {
+      return this.textModels.get(modelId);
+    } else if (this.imageModels.has(modelId)) {
+      return this.imageModels.get(modelId);
+    } else if (this.videoModels.has(modelId)) {
+      return this.videoModels.get(modelId);
+    } else if (this.multimodalModels.has(modelId)) {
+      return this.multimodalModels.get(modelId);
+    }
+    
+    return null;
   }
   
   /**
-   * Get all available models
-   * @param {Object} [filter] - Filter criteria
-   * @param {string} [filter.modality] - Filter by modality
-   * @param {string} [filter.tier] - Filter by tier
-   * @param {string} [filter.task] - Filter by supported task
-   * @returns {Array<Object>} List of models
+   * Get all registered models
+   * @returns {Array<Object>} Array of all registered model adapters
    */
-  getAllModels(filter = {}) {
-    let models = Array.from(this.availableModels.entries()).map(([id, info]) => ({
-      id,
-      ...info
-    }));
+  getAllModels() {
+    const allModels = [];
     
-    if (filter.modality) {
-      models = models.filter(model => model.modality === filter.modality);
+    // Collect models from all registries
+    this.textModels.forEach(model => allModels.push(model));
+    this.imageModels.forEach(model => allModels.push(model));
+    this.videoModels.forEach(model => allModels.push(model));
+    this.multimodalModels.forEach(model => allModels.push(model));
+    
+    return allModels;
+  }
+  
+  /**
+   * Get models by type
+   * @param {string} modelType - Model type (from ModelType enum)
+   * @returns {Array<Object>} Array of model adapters of the specified type
+   */
+  getModelsByType(modelType) {
+    if (!modelType) {
+      return [];
     }
     
-    if (filter.tier) {
-      models = models.filter(model => model.tier === filter.tier);
+    // Get models from appropriate registry
+    switch (modelType) {
+      case ModelType.TEXT:
+        return Array.from(this.textModels.values());
+      case ModelType.IMAGE:
+        return Array.from(this.imageModels.values());
+      case ModelType.VIDEO:
+        return Array.from(this.videoModels.values());
+      case ModelType.MULTIMODAL:
+        return Array.from(this.multimodalModels.values());
+      default:
+        return [];
+    }
+  }
+  
+  /**
+   * Get models by tier
+   * @param {string} tier - Model tier (from ModelTier enum)
+   * @returns {Array<Object>} Array of model adapters of the specified tier
+   */
+  getModelsByTier(tier) {
+    if (!tier) {
+      return [];
     }
     
-    if (filter.task) {
-      models = models.filter(model => model.supportedTasks.includes(filter.task));
-    }
+    // Collect models from all registries that match the tier
+    const models = [];
+    
+    this.getAllModels().forEach(model => {
+      if (model.modelTier === tier) {
+        models.push(model);
+      }
+    });
     
     return models;
   }
   
   /**
-   * Get model adapter instance
-   * @param {string} modelId - Model ID
-   * @param {Object} [options] - Adapter options
-   * @returns {Promise<Object>} Model adapter instance
+   * Get models by type and tier
+   * @param {string} modelType - Model type (from ModelType enum)
+   * @param {string} tier - Model tier (from ModelTier enum)
+   * @returns {Array<Object>} Array of model adapters of the specified type and tier
    */
-  async getModelAdapter(modelId, options = {}) {
-    // Check if model is already initialized
-    if (this.initializedModels.has(modelId)) {
-      return this.initializedModels.get(modelId);
+  getModelsByTypeAndTier(modelType, tier) {
+    if (!modelType || !tier) {
+      return [];
     }
     
-    // Get model information
-    const modelInfo = this.getModel(modelId);
-    if (!modelInfo) {
-      throw new Error(`Model not found: ${modelId}`);
-    }
-    
-    // Get adapter class
-    const adapterClass = this.adapterClasses[modelInfo.modality][modelId];
-    if (!adapterClass) {
-      throw new Error(`Model adapter class not found for ${modelId}`);
-    }
-    
-    // Create adapter instance
-    const adapter = new adapterClass(options, this.dependencies);
-    
-    // Initialize adapter
-    await adapter.initialize();
-    
-    // Store initialized adapter
-    this.initializedModels.set(modelId, adapter);
-    
-    // Manage cache size
-    if (this.options.enableModelCaching && this.initializedModels.size > this.options.maxCachedModels) {
-      await this._pruneModelCache();
-    }
-    
-    return adapter;
-  }
-  
-  /**
-   * Prune model cache by unloading least recently used models
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _pruneModelCache() {
-    // Implementation would unload least recently used models
-    // This is a placeholder for the actual implementation
-    this.logger.info(`[ModelRegistry] Pruning model cache`);
-    
-    // Get models to unload
-    const modelsToUnload = Array.from(this.initializedModels.entries())
-      .slice(0, this.initializedModels.size - this.options.maxCachedModels);
-    
-    // Unload models
-    for (const [modelId, adapter] of modelsToUnload) {
-      try {
-        await adapter.unload();
-        this.initializedModels.delete(modelId);
-        this.logger.info(`[ModelRegistry] Unloaded model from cache: ${modelId}`);
-      } catch (error) {
-        this.logger.error(`[ModelRegistry] Failed to unload model ${modelId}: ${error.message}`);
-      }
-    }
-  }
-  
-  /**
-   * Find best model for task
-   * @param {string} task - Task type
-   * @param {Object} [constraints] - Constraints
-   * @param {string} [constraints.tier] - Maximum tier
-   * @param {Object} [constraints.memory] - Memory constraints
-   * @param {number} [constraints.memory.ram] - Available RAM in GB
-   * @param {number} [constraints.memory.vram] - Available VRAM in GB
-   * @returns {string|null} Best model ID or null if not found
-   */
-  findBestModelForTask(task, constraints = {}) {
-    if (!Object.values(ModelTaskType).includes(task)) {
-      this.logger.error(`[ModelRegistry] Invalid task type: ${task}`);
-      return null;
-    }
-    
-    // Get all models that support the task
-    let candidates = this.getAllModels({ task });
+    // Get models by type first
+    const modelsByType = this.getModelsByType(modelType);
     
     // Filter by tier
-    if (constraints.tier) {
-      const tierIndex = Object.values(ModelTier).indexOf(constraints.tier);
-      if (tierIndex >= 0) {
-        const allowedTiers = Object.values(ModelTier).slice(0, tierIndex + 1);
-        candidates = candidates.filter(model => allowedTiers.includes(model.tier));
-      }
-    }
-    
-    // Filter by memory constraints
-    if (constraints.memory) {
-      candidates = candidates.filter(model => {
-        const memReq = model.memoryRequirements;
-        return (!constraints.memory.ram || memReq.ram <= constraints.memory.ram) &&
-               (!constraints.memory.vram || memReq.vram <= constraints.memory.vram);
-      });
-    }
-    
-    // Sort by accuracy (descending)
-    candidates.sort((a, b) => b.accuracy - a.accuracy);
-    
-    return candidates.length > 0 ? candidates[0].id : null;
+    return modelsByType.filter(model => model.modelTier === tier);
   }
   
   /**
-   * Unload all models
-   * @returns {Promise<boolean>} Success status
+   * Get models by accuracy threshold
+   * @param {number} threshold - Minimum accuracy threshold
+   * @returns {Array<Object>} Array of model adapters meeting the accuracy threshold
    */
-  async unloadAllModels() {
-    this.logger.info(`[ModelRegistry] Unloading all models`);
+  getModelsByAccuracy(threshold) {
+    if (typeof threshold !== 'number') {
+      return [];
+    }
     
-    const promises = Array.from(this.initializedModels.entries()).map(async ([modelId, adapter]) => {
-      try {
-        await adapter.unload();
-        this.logger.info(`[ModelRegistry] Unloaded model: ${modelId}`);
-        return true;
-      } catch (error) {
-        this.logger.error(`[ModelRegistry] Failed to unload model ${modelId}: ${error.message}`);
-        return false;
+    // Collect models from all registries that meet the accuracy threshold
+    const models = [];
+    
+    this.getAllModels().forEach(model => {
+      if (model.accuracy >= threshold) {
+        models.push(model);
       }
     });
     
-    const results = await Promise.all(promises);
-    this.initializedModels.clear();
-    
-    return results.every(result => result);
+    return models;
   }
   
   /**
-   * Get registry status
-   * @returns {Object} Registry status
+   * Get best model for task
+   * @param {Object} params - Task parameters
+   * @param {string} params.modelType - Model type (from ModelType enum)
+   * @param {string} [params.tier] - Model tier (from ModelTier enum)
+   * @param {number} [params.minAccuracy] - Minimum accuracy threshold
+   * @param {boolean} [params.offlineOnly] - Whether to only consider models that work offline
+   * @param {boolean} [params.preferApi] - Whether to prefer API-based models when online
+   * @returns {Object|null} Best model adapter for the task or null if none found
    */
-  getStatus() {
-    return {
-      availableModels: this.availableModels.size,
-      initializedModels: this.initializedModels.size,
-      registeredAdapters: {
-        [ModelModality.TEXT]: Object.keys(this.adapterClasses[ModelModality.TEXT]).length,
-        [ModelModality.IMAGE]: Object.keys(this.adapterClasses[ModelModality.IMAGE]).length,
-        [ModelModality.VIDEO]: Object.keys(this.adapterClasses[ModelModality.VIDEO]).length,
-        [ModelModality.AUDIO]: Object.keys(this.adapterClasses[ModelModality.AUDIO]).length,
-        [ModelModality.MULTIMODAL]: Object.keys(this.adapterClasses[ModelModality.MULTIMODAL]).length
-      },
-      enableModelCaching: this.options.enableModelCaching,
-      maxCachedModels: this.options.maxCachedModels
-    };
+  getBestModelForTask(params) {
+    const { modelType, tier, minAccuracy, offlineOnly, preferApi } = params;
+    
+    if (!modelType) {
+      return null;
+    }
+    
+    try {
+      // Get models by type
+      let candidates = this.getModelsByType(modelType);
+      
+      // Filter by tier if specified
+      if (tier) {
+        candidates = candidates.filter(model => model.modelTier === tier);
+      }
+      
+      // Filter by minimum accuracy if specified
+      if (typeof minAccuracy === 'number') {
+        candidates = candidates.filter(model => model.accuracy >= minAccuracy);
+      }
+      
+      // Filter by offline capability if required
+      if (offlineOnly) {
+        candidates = candidates.filter(model => !model.onlineOnly);
+      }
+      
+      // If no candidates found, return null
+      if (candidates.length === 0) {
+        return null;
+      }
+      
+      // Sort candidates by preference
+      candidates.sort((a, b) => {
+        // If preferApi is true and we're online, prefer API-based models
+        if (preferApi && this._isOnline()) {
+          if (a.hybridCapable && !b.hybridCapable) return -1;
+          if (!a.hybridCapable && b.hybridCapable) return 1;
+        }
+        
+        // Otherwise, sort by accuracy
+        return b.accuracy - a.accuracy;
+      });
+      
+      // Return the best candidate
+      return candidates[0];
+      
+    } catch (error) {
+      this.logger.error(`[ModelRegistry] Failed to get best model for task: ${error.message}`);
+      return null;
+    }
+  }
+  
+  /**
+   * Track model load status
+   * @param {string} modelId - Unique identifier for the model
+   * @param {boolean} isLoaded - Whether the model is loaded
+   * @returns {boolean} Success status
+   */
+  trackModelLoadStatus(modelId, isLoaded) {
+    try {
+      if (!modelId) {
+        throw new Error('Model ID is required');
+      }
+      
+      const model = this.getModel(modelId);
+      if (!model) {
+        throw new Error(`Model with ID ${modelId} is not registered`);
+      }
+      
+      if (isLoaded) {
+        this.loadedModels.set(modelId, true);
+      } else {
+        this.loadedModels.delete(modelId);
+      }
+      
+      this.logger.debug(`[ModelRegistry] Model ${modelId} load status: ${isLoaded ? 'loaded' : 'unloaded'}`);
+      return true;
+      
+    } catch (error) {
+      this.logger.error(`[ModelRegistry] Failed to track model load status: ${error.message}`);
+      return false;
+    }
+  }
+  
+  /**
+   * Get loaded models
+   * @returns {Array<Object>} Array of loaded model adapters
+   */
+  getLoadedModels() {
+    const loadedModels = [];
+    
+    this.loadedModels.forEach((_, modelId) => {
+      const model = this.getModel(modelId);
+      if (model) {
+        loadedModels.push(model);
+      }
+    });
+    
+    return loadedModels;
+  }
+  
+  /**
+   * Check if a model is loaded
+   * @param {string} modelId - Unique identifier for the model
+   * @returns {boolean} Whether the model is loaded
+   */
+  isModelLoaded(modelId) {
+    return this.loadedModels.has(modelId);
+  }
+  
+  /**
+   * Discover and register models from directory
+   * @param {string} modelsDir - Directory containing model adapters
+   * @returns {Promise<number>} Number of models registered
+   */
+  async discoverAndRegisterModels(modelsDir) {
+    try {
+      if (!modelsDir) {
+        throw new Error('Models directory is required');
+      }
+      
+      if (!fs.existsSync(modelsDir)) {
+        throw new Error(`Models directory does not exist: ${modelsDir}`);
+      }
+      
+      this.logger.info(`[ModelRegistry] Discovering models in ${modelsDir}`);
+      
+      // Discover model types
+      const modelTypes = ['text', 'image', 'video', 'multimodal'];
+      let registeredCount = 0;
+      
+      for (const type of modelTypes) {
+        const typeDir = path.join(modelsDir, type);
+        
+        if (!fs.existsSync(typeDir)) {
+          this.logger.debug(`[ModelRegistry] ${type} models directory does not exist, skipping`);
+          continue;
+        }
+        
+        // Get subdirectories (one per model)
+        const modelDirs = fs.readdirSync(typeDir).filter(dir => {
+          return fs.statSync(path.join(typeDir, dir)).isDirectory();
+        });
+        
+        for (const modelDir of modelDirs) {
+          try {
+            // Look for adapter file
+            const adapterFile = fs.readdirSync(path.join(typeDir, modelDir)).find(file => {
+              return file.endsWith('Adapter.js') || file.endsWith('ModelAdapter.js');
+            });
+            
+            if (!adapterFile) {
+              this.logger.debug(`[ModelRegistry] No adapter file found for ${type}/${modelDir}, skipping`);
+              continue;
+            }
+            
+            // Load adapter class
+            const adapterPath = path.join(typeDir, modelDir, adapterFile);
+            const AdapterClass = require(adapterPath);
+            
+            // Create adapter instance
+            const adapter = new AdapterClass(this.options, this.dependencies);
+            
+            // Register model
+            const modelId = `${type}.${modelDir}`;
+            if (this.registerModel(modelId, adapter)) {
+              registeredCount++;
+            }
+            
+          } catch (error) {
+            this.logger.error(`[ModelRegistry] Failed to register model ${type}/${modelDir}: ${error.message}`);
+          }
+        }
+      }
+      
+      this.logger.info(`[ModelRegistry] Discovered and registered ${registeredCount} models`);
+      return registeredCount;
+      
+    } catch (error) {
+      this.logger.error(`[ModelRegistry] Failed to discover models: ${error.message}`);
+      return 0;
+    }
+  }
+  
+  /**
+   * Register built-in models
+   * @returns {Promise<number>} Number of models registered
+   */
+  async registerBuiltInModels() {
+    try {
+      this.logger.info(`[ModelRegistry] Registering built-in models`);
+      
+      // Import model adapters
+      const Qwen2ModelAdapter = require('./text/qwen2/Qwen2ModelAdapter');
+      const Llama370BModelAdapter = require('./text/llama3_70b/Llama370BModelAdapter');
+      const Mixtral8x22BModelAdapter = require('./text/mixtral_8x22b/Mixtral8x22BModelAdapter');
+      const MistralLargeModelAdapter = require('./text/mistral_large/MistralLargeModelAdapter');
+      const RobertaXLModelAdapter = require('./text/roberta_xl/RobertaXLModelAdapter');
+      const Llama318BModelAdapter = require('./text/llama3_1_8b/Llama318BModelAdapter');
+      const OpenHermes3ModelAdapter = require('./text/openhermes3/OpenHermes3ModelAdapter');
+      const Gemma2527BModelAdapter = require('./text/gemma2_5_27b/Gemma2527BModelAdapter');
+      
+      const StableDiffusionXLAdapter = require('./image/StableDiffusionXLAdapter');
+      const CLIPModelAdapter = require('./image/CLIPModelAdapter');
+      const MobileViTAdapter = require('./image/MobileViTAdapter');
+      const GoogleVisionModelAdapter = require('./image/GoogleVisionModelAdapter');
+      
+      const VideoLLaMAAdapter = require('./video/VideoLLaMAAdapter');
+      const VideoMambaAdapter = require('./video/VideoMambaAdapter');
+      const EfficientVideoNetAdapter = require('./video/EfficientVideoNetAdapter');
+      const GoogleVideoIntelligenceModelAdapter = require('./video/GoogleVideoIntelligenceModelAdapter');
+      
+      // Create instances
+      const models = [
+        { id: 'text.qwen2', adapter: new Qwen2ModelAdapter(this.options, this.dependencies) },
+        { id: 'text.llama3_70b', adapter: new Llama370BModelAdapter(this.options, this.dependencies) },
+        { id: 'text.mixtral_8x22b', adapter: new Mixtral8x22BModelAdapter(this.options, this.dependencies) },
+        { id: 'text.mistral_large', adapter: new MistralLargeModelAdapter(this.options, this.dependencies) },
+        { id: 'text.roberta_xl', adapter: new RobertaXLModelAdapter(this.options, this.dependencies) },
+        { id: 'text.llama3_1_8b', adapter: new Llama318BModelAdapter(this.options, this.dependencies) },
+        { id: 'text.openhermes3', adapter: new OpenHermes3ModelAdapter(this.options, this.dependencies) },
+        { id: 'text.gemma2_5_27b', adapter: new Gemma2527BModelAdapter(this.options, this.dependencies) },
+        
+        { id: 'image.stable_diffusion_xl', adapter: new StableDiffusionXLAdapter(this.options, this.dependencies) },
+        { id: 'image.clip', adapter: new CLIPModelAdapter(this.options, this.dependencies) },
+        { id: 'image.mobilevit', adapter: new MobileViTAdapter(this.options, this.dependencies) },
+        { id: 'image.google_vision', adapter: new GoogleVisionModelAdapter(this.options, this.dependencies) },
+        
+        { id: 'video.videollama', adapter: new VideoLLaMAAdapter(this.options, this.dependencies) },
+        { id: 'video.videomamba', adapter: new VideoMambaAdapter(this.options, this.dependencies) },
+        { id: 'video.efficientvideo', adapter: new EfficientVideoNetAdapter(this.options, this.dependencies) },
+        { id: 'video.google_video_intelligence', adapter: new GoogleVideoIntelligenceModelAdapter(this.options, this.dependencies) }
+      ];
+      
+      // Register models
+      let registeredCount = 0;
+      for (const { id, adapter } of models) {
+        if (this.registerModel(id, adapter)) {
+          registeredCount++;
+        }
+      }
+      
+      this.logger.info(`[ModelRegistry] Registered ${registeredCount} built-in models`);
+      return registeredCount;
+      
+    } catch (error) {
+      this.logger.error(`[ModelRegistry] Failed to register built-in models: ${error.message}`);
+      return 0;
+    }
+  }
+  
+  // ====================================================================
+  // PRIVATE METHODS
+  // ====================================================================
+  
+  /**
+   * Check if system is online
+   * @returns {boolean} Whether the system is online
+   * @private
+   */
+  _isOnline() {
+    // This is a placeholder for the actual implementation
+    
+    try {
+      // In a real implementation, this would check internet connectivity
+      
+      // For simulation, check if the network dependency is available
+      if (!this.dependencies.network) {
+        return false;
+      }
+      
+      return this.dependencies.network.isOnline();
+      
+    } catch (error) {
+      this.logger.error(`[ModelRegistry] Online status check failed: ${error.message}`);
+      return false;
+    }
   }
 }
 
