@@ -5,10 +5,13 @@
  * @module src/tentacles/personal_assistant/TaskManagementSystem
  */
 
+const EventEmitter = require('events');
+
 /**
  * Task Management System
+ * @extends EventEmitter
  */
-class TaskManagementSystem {
+class TaskManagementSystem extends EventEmitter {
   /**
    * Create a new Task Management System
    * @param {Object} options - Configuration options
@@ -18,6 +21,9 @@ class TaskManagementSystem {
    * @param {Object} dependencies.notificationSystem - Notification System for reminders
    */
   constructor(options = {}, dependencies = {}) {
+    // Call EventEmitter constructor first
+    super();
+    
     this.options = {
       defaultPriority: 3,
       ...options
@@ -101,6 +107,9 @@ class TaskManagementSystem {
     }
     
     this.logger.info('[TaskManagementSystem] Task created successfully', { taskId: task.id });
+    
+    // Emit task created event
+    this.emit('taskCreated', { type: 'taskCreated', taskId: task.id, task });
     return task;
   }
   
@@ -185,6 +194,19 @@ class TaskManagementSystem {
     }
     
     this.logger.info('[TaskManagementSystem] Task updated successfully', { taskId });
+    
+    // Emit task updated event
+    this.emit('taskUpdated', { type: 'taskUpdated', taskId, task: updatedTask });
+    
+    // Emit task completed event if status changed to completed
+    if (updates.status === 'completed' && task.status !== 'completed') {
+      this.emit('taskCompleted', { type: 'taskCompleted', taskId, task: updatedTask });
+    }
+    
+    // Emit task overdue event if task is overdue
+    if (updatedTask.due && updatedTask.due < new Date() && updatedTask.status !== 'completed') {
+      this.emit('taskOverdue', { type: 'taskOverdue', taskId, task: updatedTask });
+    }
     return updatedTask;
   }
   

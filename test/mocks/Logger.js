@@ -1,67 +1,117 @@
 /**
- * @fileoverview Mock Logger for testing purposes
- * 
- * This file provides a mock implementation of the Logger utility for testing.
- * It simulates the core functionality of the Logger without requiring the actual implementation.
+ * @fileoverview Mock Logger for testing.
+ * Provides mock implementations of logging functionality.
  * 
  * @module test/mocks/Logger
  */
 
 /**
- * @class Logger
- * @description Mock implementation of the Logger class for testing
+ * Mock Logger
  */
-class Logger {
+class MockLogger {
   /**
-   * Creates an instance of Logger
-   * @param {string} name - Logger name
+   * Create a new Mock Logger
    */
-  constructor(name) {
-    this.name = name;
+  constructor() {
+    this.logs = [];
+    this.errorLogs = [];
+    this.warnLogs = [];
+    this.infoLogs = [];
+    this.debugLogs = [];
+    this.traceLogs = [];
   }
   
   /**
-   * Logs an info message
-   * @param {string} message - Message to log
+   * Log error message
+   * @param {string} message - Error message
+   * @param {Object} [context] - Error context
    */
-  info(message) {
-    console.log(`[INFO] ${this.name}: ${message}`);
+  error(message, context = {}) {
+    this.logs.push({ level: 'error', message, context, timestamp: new Date() });
+    this.errorLogs.push({ message, context, timestamp: new Date() });
   }
   
   /**
-   * Logs a warning message
-   * @param {string} message - Message to log
+   * Log warning message
+   * @param {string} message - Warning message
+   * @param {Object} [context] - Warning context
    */
-  warn(message) {
-    console.warn(`[WARN] ${this.name}: ${message}`);
+  warn(message, context = {}) {
+    this.logs.push({ level: 'warn', message, context, timestamp: new Date() });
+    this.warnLogs.push({ message, context, timestamp: new Date() });
   }
   
   /**
-   * Logs an error message
-   * @param {string} message - Message to log
+   * Log info message
+   * @param {string} message - Info message
+   * @param {Object} [context] - Info context
    */
-  error(message) {
-    console.error(`[ERROR] ${this.name}: ${message}`);
+  info(message, context = {}) {
+    this.logs.push({ level: 'info', message, context, timestamp: new Date() });
+    this.infoLogs.push({ message, context, timestamp: new Date() });
   }
   
   /**
-   * Logs a debug message
-   * @param {string} message - Message to log
+   * Log debug message
+   * @param {string} message - Debug message
+   * @param {Object} [context] - Debug context
    */
-  debug(message) {
-    console.debug(`[DEBUG] ${this.name}: ${message}`);
+  debug(message, context = {}) {
+    this.logs.push({ level: 'debug', message, context, timestamp: new Date() });
+    this.debugLogs.push({ message, context, timestamp: new Date() });
+  }
+  
+  /**
+   * Log trace message
+   * @param {string} message - Trace message
+   * @param {Object} [context] - Trace context
+   */
+  trace(message, context = {}) {
+    this.logs.push({ level: 'trace', message, context, timestamp: new Date() });
+    this.traceLogs.push({ message, context, timestamp: new Date() });
+  }
+  
+  /**
+   * Get all logs
+   * @returns {Array<Object>} All logs
+   */
+  getAllLogs() {
+    return [...this.logs];
+  }
+  
+  /**
+   * Get logs by level
+   * @param {string} level - Log level
+   * @returns {Array<Object>} Logs of specified level
+   */
+  getLogsByLevel(level) {
+    switch (level) {
+      case 'error':
+        return [...this.errorLogs];
+      case 'warn':
+        return [...this.warnLogs];
+      case 'info':
+        return [...this.infoLogs];
+      case 'debug':
+        return [...this.debugLogs];
+      case 'trace':
+        return [...this.traceLogs];
+      default:
+        return [];
+    }
+  }
+  
+  /**
+   * Clear all logs
+   */
+  clearLogs() {
+    this.logs = [];
+    this.errorLogs = [];
+    this.warnLogs = [];
+    this.infoLogs = [];
+    this.debugLogs = [];
+    this.traceLogs = [];
   }
 }
 
-/**
- * Gets a logger instance
- * @param {string} name - Logger name
- * @returns {Logger} Logger instance
- */
-function getLogger(name) {
-  return new Logger(name);
-}
-
-module.exports = {
-  getLogger
-};
+module.exports = MockLogger;
