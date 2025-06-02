@@ -1,483 +1,584 @@
 /**
- * @file AideonAcademyTentacle.js
- * @description Main entry point for the Aideon Academy Tentacle, providing AI-powered adaptive learning
- * with dynamic curriculum generation, personalized learning paths, and multi-LLM orchestration.
- * @author Aideon AI Team
- * @version 1.0.0
+ * @fileoverview AideonAcademyTentacle - Enhanced implementation with comprehensive model integration
+ * Provides a complete educational institution experience for learners of all ages
+ * 
+ * @module src/tentacles/aideon_academy/AideonAcademyTentacle
  */
 
-const { EventEmitter } = require('events');
-const { v4: uuidv4 } = require('uuid');
-const { LearningObjective, LearnerProfile, BloomsLevel, LearningStyle, LearningPace } = require('./types/AcademyTypes');
-const { MultiLLMOrchestrator } = require('./ai/MultiLLMOrchestrator');
-const { AideonAvatar } = require('./core/AideonAvatar');
-const { InteractiveTeachingBoard } = require('./core/InteractiveTeachingBoard');
-const { OnboardingSystem } = require('./core/OnboardingSystem');
-const { TutorialEngine } = require('./core/TutorialEngine');
-const { SkillAssessmentSystem } = require('./core/SkillAssessmentSystem');
-const { VideoLearningSystem } = require('./core/VideoLearningSystem');
-const { CertificationProgram } = require('./core/CertificationProgram');
-const { BestPracticesEngine } = require('./core/BestPracticesEngine');
-const { PeerLearningPlatform } = require('./core/PeerLearningPlatform');
-const { ProgressTrackingSystem } = require('./core/ProgressTrackingSystem');
-const { AdaptiveLearningEngine } = require('./core/AdaptiveLearningEngine');
-const { MicroLearningSystem } = require('./core/MicroLearningSystem');
-const { JustInTimeHelper } = require('./core/JustInTimeHelper');
-const { AcademyAnalytics } = require('./analytics/AcademyAnalytics');
-const { AcademyStorage } = require('./storage/AcademyStorage');
-const { AcademyConfig } = require('./config/AcademyConfig');
-const { AcademyLogger } = require('./utils/AcademyLogger');
+const EventEmitter = require("events");
+const { v4: uuidv4 } = require("uuid");
+const { TentacleType } = require("../../core/types/TentacleTypes");
+
+// Import components
+const LearningProfileManager = require("./learning_profile/LearningProfileManager");
+const IntelligentTutoringSystem = require("./intelligent_tutoring/IntelligentTutoringSystem");
+const AssessmentEngine = require("./assessment_engine/AssessmentEngine");
+const LearningAnalyticsPlatform = require("./learning_analytics/LearningAnalyticsPlatform");
+const EducationalResearchAssistant = require("./educational_research/EducationalResearchAssistant");
 
 /**
- * Main Aideon Academy Tentacle class that orchestrates all learning components
- * and provides a unified interface for the Aideon AI Desktop Agent.
+ * Aideon Academy Tentacle
+ * Provides comprehensive educational capabilities for learners of all ages
+ * @extends EventEmitter
  */
 class AideonAcademyTentacle extends EventEmitter {
   /**
-   * Creates a new instance of the Aideon Academy Tentacle
-   * @param {Object} options Configuration options
-   * @param {string} options.userId User identifier
-   * @param {string} options.tier User subscription tier (core, pro, enterprise)
-   * @param {Object} options.deviceCapabilities Device capabilities for optimizing content delivery
-   * @param {Object} options.preferences User preferences
+   * Create a new Aideon Academy Tentacle
+   * @param {Object} options - Configuration options
+   * @param {Object} dependencies - System dependencies
    */
-  constructor(options = {}) {
+  constructor(options = {}, dependencies = {}) {
     super();
     
-    this.id = uuidv4();
-    this.userId = options.userId || 'anonymous';
-    this.tier = options.tier || 'core';
-    this.deviceCapabilities = options.deviceCapabilities || {};
-    this.preferences = options.preferences || {};
+    this.options = options;
+    this.dependencies = dependencies;
+    this.logger = dependencies.logger || console;
+    this.storage = dependencies.storage;
+    this.config = dependencies.config;
+    this.modelOrchestrator = dependencies.modelOrchestrator;
+    this.apiServiceIntegration = dependencies.apiServiceIntegration;
+    this.creditManager = dependencies.creditManager;
+    this.securityFramework = dependencies.securityFramework;
     
-    this.logger = new AcademyLogger({
-      tentacleId: this.id,
-      userId: this.userId,
-      logLevel: options.logLevel || 'info'
-    });
-    
-    this.config = new AcademyConfig({
-      tier: this.tier,
-      deviceCapabilities: this.deviceCapabilities
-    });
-    
-    this.storage = new AcademyStorage({
-      userId: this.userId,
-      tier: this.tier
-    });
-    
-    this.analytics = new AcademyAnalytics({
-      userId: this.userId,
-      tier: this.tier
-    });
-    
-    // Initialize AI orchestration
-    this.multiLLMOrchestrator = new MultiLLMOrchestrator({
-      tier: this.tier,
-      deviceCapabilities: this.deviceCapabilities,
-      config: this.config
-    });
-    
-    // Initialize core components
-    this.initializeCoreComponents();
-    
-    // Initialize feature components based on tier
-    this.initializeFeatureComponents();
-    
-    this.logger.info('Aideon Academy Tentacle initialized', {
-      tier: this.tier,
-      userId: this.userId
-    });
-  }
-  
-  /**
-   * Initialize core components required for all tiers
-   * @private
-   */
-  initializeCoreComponents() {
-    // Core components available in all tiers
-    this.onboardingSystem = new OnboardingSystem({
-      orchestrator: this.multiLLMOrchestrator,
-      storage: this.storage,
-      analytics: this.analytics,
-      config: this.config
-    });
-    
-    this.tutorialEngine = new TutorialEngine({
-      orchestrator: this.multiLLMOrchestrator,
-      storage: this.storage,
-      analytics: this.analytics,
-      config: this.config
-    });
-    
-    this.skillAssessmentSystem = new SkillAssessmentSystem({
-      orchestrator: this.multiLLMOrchestrator,
-      storage: this.storage,
-      analytics: this.analytics,
-      config: this.config
-    });
-    
-    this.progressTrackingSystem = new ProgressTrackingSystem({
-      storage: this.storage,
-      analytics: this.analytics,
-      config: this.config
-    });
-    
-    this.aideonAvatar = new AideonAvatar({
-      orchestrator: this.multiLLMOrchestrator,
-      storage: this.storage,
-      analytics: this.analytics,
-      config: this.config
-    });
-    
-    this.interactiveTeachingBoard = new InteractiveTeachingBoard({
-      orchestrator: this.multiLLMOrchestrator,
-      storage: this.storage,
-      analytics: this.analytics,
-      config: this.config
-    });
-    
-    this.justInTimeHelper = new JustInTimeHelper({
-      orchestrator: this.multiLLMOrchestrator,
-      storage: this.storage,
-      analytics: this.analytics,
-      config: this.config
-    });
-  }
-  
-  /**
-   * Initialize feature components based on user tier
-   * @private
-   */
-  initializeFeatureComponents() {
-    // Components available in Pro and Enterprise tiers
-    if (this.tier === 'pro' || this.tier === 'enterprise') {
-      this.videoLearningSystem = new VideoLearningSystem({
-        orchestrator: this.multiLLMOrchestrator,
-        storage: this.storage,
-        analytics: this.analytics,
-        config: this.config
-      });
-      
-      this.certificationProgram = new CertificationProgram({
-        orchestrator: this.multiLLMOrchestrator,
-        storage: this.storage,
-        analytics: this.analytics,
-        config: this.config
-      });
-      
-      this.bestPracticesEngine = new BestPracticesEngine({
-        orchestrator: this.multiLLMOrchestrator,
-        storage: this.storage,
-        analytics: this.analytics,
-        config: this.config
-      });
-      
-      this.adaptiveLearningEngine = new AdaptiveLearningEngine({
-        orchestrator: this.multiLLMOrchestrator,
-        storage: this.storage,
-        analytics: this.analytics,
-        config: this.config
-      });
-      
-      this.microLearningSystem = new MicroLearningSystem({
-        orchestrator: this.multiLLMOrchestrator,
-        storage: this.storage,
-        analytics: this.analytics,
-        config: this.config
-      });
+    // Validate required dependencies
+    if (!this.storage || !this.modelOrchestrator || !this.creditManager || !this.securityFramework) {
+      throw new Error("Required dependencies missing for AideonAcademyTentacle");
     }
     
-    // Components available only in Enterprise tier
-    if (this.tier === 'enterprise') {
-      this.peerLearningPlatform = new PeerLearningPlatform({
-        orchestrator: this.multiLLMOrchestrator,
-        storage: this.storage,
-        analytics: this.analytics,
-        config: this.config
-      });
-    }
+    this.logger.info("[AideonAcademyTentacle] Initializing Aideon Academy Tentacle");
+    
+    // Initialize components
+    this.learningProfileManager = new LearningProfileManager(options.learningProfile || {}, {
+      logger: this.logger,
+      storage: this.storage,
+      config: this.config,
+      modelOrchestrator: this.modelOrchestrator,
+      securityFramework: this.securityFramework
+    });
+    
+    this.intelligentTutoringSystem = new IntelligentTutoringSystem(options.tutoring || {}, {
+      logger: this.logger,
+      storage: this.storage,
+      config: this.config,
+      modelOrchestrator: this.modelOrchestrator,
+      apiServiceIntegration: this.apiServiceIntegration,
+      creditManager: this.creditManager,
+      learningProfileManager: this.learningProfileManager
+    });
+    
+    this.assessmentEngine = new AssessmentEngine(options.assessment || {}, {
+      logger: this.logger,
+      storage: this.storage,
+      config: this.config,
+      modelOrchestrator: this.modelOrchestrator,
+      apiServiceIntegration: this.apiServiceIntegration,
+      creditManager: this.creditManager,
+      learningProfileManager: this.learningProfileManager
+    });
+    
+    this.learningAnalyticsPlatform = new LearningAnalyticsPlatform(options.analytics || {}, {
+      logger: this.logger,
+      storage: this.storage,
+      config: this.config,
+      learningProfileManager: this.learningProfileManager
+    });
+    
+    this.educationalResearchAssistant = new EducationalResearchAssistant(options.research || {}, {
+      logger: this.logger,
+      storage: this.storage,
+      config: this.config,
+      modelOrchestrator: this.modelOrchestrator,
+      apiServiceIntegration: this.apiServiceIntegration,
+      creditManager: this.creditManager
+    });
+    
+    // Set up event forwarding from components
+    this._setupEventForwarding();
+    
+    // Active user sessions
+    this.activeSessions = new Map();
+    
+    this.logger.info("[AideonAcademyTentacle] Aideon Academy Tentacle initialized");
   }
   
   /**
-   * Start the Aideon Academy Tentacle
-   * @returns {Promise<void>}
+   * Get the tentacle type
+   * @returns {string} Tentacle type
    */
-  async start() {
+  getType() {
+    return TentacleType.AIDEON_ACADEMY;
+  }
+  
+  /**
+   * Initialize the tentacle for a user
+   * @param {Object} userProfile - User profile
+   * @returns {Promise<Object>} Initialization result
+   */
+  async initialize(userProfile) {
+    this.logger.info(`[AideonAcademyTentacle] Initializing for user: ${userProfile.userId}`);
+    
     try {
-      this.logger.info('Starting Aideon Academy Tentacle');
-      
-      // Load user profile or create new one
-      await this.loadUserProfile();
+      // Validate user access and permissions
+      await this._validateUserAccess(userProfile);
       
       // Initialize all components
-      await this.initializeComponents();
+      await this.learningProfileManager.initialize(userProfile);
+      await this.intelligentTutoringSystem.initialize(userProfile);
+      await this.assessmentEngine.initialize(userProfile);
+      await this.learningAnalyticsPlatform.initialize(userProfile);
+      await this.educationalResearchAssistant.initialize(userProfile);
       
-      // Register event listeners
-      this.registerEventListeners();
+      // Create or retrieve user session
+      const sessionId = uuidv4();
+      const session = {
+        sessionId,
+        userId: userProfile.userId,
+        startTime: new Date(),
+        tier: userProfile.tier,
+        lastActivity: new Date()
+      };
       
-      this.emit('academy.started', {
-        tentacleId: this.id,
-        userId: this.userId,
-        tier: this.tier
-      });
+      this.activeSessions.set(sessionId, session);
       
-      this.logger.info('Aideon Academy Tentacle started successfully');
-      return true;
+      this.logger.info(`[AideonAcademyTentacle] Initialized successfully for user: ${userProfile.userId}`);
+      this.emit("tentacle.initialized", { userId: userProfile.userId, sessionId });
+      
+      return {
+        success: true,
+        sessionId,
+        message: "Aideon Academy Tentacle initialized successfully"
+      };
+      
     } catch (error) {
-      this.logger.error('Failed to start Aideon Academy Tentacle', error);
-      this.emit('academy.error', {
-        error,
-        tentacleId: this.id,
-        userId: this.userId
-      });
+      this.logger.error(`[AideonAcademyTentacle] Initialization failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Create or update a learning profile
+   * @param {string} sessionId - Session ID
+   * @param {Object} profileData - Profile data to create or update
+   * @returns {Promise<Object>} Updated profile
+   */
+  async createOrUpdateProfile(sessionId, profileData) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Creating/updating profile for user: ${session.userId}`);
+    
+    try {
+      const profile = await this.learningProfileManager.createOrUpdateProfile(session.userId, profileData);
+      
+      this.emit("profile.updated", { userId: session.userId, sessionId });
+      return profile;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Profile update failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get personalized learning recommendations
+   * @param {string} sessionId - Session ID
+   * @param {Object} options - Recommendation options
+   * @returns {Promise<Array<Object>>} Learning recommendations
+   */
+  async getRecommendations(sessionId, options = {}) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Getting recommendations for user: ${session.userId}`);
+    
+    try {
+      // Check if user has sufficient credits for this operation
+      const creditCost = this._calculateCreditCost("recommendations", session.tier, options);
+      if (!(await this.creditManager.hasSufficientCredits(session.userId, creditCost))) {
+        throw new Error("Insufficient credits to get personalized recommendations.");
+      }
+      
+      // Get recommendations from intelligent tutoring system
+      const recommendations = await this.intelligentTutoringSystem.getRecommendations(session.userId, options);
+      
+      // Deduct credits
+      await this.creditManager.deductCredits(session.userId, creditCost, "academy_recommendations");
+      
+      this.emit("recommendations.generated", { userId: session.userId, sessionId, count: recommendations.length });
+      return recommendations;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Recommendations failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Create an assessment
+   * @param {string} sessionId - Session ID
+   * @param {Object} options - Assessment options
+   * @returns {Promise<Object>} Created assessment
+   */
+  async createAssessment(sessionId, options) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Creating assessment for user: ${session.userId}`);
+    
+    try {
+      // Add user ID to options
+      options.userId = session.userId;
+      
+      // Create assessment using assessment engine
+      const assessment = await this.assessmentEngine.createAssessment(options);
+      
+      this.emit("assessment.created", { userId: session.userId, sessionId, assessmentId: assessment.assessmentId });
+      return assessment;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Assessment creation failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Start an assessment session
+   * @param {string} sessionId - Session ID
+   * @param {string} assessmentId - Assessment ID
+   * @returns {Promise<Object>} Assessment session
+   */
+  async startAssessmentSession(sessionId, assessmentId) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Starting assessment session for user: ${session.userId}, assessment: ${assessmentId}`);
+    
+    try {
+      // Start assessment session using assessment engine
+      const assessmentSession = await this.assessmentEngine.startAssessmentSession(assessmentId);
+      
+      this.emit("assessment.session.started", { userId: session.userId, sessionId, assessmentId });
+      return assessmentSession;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Assessment session start failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Submit an answer for the current assessment question
+   * @param {string} sessionId - Session ID
+   * @param {string} assessmentSessionId - Assessment session ID
+   * @param {any} answer - The user's answer
+   * @returns {Promise<Object>} Updated assessment session
+   */
+  async submitAssessmentAnswer(sessionId, assessmentSessionId, answer) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.debug(`[AideonAcademyTentacle] Submitting assessment answer for user: ${session.userId}`);
+    
+    try {
+      // Submit answer using assessment engine
+      const result = await this.assessmentEngine.submitAnswer(assessmentSessionId, answer);
+      
+      this.emit("assessment.answer.submitted", { userId: session.userId, sessionId, assessmentSessionId });
+      return result;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Assessment answer submission failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get learning analytics dashboard
+   * @param {string} sessionId - Session ID
+   * @param {Object} options - Dashboard options
+   * @returns {Promise<Object>} Dashboard data
+   */
+  async getLearningDashboard(sessionId, options = {}) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Getting learning dashboard for user: ${session.userId}`);
+    
+    try {
+      // Check if user has sufficient credits for this operation
+      const creditCost = this._calculateCreditCost("dashboard", session.tier, options);
+      if (!(await this.creditManager.hasSufficientCredits(session.userId, creditCost))) {
+        throw new Error("Insufficient credits to generate learning dashboard.");
+      }
+      
+      // Get dashboard data from analytics platform
+      const dashboard = await this.learningAnalyticsPlatform.getDashboardData(session.userId, options);
+      
+      // Deduct credits
+      await this.creditManager.deductCredits(session.userId, creditCost, "academy_dashboard");
+      
+      this.emit("dashboard.generated", { userId: session.userId, sessionId });
+      return dashboard;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Dashboard generation failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Conduct educational research
+   * @param {string} sessionId - Session ID
+   * @param {Object} options - Research options
+   * @returns {Promise<Object>} Research results
+   */
+  async conductResearch(sessionId, options) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Conducting research for user: ${session.userId}, topic: ${options.topic}`);
+    
+    try {
+      // Add user ID to options
+      options.userId = session.userId;
+      
+      // Conduct research using educational research assistant
+      const research = await this.educationalResearchAssistant.conductLiteratureSearch(options);
+      
+      this.emit("research.conducted", { userId: session.userId, sessionId, topic: options.topic });
+      return research;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Research failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Generate evidence-based learning approach
+   * @param {string} sessionId - Session ID
+   * @param {Object} options - Approach generation options
+   * @returns {Promise<Object>} Generated approach
+   */
+  async generateLearningApproach(sessionId, options) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Generating learning approach for user: ${session.userId}, topic: ${options.topic}`);
+    
+    try {
+      // Add user ID to options
+      options.userId = session.userId;
+      
+      // Generate approach using educational research assistant
+      const approach = await this.educationalResearchAssistant.generateEvidenceBasedApproach(options);
+      
+      this.emit("approach.generated", { userId: session.userId, sessionId, topic: options.topic });
+      return approach;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Approach generation failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Create personalized learning path
+   * @param {string} sessionId - Session ID
+   * @param {Object} options - Learning path options
+   * @returns {Promise<Object>} Created learning path
+   */
+  async createLearningPath(sessionId, options) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Creating learning path for user: ${session.userId}, subject: ${options.subject}`);
+    
+    try {
+      // Check if user has sufficient credits for this operation
+      const creditCost = this._calculateCreditCost("learning_path", session.tier, options);
+      if (!(await this.creditManager.hasSufficientCredits(session.userId, creditCost))) {
+        throw new Error("Insufficient credits to create personalized learning path.");
+      }
+      
+      // Create learning path using intelligent tutoring system
+      const learningPath = await this.intelligentTutoringSystem.createLearningPath(session.userId, options);
+      
+      // Deduct credits
+      await this.creditManager.deductCredits(session.userId, creditCost, "academy_learning_path");
+      
+      this.emit("learning_path.created", { userId: session.userId, sessionId, subject: options.subject });
+      return learningPath;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Learning path creation failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Track learning activity
+   * @param {string} sessionId - Session ID
+   * @param {string} activityType - Type of activity
+   * @param {Object} activityData - Activity data
+   * @returns {Promise<boolean>} Success status
+   */
+  async trackActivity(sessionId, activityType, activityData) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.debug(`[AideonAcademyTentacle] Tracking activity for user: ${session.userId}, type: ${activityType}`);
+    
+    try {
+      // Track event using learning analytics platform
+      const success = await this.learningAnalyticsPlatform.trackEvent(session.userId, activityType, activityData);
+      
+      // Update session last activity
+      session.lastActivity = new Date();
+      
+      return success;
+      
+    } catch (error) {
+      this.logger.error(`[AideonAcademyTentacle] Activity tracking failed: ${error.message}`);
       return false;
     }
   }
   
   /**
-   * Stop the Aideon Academy Tentacle
-   * @returns {Promise<void>}
+   * End user session
+   * @param {string} sessionId - Session ID
+   * @returns {Promise<boolean>} Success status
    */
-  async stop() {
+  async endSession(sessionId) {
+    this._validateSession(sessionId);
+    const session = this.activeSessions.get(sessionId);
+    
+    this.logger.info(`[AideonAcademyTentacle] Ending session for user: ${session.userId}`);
+    
     try {
-      this.logger.info('Stopping Aideon Academy Tentacle');
-      
-      // Save current state
-      await this.saveCurrentState();
-      
-      // Clean up resources
-      await this.cleanupResources();
-      
-      this.emit('academy.stopped', {
-        tentacleId: this.id,
-        userId: this.userId
+      // Track session end
+      await this.learningAnalyticsPlatform.trackEvent(session.userId, "session_end", {
+        sessionId,
+        duration: (new Date() - session.startTime) / 1000 // seconds
       });
       
-      this.logger.info('Aideon Academy Tentacle stopped successfully');
+      // Remove session
+      this.activeSessions.delete(sessionId);
+      
+      this.emit("session.ended", { userId: session.userId, sessionId });
       return true;
+      
     } catch (error) {
-      this.logger.error('Failed to stop Aideon Academy Tentacle', error);
-      this.emit('academy.error', {
-        error,
-        tentacleId: this.id,
-        userId: this.userId
-      });
+      this.logger.error(`[AideonAcademyTentacle] Session end failed: ${error.message}`);
       return false;
     }
   }
   
-  /**
-   * Load user profile or create a new one if it doesn't exist
-   * @private
-   * @returns {Promise<void>}
-   */
-  async loadUserProfile() {
-    try {
-      this.logger.info('Loading user profile', { userId: this.userId });
-      
-      // Try to load existing profile
-      const existingProfile = await this.storage.getUserProfile(this.userId);
-      
-      if (existingProfile) {
-        this.userProfile = existingProfile;
-        this.logger.info('Existing user profile loaded', { userId: this.userId });
-      } else {
-        // Create new profile if none exists
-        this.userProfile = await this.onboardingSystem.createInitialProfile({
-          userId: this.userId,
-          preferences: this.preferences
-        });
-        
-        await this.storage.saveUserProfile(this.userId, this.userProfile);
-        this.logger.info('New user profile created', { userId: this.userId });
-      }
-      
-      this.emit('profile.loaded', {
-        userId: this.userId,
-        isNewProfile: !existingProfile
-      });
-    } catch (error) {
-      this.logger.error('Failed to load user profile', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Initialize all components with user profile data
-   * @private
-   * @returns {Promise<void>}
-   */
-  async initializeComponents() {
-    try {
-      this.logger.info('Initializing components with user profile');
-      
-      // Initialize core components
-      await this.aideonAvatar.initialize(this.userProfile);
-      await this.interactiveTeachingBoard.initialize(this.userProfile);
-      await this.skillAssessmentSystem.initialize(this.userProfile);
-      await this.progressTrackingSystem.initialize(this.userProfile);
-      await this.tutorialEngine.initialize(this.userProfile);
-      await this.justInTimeHelper.initialize(this.userProfile);
-      
-      // Initialize tier-specific components
-      if (this.tier === 'pro' || this.tier === 'enterprise') {
-        await this.videoLearningSystem.initialize(this.userProfile);
-        await this.certificationProgram.initialize(this.userProfile);
-        await this.bestPracticesEngine.initialize(this.userProfile);
-        await this.adaptiveLearningEngine.initialize(this.userProfile);
-        await this.microLearningSystem.initialize(this.userProfile);
-      }
-      
-      if (this.tier === 'enterprise') {
-        await this.peerLearningPlatform.initialize(this.userProfile);
-      }
-      
-      this.logger.info('All components initialized successfully');
-    } catch (error) {
-      this.logger.error('Failed to initialize components', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Register event listeners for all components
-   * @private
-   */
-  registerEventListeners() {
-    this.logger.info('Registering event listeners');
-    
-    // Core components event listeners
-    this.aideonAvatar.on('avatar.speaking', this.handleAvatarSpeaking.bind(this));
-    this.interactiveTeachingBoard.on('board.modeChanged', this.handleBoardModeChanged.bind(this));
-    this.skillAssessmentSystem.on('assessment.completed', this.handleAssessmentCompleted.bind(this));
-    this.progressTrackingSystem.on('progress.updated', this.handleProgressUpdated.bind(this));
-    this.tutorialEngine.on('tutorial.started', this.handleTutorialStarted.bind(this));
-    this.tutorialEngine.on('tutorial.completed', this.handleTutorialCompleted.bind(this));
-    this.justInTimeHelper.on('help.provided', this.handleHelpProvided.bind(this));
-    
-    // Tier-specific component event listeners
-    if (this.tier === 'pro' || this.tier === 'enterprise') {
-      this.videoLearningSystem.on('video.started', this.handleVideoStarted.bind(this));
-      this.videoLearningSystem.on('video.completed', this.handleVideoCompleted.bind(this));
-      this.certificationProgram.on('certification.achieved', this.handleCertificationAchieved.bind(this));
-      this.bestPracticesEngine.on('bestPractice.recommended', this.handleBestPracticeRecommended.bind(this));
-      this.adaptiveLearningEngine.on('content.adapted', this.handleContentAdapted.bind(this));
-      this.microLearningSystem.on('microModule.completed', this.handleMicroModuleCompleted.bind(this));
-    }
-    
-    if (this.tier === 'enterprise') {
-      this.peerLearningPlatform.on('peer.connected', this.handlePeerConnected.bind(this));
-      this.peerLearningPlatform.on('knowledge.shared', this.handleKnowledgeShared.bind(this));
-    }
-    
-    this.logger.info('Event listeners registered successfully');
-  }
-  
-  /**
-   * Save current state before stopping
-   * @private
-   * @returns {Promise<void>}
-   */
-  async saveCurrentState() {
-    try {
-      this.logger.info('Saving current state');
-      
-      // Save user profile with latest progress
-      await this.storage.saveUserProfile(this.userId, this.userProfile);
-      
-      // Save learning progress
-      await this.progressTrackingSystem.saveProgress();
-      
-      // Save any active sessions
-      if (this.activeSession) {
-        await this.storage.saveSession(this.activeSession);
-      }
-      
-      this.logger.info('Current state saved successfully');
-    } catch (error) {
-      this.logger.error('Failed to save current state', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Clean up resources before stopping
-   * @private
-   * @returns {Promise<void>}
-   */
-  async cleanupResources() {
-    try {
-      this.logger.info('Cleaning up resources');
-      
-      // Release AI model resources
-      await this.multiLLMOrchestrator.releaseResources();
-      
-      // Close storage connections
-      await this.storage.close();
-      
-      // Stop analytics tracking
-      await this.analytics.stop();
-      
-      this.logger.info('Resources cleaned up successfully');
-    } catch (error) {
-      this.logger.error('Failed to clean up resources', error);
-      throw error;
-    }
-  }
-  
   // ====================================================================
-  // PUBLIC API METHODS
+  // PRIVATE METHODS
   // ====================================================================
   
   /**
-   * Start the onboarding process for a new user
-   * @param {Object} options Onboarding options
-   * @returns {Promise<Object>} Onboarding session
+   * Set up event forwarding from components
+   * @private
    */
-  async startOnboarding(options = {}) {
+  _setupEventForwarding() {
+    // Forward relevant events from components to tentacle level
+    const components = [
+      this.learningProfileManager,
+      this.intelligentTutoringSystem,
+      this.assessmentEngine,
+      this.learningAnalyticsPlatform,
+      this.educationalResearchAssistant
+    ];
+    
+    for (const component of components) {
+      component.on("error", (error) => {
+        this.emit("error", error);
+      });
+      
+      // Forward other relevant events as needed
+    }
+  }
+  
+  /**
+   * Validate user access and permissions
+   * @param {Object} userProfile - User profile
+   * @returns {Promise<boolean>} Access validation result
+   * @private
+   */
+  async _validateUserAccess(userProfile) {
+    this.logger.debug(`[AideonAcademyTentacle] Validating access for user: ${userProfile.userId}`);
+    
     try {
-      this.logger.info('Starting onboarding process', { userId: this.userId });
+      // Check if user has access to Aideon Academy based on tier
+      const hasAccess = await this.securityFramework.checkTentacleAccess(
+        userProfile.userId,
+        TentacleType.AIDEON_ACADEMY,
+        userProfile.tier
+      );
       
-      const onboardingSession = await this.onboardingSystem.startOnboarding({
-        userId: this.userId,
-        preferences: options.preferences || this.preferences,
-        initialSkills: options.initialSkills || [],
-        learningGoals: options.learningGoals || []
-      });
+      if (!hasAccess) {
+        throw new Error(`User ${userProfile.userId} does not have access to Aideon Academy Tentacle`);
+      }
       
-      this.emit('onboarding.started', {
-        userId: this.userId,
-        sessionId: onboardingSession.id
-      });
+      return true;
       
-      return onboardingSession;
     } catch (error) {
-      this.logger.error('Failed to start onboarding', error);
-      this.emit('academy.error', {
-        error,
-        operation: 'startOnboarding',
-        userId: this.userId
-      });
+      this.logger.error(`[AideonAcademyTentacle] Access validation failed: ${error.message}`);
       throw error;
     }
   }
   
   /**
-   * Start an interactive tutorial session
-   * @param {Object} options Tutorial options
-   * @param {string} options.topic Tutorial topic
-   * @param {string} options.difficulty Difficulty level
-   * @returns {Promise<Object>} Tutorial session
+   * Validate session
+   * @param {string} sessionId - Session ID
+   * @throws {Error} If session is invalid
+   * @private
    */
-  async startTutorial(options = {}) {
-    try {
-      this.logger.info('Starting tutorial', { 
-        topic: options.topic,
-        userId: this.userId
-      });
-      
-      const tutorialSession = await this.tutorialEngine.startTutorial({
-        userId: this.userId,
-        topic
-(Content truncated due to size limit. Use line ranges to read in chunks)
+  _validateSession(sessionId) {
+    if (!this.activeSessions.has(sessionId)) {
+      throw new Error(`Invalid or expired session: ${sessionId}`);
+    }
+  }
+  
+  /**
+   * Calculate credit cost for an operation
+   * @param {string} operationType - Type of operation
+   * @param {string} tier - User tier
+   * @param {Object} options - Operation options
+   * @returns {number} Credit cost
+   * @private
+   */
+  _calculateCreditCost(operationType, tier, options = {}) {
+    // Base costs for different operations
+    const baseCosts = {
+      recommendations: 5,
+      dashboard: 10,
+      learning_path: 15
+    };
+    
+    // Tier multipliers (lower tiers pay more credits)
+    const tierMultipliers = {
+      enterprise: 0.5,  // Enterprise users get 50% discount
+      pro: 0.75,        // Pro users get 25% discount
+      standard: 1.0,    // Standard users pay full price
+      free: 1.5         // Free users pay 50% more
+    };
+    
+    // Calculate base cost
+    let cost = baseCosts[operationType] || 1;
+    
+    // Apply tier multiplier
+    cost *= tierMultipliers[tier.toLowerCase()] || 1.0;
+    
+    // Apply complexity adjustments based on options
+    if (options.comprehensive) cost *= 1.5;
+    if (options.detailed) cost *= 1.2;
+    
+    // Round to nearest integer
+    return Math.round(cost);
+  }
+}
+
+module.exports = AideonAcademyTentacle;
