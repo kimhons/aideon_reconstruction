@@ -1,84 +1,88 @@
 /**
- * @fileoverview Model Enums for the Model Integration and Intelligence Framework (MIIF)
- * Provides enumerations for model tiers, quantization levels, and task types
+ * @fileoverview Model Enums for Aideon Core
+ * Defines constants and enumerations for model types, tiers, and states
  * 
  * @module src/core/miif/models/ModelEnums
  */
 
 /**
- * Model Tier Enumeration
- * Defines the business tiers for model deployment
+ * Model Type enumeration
+ * @enum {string}
+ */
+const ModelType = {
+  TEXT: 'text',
+  IMAGE: 'image',
+  VIDEO: 'video',
+  AUDIO: 'audio',
+  MULTIMODAL: 'multimodal'
+};
+
+/**
+ * Model Tier enumeration
  * @enum {string}
  */
 const ModelTier = {
-  STANDARD: 'STANDARD',
-  PRO: 'PRO',
-  ENTERPRISE: 'ENTERPRISE'
+  STANDARD: 'standard',
+  PRO: 'pro',
+  ENTERPRISE: 'enterprise'
 };
 
 /**
- * Quantization Level Enumeration
- * Defines the quantization levels for model optimization
+ * Model State enumeration
  * @enum {string}
  */
-const QuantizationLevel = {
-  INT4: 'INT4',
-  INT5: 'INT5',
-  INT8: 'INT8',
-  FP16: 'FP16',
-  FP32: 'FP32'
+const ModelState = {
+  UNINITIALIZED: 'uninitialized',
+  INITIALIZING: 'initializing',
+  READY: 'ready',
+  LOADING: 'loading',
+  LOADED: 'loaded',
+  UNLOADING: 'unloading',
+  ERROR: 'error'
 };
 
 /**
- * Model Task Type Enumeration
- * Defines the task types that models can support
+ * Quantization Type enumeration
  * @enum {string}
  */
-const ModelTaskType = {
-  // Text tasks
-  TEXT_GENERATION: 'text-generation',
-  SUMMARIZATION: 'summarization',
-  QUESTION_ANSWERING: 'question-answering',
-  TRANSLATION: 'translation',
-  CODE_GENERATION: 'code-generation',
-  REASONING: 'reasoning',
-  
-  // Image tasks
-  IMAGE_CLASSIFICATION: 'image-classification',
-  OBJECT_DETECTION: 'object-detection',
-  IMAGE_SEGMENTATION: 'image-segmentation',
-  IMAGE_GENERATION: 'image-generation',
-  IMAGE_EDITING: 'image-editing',
-  
-  // Video tasks
-  VIDEO_CLASSIFICATION: 'video-classification',
-  ACTION_RECOGNITION: 'action-recognition',
-  VIDEO_GENERATION: 'video-generation',
-  VIDEO_EDITING: 'video-editing',
-  
-  // Multimodal tasks
-  TEXT_TO_IMAGE: 'text-to-image',
-  IMAGE_TO_TEXT: 'image-to-text',
-  TEXT_TO_VIDEO: 'text-to-video',
-  VIDEO_TO_TEXT: 'video-to-text'
+const QuantizationType = {
+  INT4: 'int4',
+  INT5: 'int5',
+  INT8: 'int8',
+  FP16: 'fp16',
+  FP32: 'fp32'
 };
 
 /**
- * Model Modality Enumeration
- * Defines the modalities that models can support
+ * Collaboration Strategy enumeration
  * @enum {string}
  */
-const ModelModality = {
-  TEXT: 'TEXT',
-  IMAGE: 'IMAGE',
-  VIDEO: 'VIDEO',
-  AUDIO: 'AUDIO',
-  MULTIMODAL: 'MULTIMODAL'
+const CollaborationStrategy = {
+  ENSEMBLE: 'ensemble',
+  CHAIN_OF_THOUGHT: 'chain_of_thought',
+  TASK_DECOMPOSITION: 'task_decomposition',
+  CONSENSUS: 'consensus',
+  SPECIALIZED_ROUTING: 'specialized_routing'
+};
+
+/**
+ * Model Selection Strategy enumeration
+ * @enum {string}
+ */
+const ModelSelectionStrategy = {
+  HIGHEST_ACCURACY: 'highest_accuracy',
+  LOWEST_LATENCY: 'lowest_latency',
+  LOWEST_RESOURCE_USAGE: 'lowest_resource_usage',
+  BALANCED: 'balanced',
+  SPECIALIZED: 'specialized',
+  COLLABORATIVE: 'collaborative'
 };
 
 module.exports = {
+  ModelType,
   ModelTier,
-  QuantizationLevel,
-  ModelTaskType,
-  ModelModality
+  ModelState,
+  QuantizationType,
+  CollaborationStrategy,
+  ModelSelectionStrategy
 };

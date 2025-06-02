@@ -1,21 +1,25 @@
 /**
- * @fileoverview Model Orchestration System for Aideon Core
+ * @fileoverview Enhanced Model Orchestration System for Aideon Core
  * Provides centralized management and orchestration of all ML models
+ * with support for collaborative and specialized multi-LLM strategies
  * 
  * @module src/core/miif/models/orchestration/ModelOrchestrationSystem
  */
 
 const { ModelRegistry } = require('../ModelRegistry');
-const { ModelType, ModelTier } = require('../ModelEnums');
+const { ModelType, ModelTier, ModelSelectionStrategy, CollaborationStrategy } = require('../ModelEnums');
 const { ResourceMonitor } = require('./ResourceMonitor');
 const { QuantizationManager } = require('./QuantizationManager');
 const { ApiServiceIntegration } = require('./ApiServiceIntegration');
+const { CollaborativeModelOrchestrator } = require('./CollaborativeModelOrchestrator');
+const { SpecializedModelSelector } = require('./SpecializedModelSelector');
 const path = require('path');
 const os = require('os');
 
 /**
- * Model Orchestration System
+ * Enhanced Model Orchestration System
  * Manages dynamic loading, unloading, and selection of models based on tasks and resources
+ * Supports collaborative and specialized multi-LLM strategies in both online and offline modes
  */
 class ModelOrchestrationSystem {
   /**
@@ -34,13 +38,27 @@ class ModelOrchestrationSystem {
     this.quantizationManager = new QuantizationManager(options, dependencies);
     this.apiServiceIntegration = new ApiServiceIntegration(options, dependencies);
     
+    // Initialize enhanced orchestration components
+    this.collaborativeOrchestrator = new CollaborativeModelOrchestrator(options, {
+      ...dependencies,
+      modelOrchestrationSystem: this,
+      modelRegistry: this.modelRegistry
+    });
+    
+    this.specializedSelector = new SpecializedModelSelector(options, {
+      ...dependencies,
+      modelRegistry: this.modelRegistry,
+      resourceMonitor: this.resourceMonitor
+    });
+    
     // Initialize state
     this.initialized = false;
     this.activeModels = new Map();
     this.modelUsageStats = new Map();
+    this.collaborationSessions = new Map();
     this.userTier = ModelTier.STANDARD; // Default to standard tier
     
-    this.logger.info(`[ModelOrchestrationSystem] Initialized`);
+    this.logger.info(`[ModelOrchestrationSystem] Initialized with collaborative and specialized capabilities`);
   }
   
   /**
@@ -53,7 +71,7 @@ class ModelOrchestrationSystem {
       return true;
     }
     
-    this.logger.info(`[ModelOrchestrationSystem] Initializing`);
+    this.logger.info(`[ModelOrchestrationSystem] Initializing enhanced orchestration system`);
     
     try {
       // Initialize components
@@ -68,11 +86,15 @@ class ModelOrchestrationSystem {
       const modelsDir = this.options.modelsDir || path.join(os.homedir(), '.aideon', 'models');
       await this.modelRegistry.discoverAndRegisterModels(modelsDir);
       
+      // Initialize enhanced orchestration components
+      await this.collaborativeOrchestrator.initialize();
+      await this.specializedSelector.initialize();
+      
       // Get user tier from admin panel
       await this._updateUserTier();
       
       this.initialized = true;
-      this.logger.info(`[ModelOrchestrationSystem] Initialization complete`);
+      this.logger.info(`[ModelOrchestrationSystem] Enhanced initialization complete`);
       return true;
       
     } catch (error) {
@@ -91,11 +113,16 @@ class ModelOrchestrationSystem {
       return true;
     }
     
-    this.logger.info(`[ModelOrchestrationSystem] Shutting down`);
+    this.logger.info(`[ModelOrchestrationSystem] Shutting down enhanced orchestration system`);
     
     try {
       // Unload all active models
       await this.unloadAllModels();
+      
+      // Close all collaboration sessions
+      for (const sessionId of this.collaborationSessions.keys()) {
+        await this.closeCollaborationSession(sessionId);
+      }
       
       // Shutdown components
       await this.resourceMonitor.shutdown();
@@ -103,7 +130,7 @@ class ModelOrchestrationSystem {
       await this.apiServiceIntegration.shutdown();
       
       this.initialized = false;
-      this.logger.info(`[ModelOrchestrationSystem] Shutdown complete`);
+      this.logger.info(`[ModelOrchestrationSystem] Enhanced shutdown complete`);
       return true;
       
     } catch (error) {
@@ -117,9 +144,11 @@ class ModelOrchestrationSystem {
    * @param {Object} params - Task parameters
    * @param {string} params.modelType - Model type (from ModelType enum)
    * @param {string} [params.taskType] - Specific task type
+   * @param {Object} [params.taskInput] - Task input for analysis
    * @param {number} [params.minAccuracy] - Minimum accuracy threshold
    * @param {boolean} [params.offlineOnly] - Whether to only consider models that work offline
    * @param {boolean} [params.preferApi] - Whether to prefer API-based models when online
+   * @param {string} [params.selectionStrategy] - Model selection strategy
    * @param {boolean} [params.autoLoad=true] - Whether to automatically load the model if not loaded
    * @returns {Promise<Object|null>} Model adapter or null if none found
    */
@@ -128,17 +157,26 @@ class ModelOrchestrationSystem {
       await this.initialize();
     }
     
-    const { modelType, taskType, minAccuracy, offlineOnly, preferApi, autoLoad = true } = params;
+    const {
+      modelType,
+      taskType,
+      taskInput,
+      minAccuracy,
+      offlineOnly,
+      preferApi,
+      selectionStrategy = ModelSelectionStrategy.SPECIALIZED,
+      autoLoad = true
+    } = params;
     
     if (!modelType) {
       throw new Error('Model type is required');
     }
     
-    this.logger.debug(`[ModelOrchestrationSystem] Getting model for task: ${modelType}/${taskType || 'general'}`);
+    this.logger.debug(`[ModelOrchestrationSystem] Getting model for task: ${modelType}/${taskType || 'general'} using strategy: ${selectionStrategy}`);
     
     try {
       // Check if we have a cached model for this task
-      const taskKey = this._getTaskKey(modelType, taskType);
+      const taskKey = this._getTaskKey(modelType, taskType, selectionStrategy);
       if (this.activeModels.has(taskKey)) {
         const modelId = this.activeModels.get(taskKey);
         const model = this.modelRegistry.getModel(modelId);
@@ -149,14 +187,30 @@ class ModelOrchestrationSystem {
         }
       }
       
-      // Get best model for task
-      const model = this.modelRegistry.getBestModelForTask({
-        modelType,
-        tier: this.userTier,
-        minAccuracy,
-        offlineOnly,
-        preferApi
-      });
+      // Select model based on strategy
+      let model;
+      
+      if (selectionStrategy === ModelSelectionStrategy.SPECIALIZED) {
+        // Use specialized selector
+        model = await this.specializedSelector.selectBestModelForTask({
+          modelType,
+          taskType,
+          taskInput,
+          selectionStrategy,
+          offlineOnly: offlineOnly || false,
+          maxTier: this.userTier
+        });
+      } else {
+        // Use standard selection
+        model = this.modelRegistry.getBestModelForTask({
+          modelType,
+          taskType,
+          tier: this.userTier,
+          minAccuracy,
+          offlineOnly,
+          preferApi
+        });
+      }
       
       if (!model) {
         this.logger.warn(`[ModelOrchestrationSystem] No suitable model found for task: ${modelType}/${taskType || 'general'}`);
@@ -184,6 +238,191 @@ class ModelOrchestrationSystem {
     } catch (error) {
       this.logger.error(`[ModelOrchestrationSystem] Failed to get model for task: ${error.message}`);
       return null;
+    }
+  }
+  
+  /**
+   * Get model by ID
+   * @param {string} modelId - Model ID
+   * @param {Object} [options] - Options
+   * @param {boolean} [options.autoLoad=false] - Whether to automatically load the model if not loaded
+   * @returns {Promise<Object|null>} Model adapter or null if not found
+   */
+  async getModelById(modelId, options = {}) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    
+    if (!modelId) {
+      throw new Error('Model ID is required');
+    }
+    
+    this.logger.debug(`[ModelOrchestrationSystem] Getting model by ID: ${modelId}`);
+    
+    try {
+      // Get model
+      const model = this.modelRegistry.getModel(modelId);
+      if (!model) {
+        throw new Error(`Model not found: ${modelId}`);
+      }
+      
+      // Load model if not loaded and autoLoad is true
+      if (options.autoLoad && !model.isLoaded) {
+        const loadOptions = await this._getOptimalLoadOptions(model);
+        await model.load(loadOptions);
+        
+        // Track model load status
+        this.modelRegistry.trackModelLoadStatus(modelId, true);
+      }
+      
+      // Track model usage
+      this._trackModelUsage(modelId);
+      
+      return model;
+      
+    } catch (error) {
+      this.logger.error(`[ModelOrchestrationSystem] Failed to get model by ID: ${error.message}`);
+      return null;
+    }
+  }
+  
+  /**
+   * Create a collaboration session
+   * @param {Object} params - Session parameters
+   * @param {string} [params.sessionId] - Optional session ID (generated if not provided)
+   * @param {string} params.modelType - Model type (from ModelType enum)
+   * @param {string} [params.taskType] - Specific task type
+   * @param {string} [params.collaborationStrategy] - Collaboration strategy to use
+   * @param {boolean} [params.offlineOnly] - Whether to only use models that work offline
+   * @returns {Promise<string>} Session ID
+   */
+  async createCollaborationSession(params) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    
+    const {
+      sessionId = `collab_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
+      modelType,
+      taskType,
+      collaborationStrategy = CollaborationStrategy.ENSEMBLE,
+      offlineOnly = false
+    } = params;
+    
+    if (!modelType) {
+      throw new Error('Model type is required');
+    }
+    
+    this.logger.debug(`[ModelOrchestrationSystem] Creating collaboration session: ${sessionId}`);
+    
+    try {
+      // Create session using collaborative orchestrator
+      const createdSessionId = await this.collaborativeOrchestrator.createCollaborationSession({
+        sessionId,
+        modelType,
+        taskType,
+        collaborationStrategy,
+        offlineOnly
+      });
+      
+      // Track session
+      this.collaborationSessions.set(createdSessionId, {
+        created: Date.now(),
+        lastUsed: Date.now()
+      });
+      
+      this.logger.debug(`[ModelOrchestrationSystem] Collaboration session created: ${createdSessionId}`);
+      return createdSessionId;
+      
+    } catch (error) {
+      this.logger.error(`[ModelOrchestrationSystem] Failed to create collaboration session: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Execute a task using collaborative models
+   * @param {Object} params - Task parameters
+   * @param {string} params.sessionId - Collaboration session ID
+   * @param {Object} params.input - Task input
+   * @param {Object} [params.options] - Execution options
+   * @returns {Promise<Object>} Task result
+   */
+  async executeCollaborativeTask(params) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    
+    const { sessionId, input, options = {} } = params;
+    
+    if (!sessionId || !input) {
+      throw new Error('Session ID and input are required');
+    }
+    
+    this.logger.debug(`[ModelOrchestrationSystem] Executing collaborative task for session: ${sessionId}`);
+    
+    try {
+      // Check if session exists
+      if (!this.collaborationSessions.has(sessionId)) {
+        throw new Error(`Collaboration session not found: ${sessionId}`);
+      }
+      
+      // Update last used timestamp
+      this.collaborationSessions.get(sessionId).lastUsed = Date.now();
+      
+      // Execute task using collaborative orchestrator
+      const result = await this.collaborativeOrchestrator.executeCollaborativeTask({
+        sessionId,
+        input,
+        options
+      });
+      
+      this.logger.debug(`[ModelOrchestrationSystem] Collaborative task executed for session: ${sessionId}`);
+      return result;
+      
+    } catch (error) {
+      this.logger.error(`[ModelOrchestrationSystem] Failed to execute collaborative task: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Close a collaboration session
+   * @param {string} sessionId - Collaboration session ID
+   * @returns {Promise<boolean>} Success status
+   */
+  async closeCollaborationSession(sessionId) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    
+    if (!sessionId) {
+      throw new Error('Session ID is required');
+    }
+    
+    this.logger.debug(`[ModelOrchestrationSystem] Closing collaboration session: ${sessionId}`);
+    
+    try {
+      // Check if session exists
+      if (!this.collaborationSessions.has(sessionId)) {
+        this.logger.warn(`[ModelOrchestrationSystem] Collaboration session not found: ${sessionId}`);
+        return false;
+      }
+      
+      // Close session using collaborative orchestrator
+      const success = await this.collaborativeOrchestrator.closeCollaborationSession(sessionId);
+      
+      if (success) {
+        // Remove from tracked sessions
+        this.collaborationSessions.delete(sessionId);
+      }
+      
+      this.logger.debug(`[ModelOrchestrationSystem] Collaboration session closed: ${sessionId}`);
+      return success;
+      
+    } catch (error) {
+      this.logger.error(`[ModelOrchestrationSystem] Failed to close collaboration session: ${error.message}`);
+      return false;
     }
   }
   
@@ -508,252 +747,165 @@ class ModelOrchestrationSystem {
       const hasGpu = await this.resourceMonitor.hasGpu();
       
       // Get optimal quantization
-      const quantization = await this.quantizationManager.getOptimalQuantization(
+      const quantization = await this.quantizationManager.getOptimalQuantization({
         model,
         availableMemory,
         availableCpu,
         hasGpu
-      );
+      });
       
       this.logger.debug(`[ModelOrchestrationSystem] Optimal quantization for model ${modelId}: ${JSON.stringify(quantization)}`);
       return quantization;
       
     } catch (error) {
       this.logger.error(`[ModelOrchestrationSystem] Failed to get optimal quantization for model ${modelId}: ${error.message}`);
-      return { precision: '8bit' }; // Default to 8-bit precision
+      throw error;
     }
   }
   
   /**
-   * Update user tier
-   * @param {string} [tier] - New user tier (from ModelTier enum)
+   * Record model performance
+   * @param {string} modelId - Model ID
+   * @param {Object} performance - Performance metrics
    * @returns {Promise<boolean>} Success status
    */
-  async updateUserTier(tier) {
+  async recordModelPerformance(modelId, performance) {
     if (!this.initialized) {
       await this.initialize();
     }
     
-    if (tier) {
-      // Validate tier
-      if (!Object.values(ModelTier).includes(tier)) {
-        throw new Error(`Invalid tier: ${tier}`);
-      }
-      
-      this.userTier = tier;
-      this.logger.info(`[ModelOrchestrationSystem] User tier updated to: ${tier}`);
-      return true;
-    } else {
-      // Get tier from admin panel
-      return await this._updateUserTier();
-    }
-  }
-  
-  /**
-   * Get system status
-   * @returns {Promise<Object>} System status
-   */
-  async getStatus() {
-    if (!this.initialized) {
-      await this.initialize();
+    if (!modelId || !performance) {
+      throw new Error('Model ID and performance metrics are required');
     }
     
+    this.logger.debug(`[ModelOrchestrationSystem] Recording performance for model: ${modelId}`);
+    
     try {
-      // Get resource usage
-      const memoryUsage = await this.resourceMonitor.getMemoryUsage();
-      const cpuUsage = await this.resourceMonitor.getCpuUsage();
-      const availableMemory = await this.resourceMonitor.getAvailableMemory();
-      const availableCpu = await this.resourceMonitor.getAvailableCpu();
-      const hasGpu = await this.resourceMonitor.hasGpu();
-      const gpuUsage = hasGpu ? await this.resourceMonitor.getGpuUsage() : null;
+      // Record in specialized selector
+      await this.specializedSelector.recordModelPerformance(modelId, performance);
       
-      // Get loaded models
-      const loadedModels = this.modelRegistry.getLoadedModels().map(model => ({
-        id: model.modelId,
-        name: model.modelName,
-        type: model.modelType,
-        tier: model.modelTier,
-        memoryUsage: model.memoryUsage || 0,
-        useApi: model.useApi || false
-      }));
-      
-      // Get API status
-      const apiStatus = await this.apiServiceIntegration.getStatus();
-      
-      return {
-        initialized: this.initialized,
-        userTier: this.userTier,
-        resources: {
-          memoryUsage,
-          cpuUsage,
-          availableMemory,
-          availableCpu,
-          hasGpu,
-          gpuUsage
-        },
-        models: {
-          total: this.modelRegistry.getAllModels().length,
-          loaded: loadedModels.length,
-          active: this.activeModels.size,
-          loadedModels
-        },
-        api: apiStatus,
-        timestamp: new Date().toISOString()
-      };
-      
-    } catch (error) {
-      this.logger.error(`[ModelOrchestrationSystem] Failed to get status: ${error.message}`);
-      return {
-        initialized: this.initialized,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      };
-    }
-  }
-  
-  // ====================================================================
-  // PRIVATE METHODS
-  // ====================================================================
-  
-  /**
-   * Update user tier from admin panel
-   * @returns {Promise<boolean>} Success status
-   * @private
-   */
-  async _updateUserTier() {
-    try {
-      // In a real implementation, this would retrieve the user tier
-      // from the admin panel configuration
-      
-      // For simulation, check if the admin panel dependency is available
-      if (!this.dependencies.adminPanel) {
-        this.userTier = ModelTier.STANDARD;
-        return true;
-      }
-      
-      // Get user tier from admin panel
-      const tier = await this.dependencies.adminPanel.getUserTier();
-      
-      // Validate tier
-      if (!tier || !Object.values(ModelTier).includes(tier)) {
-        this.userTier = ModelTier.STANDARD;
-      } else {
-        this.userTier = tier;
-      }
-      
-      this.logger.info(`[ModelOrchestrationSystem] User tier set to: ${this.userTier}`);
+      this.logger.debug(`[ModelOrchestrationSystem] Performance recorded for model: ${modelId}`);
       return true;
       
     } catch (error) {
-      this.logger.error(`[ModelOrchestrationSystem] Failed to update user tier: ${error.message}`);
-      this.userTier = ModelTier.STANDARD;
+      this.logger.error(`[ModelOrchestrationSystem] Failed to record model performance: ${error.message}`);
       return false;
-    }
-  }
-  
-  /**
-   * Check if user has access to tier
-   * @param {string} tier - Model tier (from ModelTier enum)
-   * @returns {boolean} Whether user has access
-   * @private
-   */
-  _hasAccessToTier(tier) {
-    // Tier hierarchy: STANDARD < PRO < ENTERPRISE
-    switch (this.userTier) {
-      case ModelTier.ENTERPRISE:
-        return true; // Enterprise has access to all tiers
-      case ModelTier.PRO:
-        return tier !== ModelTier.ENTERPRISE; // Pro has access to Pro and Standard
-      case ModelTier.STANDARD:
-        return tier === ModelTier.STANDARD; // Standard only has access to Standard
-      default:
-        return false;
-    }
-  }
-  
-  /**
-   * Get optimal load options for model
-   * @param {Object} model - Model adapter
-   * @param {Object} [userOptions={}] - User-provided options
-   * @returns {Promise<Object>} Optimal load options
-   * @private
-   */
-  async _getOptimalLoadOptions(model, userOptions = {}) {
-    try {
-      // Start with user options
-      const options = { ...userOptions };
-      
-      // Get optimal quantization if not specified
-      if (!options.quantization) {
-        const quantization = await this.getOptimalQuantization(model.modelId);
-        options.quantization = quantization;
-      }
-      
-      // Check if we should use API
-      if (!options.useApi && model.hybridCapable) {
-        // Check available resources
-        const availableMemory = await this.resourceMonitor.getAvailableMemory();
-        const requiredMemory = model.getRequiredMemory ? await model.getRequiredMemory(options) : 0;
-        
-        // If not enough memory, try to use API
-        if (requiredMemory > availableMemory) {
-          const isOnline = await this.apiServiceIntegration.isOnline();
-          const apiAvailable = await this.apiServiceIntegration.isApiAvailableForModel(model.modelId);
-          
-          if (isOnline && apiAvailable) {
-            options.useApi = true;
-          }
-        }
-      }
-      
-      return options;
-      
-    } catch (error) {
-      this.logger.error(`[ModelOrchestrationSystem] Failed to get optimal load options: ${error.message}`);
-      return userOptions;
     }
   }
   
   /**
    * Get task key
-   * @param {string} modelType - Model type (from ModelType enum)
-   * @param {string} [taskType] - Specific task type
-   * @returns {string} Task key
    * @private
+   * @param {string} modelType - Model type
+   * @param {string} taskType - Task type
+   * @param {string} strategy - Selection strategy
+   * @returns {string} Task key
    */
-  _getTaskKey(modelType, taskType) {
-    return taskType ? `${modelType}:${taskType}` : modelType;
+  _getTaskKey(modelType, taskType, strategy) {
+    return `${modelType}_${taskType || 'general'}_${strategy || 'default'}`;
   }
   
   /**
    * Track model usage
-   * @param {string} modelId - Unique identifier for the model
    * @private
+   * @param {string} modelId - Model ID
    */
   _trackModelUsage(modelId) {
-    if (!modelId) {
-      return;
-    }
-    
-    // Increment usage count
-    const currentCount = this.modelUsageStats.get(modelId) || 0;
-    this.modelUsageStats.set(modelId, currentCount + 1);
+    const count = this.modelUsageStats.get(modelId) || 0;
+    this.modelUsageStats.set(modelId, count + 1);
   }
   
   /**
    * Check if model is in use
-   * @param {string} modelId - Unique identifier for the model
-   * @returns {boolean} Whether model is in use
    * @private
+   * @param {string} modelId - Model ID
+   * @returns {boolean} Whether the model is in use
    */
   _isModelInUse(modelId) {
-    if (!modelId) {
-      return false;
+    // Check if model is in active models
+    for (const activeModelId of this.activeModels.values()) {
+      if (activeModelId === modelId) {
+        return true;
+      }
     }
     
-    // Check if model is in active models
-    return Array.from(this.activeModels.values()).includes(modelId);
+    // Check if model is in collaboration sessions
+    for (const sessionId of this.collaborationSessions.keys()) {
+      const session = this.collaborativeOrchestrator.getSession(sessionId);
+      if (session && session.models.includes(modelId)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Get optimal load options for model
+   * @private
+   * @param {Object} model - Model
+   * @param {Object} [options] - User-provided options
+   * @returns {Promise<Object>} Load options
+   */
+  async _getOptimalLoadOptions(model, options = {}) {
+    // Get available resources
+    const availableMemory = await this.resourceMonitor.getAvailableMemory();
+    const availableCpu = await this.resourceMonitor.getAvailableCpu();
+    const hasGpu = await this.resourceMonitor.hasGpu();
+    
+    // Get optimal quantization
+    const quantization = await this.quantizationManager.getOptimalQuantization({
+      model,
+      availableMemory,
+      availableCpu,
+      hasGpu
+    });
+    
+    // Merge with user options
+    return {
+      ...quantization,
+      ...options
+    };
+  }
+  
+  /**
+   * Update user tier
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _updateUserTier() {
+    try {
+      // Get user tier from admin panel
+      const adminPanel = this.dependencies.adminPanel;
+      if (adminPanel) {
+        const userSettings = await adminPanel.getUserSettings();
+        this.userTier = userSettings.tier || ModelTier.STANDARD;
+      }
+    } catch (error) {
+      this.logger.error(`[ModelOrchestrationSystem] Failed to update user tier: ${error.message}`);
+      // Default to standard tier
+      this.userTier = ModelTier.STANDARD;
+    }
+  }
+  
+  /**
+   * Check if user has access to tier
+   * @private
+   * @param {string} tier - Model tier
+   * @returns {boolean} Whether user has access
+   */
+  _hasAccessToTier(tier) {
+    const tierValues = {
+      [ModelTier.STANDARD]: 1,
+      [ModelTier.PRO]: 2,
+      [ModelTier.ENTERPRISE]: 3
+    };
+    
+    const userTierValue = tierValues[this.userTier] || 1;
+    const modelTierValue = tierValues[tier] || 3;
+    
+    return userTierValue >= modelTierValue;
   }
 }
 
-module.exports = ModelOrchestrationSystem;
+module.exports = { ModelOrchestrationSystem };
