@@ -1,0 +1,57 @@
+{
+  "name": "code_generation",
+  "description": "Test data for code generation tasks",
+  "tests": [
+    {
+      "id": "javascript_function_1",
+      "prompt": "Write a JavaScript function to calculate the factorial of a number.",
+      "expected_contains": [
+        "function",
+        "factorial",
+        "return"
+      ],
+      "max_tokens": 200
+    },
+    {
+      "id": "javascript_function_2",
+      "prompt": "Write a JavaScript function to check if a string is a palindrome.",
+      "expected_contains": [
+        "function",
+        "palindrome",
+        "return"
+      ],
+      "max_tokens": 200
+    },
+    {
+      "id": "python_function_1",
+      "prompt": "Write a Python function to find the maximum element in a list.",
+      "expected_contains": [
+        "def",
+        "max",
+        "return"
+      ],
+      "max_tokens": 150
+    },
+    {
+      "id": "python_function_2",
+      "prompt": "Write a Python function to count the frequency of words in a string.",
+      "expected_contains": [
+        "def",
+        "count",
+        "return"
+      ],
+      "max_tokens": 200
+    },
+    {
+      "id": "algorithm_implementation",
+      "prompt": "Implement a binary search algorithm in the programming language of your choice.",
+      "expected_contains": [
+        "binary",
+        "search",
+        "function",
+        "return"
+      ],
+      "max_tokens": 300
+    }
+  ]
+}

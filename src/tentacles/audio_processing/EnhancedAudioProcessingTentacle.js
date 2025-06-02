@@ -1,40 +1,29 @@
 /**
- * EnhancedAudioProcessingTentacle.js
+ * @fileoverview Enhanced Audio Processing Tentacle with advanced multi-LLM orchestration
+ * Provides advanced audio processing capabilities including voice synthesis, speaker recognition,
+ * audio analysis, and more with superintelligent capabilities through collaborative model orchestration
  * 
- * Main tentacle class for the Enhanced Audio Processing Tentacle.
- * Implements the standardized tentacle interface and provides advanced audio processing capabilities.
- * 
- * @module tentacles/audio-processing/EnhancedAudioProcessingTentacle
+ * @module tentacles/audio_processing/EnhancedAudioProcessingTentacle
  */
 
 const { EnhancedTentacle } = require('../integrated/EnhancedTentacle');
-const AudioProcessingRegistry = require('./core/AudioProcessingRegistry');
-const AudioResourceManager = require('./core/AudioResourceManager');
-const AudioProcessingContext = require('./core/AudioProcessingContext');
-const AudioInputManager = require('./acquisition/AudioInputManager');
-const AudioOutputManager = require('./output/AudioOutputManager');
-const RealTimeVoiceSynthesisEngine = require('./processing/RealTimeVoiceSynthesisEngine');
-const MultiSpeakerRecognitionSystem = require('./processing/MultiSpeakerRecognitionSystem');
-const AudioContentAnalyzer = require('./processing/AudioContentAnalyzer');
-const VoiceBiometricsSystem = require('./processing/VoiceBiometricsSystem');
-const AmbientSoundAnalysisEngine = require('./processing/AmbientSoundAnalysisEngine');
-const LanguageTranslationEngine = require('./processing/LanguageTranslationEngine');
-const AudioEditingSuite = require('./processing/AudioEditingSuite');
-const VoiceCommandProcessor = require('./processing/VoiceCommandProcessor');
-const EmotionRecognitionEngine = require('./processing/EmotionRecognitionEngine');
-const MusicAnalysisEngine = require('./processing/MusicAnalysisEngine');
-const MusicGenerationEngine = require('./processing/MusicGenerationEngine');
-const ModelOrchestrator = require('./models/ModelOrchestrator');
-const TentacleIntegrationManager = require('./integration/TentacleIntegrationManager');
-const AudioHealthMonitor = require('./self-healing/AudioHealthMonitor');
+const AudioProcessingRegistry = require('./AudioProcessingRegistry');
+const AudioProcessingContext = require('./AudioProcessingContext');
+const AudioInputManager = require('./AudioInputManager');
+const AudioOutputManager = require('./AudioOutputManager');
+const EnhancedTentacleIntegration = require('../common/EnhancedTentacleIntegration');
+
+// Import advanced orchestration components
+const { ModelType, CollaborationStrategy } = require('../../core/miif/models/ModelEnums');
 
 /**
- * Enhanced Audio Processing Tentacle class
+ * Enhanced Audio Processing Tentacle with superintelligent capabilities
  * Provides advanced audio processing capabilities for the Aideon AI Desktop Agent
+ * with collaborative model orchestration and specialized model selection
  */
 class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
   /**
-   * Constructor for the Enhanced Audio Processing Tentacle
+   * Constructor for the Enhanced Audio Processing Tentacle with advanced orchestration
    * @param {Object} options - Configuration options
    * @param {Object} dependencies - Injected dependencies
    */
@@ -43,7 +32,7 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
       id: 'enhanced-audio-processing',
       name: 'Enhanced Audio Processing',
       description: 'Provides advanced audio processing capabilities including voice synthesis, speaker recognition, audio analysis, and more',
-      version: '1.0.0',
+      version: '2.0.0',
       capabilities: [
         'voice-synthesis',
         'speaker-recognition',
@@ -57,31 +46,126 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
         'music-analysis',
         'music-generation'
       ],
+      // Advanced orchestration options
+      collaborativeIntelligence: options.collaborativeIntelligence !== false,
+      specializedModelSelection: options.specializedModelSelection !== false,
+      adaptiveResourceAllocation: options.adaptiveResourceAllocation !== false,
+      selfEvaluation: options.selfEvaluation !== false,
+      offlineCapability: options.offlineCapability || 'full', // 'limited', 'standard', 'full'
       ...options
     }, dependencies);
 
+    this.dependencies = dependencies;
+    
+    // Initialize advanced orchestration
+    this._initializeAdvancedOrchestration();
+    
     // Initialize core components
     this.registry = new AudioProcessingRegistry();
-    this.resourceManager = new AudioResourceManager(this.systemResourceManager);
     this.context = new AudioProcessingContext();
     
     // Initialize acquisition and output components
-    this.inputManager = new AudioInputManager(this.resourceManager);
-    this.outputManager = new AudioOutputManager(this.resourceManager);
+    this.inputManager = new AudioInputManager(this.resourceManager, {
+      enhancedIntegration: this.enhancedIntegration
+    });
+    
+    this.outputManager = new AudioOutputManager(this.resourceManager, {
+      enhancedIntegration: this.enhancedIntegration
+    });
     
     // Initialize processing components based on available resources and configuration
     this.initializeProcessingComponents();
     
-    // Initialize model orchestrator
-    this.modelOrchestrator = new ModelOrchestrator(this.resourceManager, this.offlineCapabilityManager);
+    // Initialize collaboration sessions
+    this._initializeCollaborationSessions();
     
-    // Initialize integration manager
-    this.integrationManager = new TentacleIntegrationManager(this.communicationBus);
+    this.logger.info('Enhanced Audio Processing Tentacle initialized with superintelligent capabilities');
+  }
+  
+  /**
+   * Initialize advanced orchestration
+   * @private
+   */
+  _initializeAdvancedOrchestration() {
+    this.logger.debug("Initializing advanced orchestration for Audio Processing");
     
-    // Initialize health monitor for self-healing
-    this.healthMonitor = new AudioHealthMonitor(this);
+    // Configure enhanced tentacle integration
+    this.enhancedIntegration = new EnhancedTentacleIntegration(
+      {
+        collaborativeIntelligence: this.config.collaborativeIntelligence,
+        specializedModelSelection: this.config.specializedModelSelection,
+        adaptiveResourceAllocation: this.config.adaptiveResourceAllocation,
+        selfEvaluation: this.config.selfEvaluation,
+        offlineCapability: this.config.offlineCapability
+      },
+      {
+        logger: this.logger,
+        modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem || this.modelOrchestrator
+      }
+    );
+  }
+  
+  /**
+   * Initialize collaboration sessions for advanced orchestration
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _initializeCollaborationSessions() {
+    if (!this.config.collaborativeIntelligence) {
+      this.logger.info('Collaborative intelligence disabled, skipping collaboration sessions');
+      return;
+    }
     
-    this.logger.info('Enhanced Audio Processing Tentacle initialized');
+    this.logger.debug('Initializing collaboration sessions for Audio Processing');
+    
+    try {
+      // Define collaboration configurations
+      const collaborationConfigs = [
+        {
+          name: "voice_synthesis",
+          modelType: ModelType.AUDIO,
+          taskType: "voice_synthesis",
+          collaborationStrategy: CollaborationStrategy.ENSEMBLE,
+          offlineOnly: true
+        },
+        {
+          name: "speaker_recognition",
+          modelType: ModelType.AUDIO,
+          taskType: "speaker_recognition",
+          collaborationStrategy: CollaborationStrategy.SPECIALIZED_ROUTING,
+          offlineOnly: false
+        },
+        {
+          name: "audio_analysis",
+          modelType: ModelType.AUDIO,
+          taskType: "audio_analysis",
+          collaborationStrategy: CollaborationStrategy.TASK_DECOMPOSITION,
+          offlineOnly: true
+        },
+        {
+          name: "emotion_recognition",
+          modelType: ModelType.MULTIMODAL,
+          taskType: "emotion_recognition",
+          collaborationStrategy: CollaborationStrategy.CROSS_MODAL_FUSION,
+          offlineOnly: false
+        },
+        {
+          name: "music_generation",
+          modelType: ModelType.AUDIO,
+          taskType: "music_generation",
+          collaborationStrategy: CollaborationStrategy.CHAIN_OF_THOUGHT,
+          offlineOnly: false
+        }
+      ];
+      
+      // Initialize all collaboration sessions
+      await this.enhancedIntegration.initializeAdvancedOrchestration("audio_processing", collaborationConfigs);
+      
+      this.logger.info('Collaboration sessions initialized successfully for Audio Processing');
+      
+    } catch (error) {
+      this.logger.error(`Failed to initialize collaboration sessions: ${error.message}`);
+    }
   }
 
   /**
@@ -89,72 +173,83 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
    * @private
    */
   initializeProcessingComponents() {
-    // Initialize components with dependency injection and resource awareness
+    // Initialize components with dependency injection, resource awareness, and enhanced integration
     this.voiceSynthesisEngine = new RealTimeVoiceSynthesisEngine({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.speakerRecognitionSystem = new MultiSpeakerRecognitionSystem({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.audioContentAnalyzer = new AudioContentAnalyzer({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.voiceBiometricsSystem = new VoiceBiometricsSystem({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
       context: this.context,
-      securityManager: this.securityManager
+      securityManager: this.securityManager,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.ambientSoundAnalysisEngine = new AmbientSoundAnalysisEngine({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.languageTranslationEngine = new LanguageTranslationEngine({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.audioEditingSuite = new AudioEditingSuite({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.voiceCommandProcessor = new VoiceCommandProcessor({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.emotionRecognitionEngine = new EmotionRecognitionEngine({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.musicAnalysisEngine = new MusicAnalysisEngine({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     this.musicGenerationEngine = new MusicGenerationEngine({
       resourceManager: this.resourceManager,
       modelOrchestrator: this.modelOrchestrator,
-      context: this.context
+      context: this.context,
+      enhancedIntegration: this.enhancedIntegration
     });
     
     // Register all components with the registry
@@ -186,7 +281,10 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
    */
   async initialize() {
     try {
-      this.logger.info('Initializing Enhanced Audio Processing Tentacle');
+      this.logger.info('Initializing Enhanced Audio Processing Tentacle with advanced orchestration');
+      
+      // Initialize enhanced integration
+      await this.enhancedIntegration.initialize();
       
       // Initialize resource management
       await this.resourceManager.initialize();
@@ -207,7 +305,7 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
       // Subscribe to system events
       this.subscribeToEvents();
       
-      this.logger.info('Enhanced Audio Processing Tentacle initialized successfully');
+      this.logger.info('Enhanced Audio Processing Tentacle initialized successfully with superintelligent capabilities');
       return true;
     } catch (error) {
       this.logger.error('Failed to initialize Enhanced Audio Processing Tentacle', error);
@@ -244,6 +342,11 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
   handleResourceConstraint(constraint) {
     this.logger.info('Resource constraint detected', constraint);
     this.resourceManager.applyConstraint(constraint);
+    
+    // Inform enhanced integration about resource constraints
+    if (this.enhancedIntegration) {
+      this.enhancedIntegration.handleResourceConstraint(constraint);
+    }
   }
 
   /**
@@ -254,6 +357,11 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
   handleResourceAvailable(resource) {
     this.logger.info('Resource available', resource);
     this.resourceManager.updateAvailableResources(resource);
+    
+    // Inform enhanced integration about resource availability
+    if (this.enhancedIntegration) {
+      this.enhancedIntegration.handleResourceAvailability(resource);
+    }
   }
 
   /**
@@ -263,6 +371,11 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
   handleOfflineMode() {
     this.logger.info('Switching to offline mode');
     this.modelOrchestrator.switchToOfflineMode();
+    
+    // Inform enhanced integration about offline mode
+    if (this.enhancedIntegration) {
+      this.enhancedIntegration.switchToOfflineMode();
+    }
   }
 
   /**
@@ -272,6 +385,11 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
   handleOnlineMode() {
     this.logger.info('Switching to online mode');
     this.modelOrchestrator.switchToOnlineMode();
+    
+    // Inform enhanced integration about online mode
+    if (this.enhancedIntegration) {
+      this.enhancedIntegration.switchToOnlineMode();
+    }
   }
 
   /**
@@ -287,44 +405,174 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
   }
 
   /**
-   * Process audio-related intent
+   * Process audio-related intent with collaborative intelligence
    * @param {Object} intent - Audio intent information
    * @private
    */
-  processAudioIntent(intent) {
-    switch (intent.action) {
+  async processAudioIntent(intent) {
+    try {
+      // Determine if we should use collaborative intelligence
+      if (this.config.collaborativeIntelligence && !intent.disableCollaborative) {
+        await this._processAudioIntentCollaboratively(intent);
+      } else {
+        await this._processAudioIntentStandard(intent);
+      }
+    } catch (error) {
+      this.logger.error(`Error processing audio intent: ${error.message}`, intent);
+      
+      // If collaborative processing failed, try standard processing as fallback
+      if (error.message.includes('collaborative') && this.config.collaborativeIntelligence) {
+        this.logger.info('Falling back to standard audio intent processing');
+        await this._processAudioIntentStandard(intent);
+      }
+    }
+  }
+  
+  /**
+   * Process audio intent using collaborative intelligence
+   * @private
+   * @param {Object} intent - Audio intent information
+   */
+  async _processAudioIntentCollaboratively(intent) {
+    this.logger.debug('Using collaborative intelligence for audio intent processing');
+    
+    // Map intent action to collaboration session
+    const collaborationSessionMap = {
+      'synthesize-speech': 'voice_synthesis',
+      'recognize-speaker': 'speaker_recognition',
+      'analyze-audio': 'audio_analysis',
+      'recognize-emotion': 'emotion_recognition',
+      'generate-music': 'music_generation'
+    };
+    
+    const collaborationSession = collaborationSessionMap[intent.action];
+    
+    if (collaborationSession) {
+      // Execute collaborative task
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        collaborationSession,
+        {
+          intent,
+          parameters: intent.parameters,
+          context: this.context.getContextData()
+        },
+        {
+          priority: intent.priority || 'normal',
+          timeout: intent.timeout || 30000
+        }
+      );
+      
+      // Process the result
+      this._handleCollaborativeResult(intent.action, result);
+      
+    } else {
+      // Fall back to standard processing for actions without collaboration sessions
+      await this._processAudioIntentStandard(intent);
+    }
+  }
+  
+  /**
+   * Handle collaborative processing result
+   * @private
+   * @param {string} action - Intent action
+   * @param {Object} result - Collaborative processing result
+   */
+  _handleCollaborativeResult(action, result) {
+    this.logger.debug(`Handling collaborative result for ${action}`);
+    
+    // Emit appropriate events based on the action
+    switch (action) {
       case 'synthesize-speech':
-        this.voiceSynthesisEngine.synthesize(intent.parameters);
+        this.emit('speech-synthesized', {
+          audio: result.result.audio,
+          metadata: result.result.metadata,
+          collaborativeExecution: {
+            strategy: result.strategy,
+            modelCount: result.modelResults?.length || 0
+          }
+        });
         break;
       case 'recognize-speaker':
-        this.speakerRecognitionSystem.recognizeSpeaker(intent.parameters);
+        this.emit('speaker-recognized', {
+          speaker: result.result.speaker,
+          confidence: result.result.confidence,
+          collaborativeExecution: {
+            strategy: result.strategy,
+            modelCount: result.modelResults?.length || 0
+          }
+        });
         break;
       case 'analyze-audio':
-        this.audioContentAnalyzer.analyze(intent.parameters);
-        break;
-      case 'verify-voice':
-        this.voiceBiometricsSystem.verify(intent.parameters);
-        break;
-      case 'analyze-ambient':
-        this.ambientSoundAnalysisEngine.analyze(intent.parameters);
-        break;
-      case 'translate-speech':
-        this.languageTranslationEngine.translate(intent.parameters);
-        break;
-      case 'edit-audio':
-        this.audioEditingSuite.edit(intent.parameters);
-        break;
-      case 'process-command':
-        this.voiceCommandProcessor.process(intent.parameters);
+        this.emit('audio-analyzed', {
+          analysis: result.result.analysis,
+          collaborativeExecution: {
+            strategy: result.strategy,
+            modelCount: result.modelResults?.length || 0
+          }
+        });
         break;
       case 'recognize-emotion':
-        this.emotionRecognitionEngine.recognizeEmotion(intent.parameters);
-        break;
-      case 'analyze-music':
-        this.musicAnalysisEngine.analyze(intent.parameters);
+        this.emit('emotion-recognized', {
+          emotion: result.result.emotion,
+          confidence: result.result.confidence,
+          collaborativeExecution: {
+            strategy: result.strategy,
+            modelCount: result.modelResults?.length || 0
+          }
+        });
         break;
       case 'generate-music':
-        this.musicGenerationEngine.generate(intent.parameters);
+        this.emit('music-generated', {
+          music: result.result.music,
+          metadata: result.result.metadata,
+          collaborativeExecution: {
+            strategy: result.strategy,
+            modelCount: result.modelResults?.length || 0
+          }
+        });
+        break;
+    }
+  }
+  
+  /**
+   * Process audio intent using standard approach
+   * @private
+   * @param {Object} intent - Audio intent information
+   */
+  async _processAudioIntentStandard(intent) {
+    switch (intent.action) {
+      case 'synthesize-speech':
+        await this.voiceSynthesisEngine.synthesize(intent.parameters);
+        break;
+      case 'recognize-speaker':
+        await this.speakerRecognitionSystem.recognizeSpeaker(intent.parameters);
+        break;
+      case 'analyze-audio':
+        await this.audioContentAnalyzer.analyze(intent.parameters);
+        break;
+      case 'verify-voice':
+        await this.voiceBiometricsSystem.verify(intent.parameters);
+        break;
+      case 'analyze-ambient':
+        await this.ambientSoundAnalysisEngine.analyze(intent.parameters);
+        break;
+      case 'translate-speech':
+        await this.languageTranslationEngine.translate(intent.parameters);
+        break;
+      case 'edit-audio':
+        await this.audioEditingSuite.edit(intent.parameters);
+        break;
+      case 'process-command':
+        await this.voiceCommandProcessor.process(intent.parameters);
+        break;
+      case 'recognize-emotion':
+        await this.emotionRecognitionEngine.recognizeEmotion(intent.parameters);
+        break;
+      case 'analyze-music':
+        await this.musicAnalysisEngine.analyze(intent.parameters);
+        break;
+      case 'generate-music':
+        await this.musicGenerationEngine.generate(intent.parameters);
         break;
       default:
         this.logger.warn('Unknown audio intent action', intent.action);
@@ -332,66 +580,227 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
   }
 
   /**
-   * Handle face recognized event from Vision tentacle
+   * Handle face recognized event from Vision tentacle with cross-modal fusion
    * @param {Object} face - Recognized face information
    * @private
    */
-  handleFaceRecognized(face) {
+  async handleFaceRecognized(face) {
     this.logger.info('Face recognized, updating speaker recognition context', face);
-    this.speakerRecognitionSystem.updateVisualContext(face);
+    
+    try {
+      // Determine if we should use cross-modal fusion
+      if (this.config.collaborativeIntelligence && this.speakerRecognitionSystem.hasAudioData()) {
+        await this._handleFaceRecognizedWithCrossModalFusion(face);
+      } else {
+        this.speakerRecognitionSystem.updateVisualContext(face);
+      }
+    } catch (error) {
+      this.logger.error(`Error handling face recognition: ${error.message}`);
+      
+      // Fall back to standard handling
+      this.speakerRecognitionSystem.updateVisualContext(face);
+    }
+  }
+  
+  /**
+   * Handle face recognized event with cross-modal fusion
+   * @private
+   * @param {Object} face - Recognized face information
+   */
+  async _handleFaceRecognizedWithCrossModalFusion(face) {
+    this.logger.debug('Using cross-modal fusion for face and voice recognition');
+    
+    // Get current audio data from speaker recognition system
+    const audioData = this.speakerRecognitionSystem.getCurrentAudioData();
+    
+    // Execute cross-modal task
+    const result = await this.enhancedIntegration.executeCrossModalTask(
+      {
+        face,
+        audioData,
+        context: this.context.getContextData()
+      },
+      ['audio', 'image'],
+      {
+        taskType: 'speaker_identification',
+        priority: 'high',
+        timeout: 30000
+      }
+    );
+    
+    // Update speaker recognition with fused result
+    this.speakerRecognitionSystem.updateWithFusedResult(result);
+    
+    // Emit cross-modal fusion event
+    this.emit('cross-modal-fusion-completed', {
+      type: 'face-voice',
+      result: {
+        speaker: result.speaker,
+        confidence: result.confidence,
+        modalityConfidences: result.modalityConfidences
+      }
+    });
   }
 
   /**
-   * Handle health issue event
+   * Handle health issue event with self-evaluation
    * @param {Object} issue - Health issue information
    * @private
    */
-  handleHealthIssue(issue) {
+  async handleHealthIssue(issue) {
     this.logger.warn('Health issue detected', issue);
     
+    try {
+      // Determine if we should use self-evaluation
+      if (this.config.selfEvaluation) {
+        await this._handleHealthIssueWithSelfEvaluation(issue);
+      } else {
+        await this._handleHealthIssueStandard(issue);
+      }
+    } catch (error) {
+      this.logger.error(`Error handling health issue: ${error.message}`);
+      
+      // Fall back to standard handling
+      await this._handleHealthIssueStandard(issue);
+    }
+  }
+  
+  /**
+   * Handle health issue with self-evaluation
+   * @private
+   * @param {Object} issue - Health issue information
+   */
+  async _handleHealthIssueWithSelfEvaluation(issue) {
+    this.logger.debug('Using self-evaluation for health issue handling');
+    
+    // Perform self-evaluation
+    const evaluationResult = await this.enhancedIntegration.performSelfEvaluation({
+      task: 'health_issue_diagnosis',
+      issue,
+      component: issue.component,
+      symptoms: issue.symptoms,
+      context: this.context.getContextData()
+    });
+    
+    // Apply recommended recovery actions
+    if (evaluationResult.recoveryActions && evaluationResult.recoveryActions.length > 0) {
+      for (const action of evaluationResult.recoveryActions) {
+        await this._applyRecoveryAction(issue.component, action);
+      }
+      
+      this.logger.info('Self-evaluation recovery actions applied successfully');
+    } else {
+      // Fall back to standard handling if no recovery actions
+      await this._handleHealthIssueStandard(issue);
+    }
+  }
+  
+  /**
+   * Apply recovery action
+   * @private
+   * @param {string} component - Component name
+   * @param {Object} action - Recovery action
+   */
+  async _applyRecoveryAction(component, action) {
+    this.logger.debug(`Applying recovery action: ${action.type} to component: ${component}`);
+    
+    switch (component) {
+      case 'voice-synthesis':
+        await this.voiceSynthesisEngine.applyRecoveryAction(action);
+        break;
+      case 'speaker-recognition':
+        await this.speakerRecognitionSystem.applyRecoveryAction(action);
+        break;
+      case 'audio-analysis':
+        await this.audioContentAnalyzer.applyRecoveryAction(action);
+        break;
+      case 'voice-biometrics':
+        await this.voiceBiometricsSystem.applyRecoveryAction(action);
+        break;
+      case 'ambient-sound-analysis':
+        await this.ambientSoundAnalysisEngine.applyRecoveryAction(action);
+        break;
+      case 'language-translation':
+        await this.languageTranslationEngine.applyRecoveryAction(action);
+        break;
+      case 'audio-editing':
+        await this.audioEditingSuite.applyRecoveryAction(action);
+        break;
+      case 'voice-command-processing':
+        await this.voiceCommandProcessor.applyRecoveryAction(action);
+        break;
+      case 'emotion-recognition':
+        await this.emotionRecognitionEngine.applyRecoveryAction(action);
+        break;
+      case 'music-analysis':
+        await this.musicAnalysisEngine.applyRecoveryAction(action);
+        break;
+      case 'music-generation':
+        await this.musicGenerationEngine.applyRecoveryAction(action);
+        break;
+      case 'input-manager':
+        await this.inputManager.applyRecoveryAction(action);
+        break;
+      case 'output-manager':
+        await this.outputManager.applyRecoveryAction(action);
+        break;
+      case 'model-orchestrator':
+        await this.modelOrchestrator.applyRecoveryAction(action);
+        break;
+      default:
+        this.logger.error('Unknown component for recovery action', component);
+    }
+  }
+  
+  /**
+   * Handle health issue using standard approach
+   * @private
+   * @param {Object} issue - Health issue information
+   */
+  async _handleHealthIssueStandard(issue) {
     // Attempt recovery based on issue type
     switch (issue.component) {
       case 'voice-synthesis':
-        this.voiceSynthesisEngine.recover(issue);
+        await this.voiceSynthesisEngine.recover(issue);
         break;
       case 'speaker-recognition':
-        this.speakerRecognitionSystem.recover(issue);
+        await this.speakerRecognitionSystem.recover(issue);
         break;
       case 'audio-analysis':
-        this.audioContentAnalyzer.recover(issue);
+        await this.audioContentAnalyzer.recover(issue);
         break;
       case 'voice-biometrics':
-        this.voiceBiometricsSystem.recover(issue);
+        await this.voiceBiometricsSystem.recover(issue);
         break;
       case 'ambient-sound-analysis':
-        this.ambientSoundAnalysisEngine.recover(issue);
+        await this.ambientSoundAnalysisEngine.recover(issue);
         break;
       case 'language-translation':
-        this.languageTranslationEngine.recover(issue);
+        await this.languageTranslationEngine.recover(issue);
         break;
       case 'audio-editing':
-        this.audioEditingSuite.recover(issue);
+        await this.audioEditingSuite.recover(issue);
         break;
       case 'voice-command-processing':
-        this.voiceCommandProcessor.recover(issue);
+        await this.voiceCommandProcessor.recover(issue);
         break;
       case 'emotion-recognition':
-        this.emotionRecognitionEngine.recover(issue);
+        await this.emotionRecognitionEngine.recover(issue);
         break;
       case 'music-analysis':
-        this.musicAnalysisEngine.recover(issue);
+        await this.musicAnalysisEngine.recover(issue);
         break;
       case 'music-generation':
-        this.musicGenerationEngine.recover(issue);
+        await this.musicGenerationEngine.recover(issue);
         break;
       case 'input-manager':
-        this.inputManager.recover(issue);
+        await this.inputManager.recover(issue);
         break;
       case 'output-manager':
-        this.outputManager.recover(issue);
+        await this.outputManager.recover(issue);
         break;
       case 'model-orchestrator':
-        this.modelOrchestrator.recover(issue);
+        await this.modelOrchestrator.recover(issue);
         break;
       default:
         this.logger.error('Unknown component for health issue', issue);
@@ -417,6 +826,11 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
       await this.outputManager.shutdown();
       await this.inputManager.shutdown();
       await this.resourceManager.shutdown();
+      
+      // Shutdown enhanced integration
+      if (this.enhancedIntegration) {
+        await this.enhancedIntegration.cleanup();
+      }
       
       this.logger.info('Enhanced Audio Processing Tentacle shut down successfully');
       return true;
@@ -444,5 +858,70 @@ class EnhancedAudioProcessingTentacle extends EnhancedTentacle {
     this.communicationBus.unsubscribe('vision:face-recognized', this.handleFaceRecognized);
     
     // Unsubscribe from self-healing events
-    this.healthMonitor.off('health-issue', this.handleHealthIssu
-(Content truncated due to size limit. Use line ranges to read in chunks)
+    this.healthMonitor.off('health-issue', this.handleHealthIssue);
+  }
+  
+  /**
+   * Execute a cross-modal task
+   * @param {string} taskType - Type of task
+   * @param {Object} input - Task input
+   * @param {Array<string>} modalities - Modalities to use
+   * @returns {Promise<Object>} Task result
+   */
+  async executeCrossModalTask(taskType, input, modalities) {
+    this.logger.info(`Executing cross-modal task: ${taskType}`);
+    
+    try {
+      // Execute cross-modal task
+      const result = await this.enhancedIntegration.executeCrossModalTask(
+        input,
+        modalities,
+        {
+          taskType,
+          priority: input.priority || "normal",
+          timeout: input.timeout || 30000
+        }
+      );
+      
+      return result;
+      
+    } catch (error) {
+      this.logger.error(`Cross-modal task execution failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get the status of the Audio Processing Tentacle
+   * @returns {Promise<Object>} Tentacle status
+   */
+  async getStatus() {
+    this.logger.info("Getting Audio Processing Tentacle status");
+    return {
+      name: this.name,
+      status: "active",
+      components: [
+        { name: "VoiceSynthesisEngine", status: "active" },
+        { name: "SpeakerRecognitionSystem", status: "active" },
+        { name: "AudioContentAnalyzer", status: "active" },
+        { name: "VoiceBiometricsSystem", status: "active" },
+        { name: "AmbientSoundAnalysisEngine", status: "active" },
+        { name: "LanguageTranslationEngine", status: "active" },
+        { name: "AudioEditingSuite", status: "active" },
+        { name: "VoiceCommandProcessor", status: "active" },
+        { name: "EmotionRecognitionEngine", status: "active" },
+        { name: "MusicAnalysisEngine", status: "active" },
+        { name: "MusicGenerationEngine", status: "active" }
+      ],
+      orchestration: {
+        collaborativeIntelligence: this.config.collaborativeIntelligence,
+        specializedModelSelection: this.config.specializedModelSelection,
+        adaptiveResourceAllocation: this.config.adaptiveResourceAllocation,
+        selfEvaluation: this.config.selfEvaluation
+      },
+      timestamp: Date.now()
+    };
+  }
+}
+
+module.exports = EnhancedAudioProcessingTentacle;

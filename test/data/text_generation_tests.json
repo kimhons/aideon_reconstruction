@@ -1,0 +1,57 @@
+{
+  "name": "text_generation",
+  "description": "Test data for text generation tasks",
+  "tests": [
+    {
+      "id": "simple_question_1",
+      "prompt": "What is the capital of France?",
+      "expected_contains": [
+        "Paris"
+      ],
+      "max_tokens": 50
+    },
+    {
+      "id": "simple_question_2",
+      "prompt": "Who wrote Romeo and Juliet?",
+      "expected_contains": [
+        "Shakespeare",
+        "William Shakespeare"
+      ],
+      "max_tokens": 50
+    },
+    {
+      "id": "open_ended_1",
+      "prompt": "Explain the concept of artificial intelligence in simple terms.",
+      "expected_contains": [
+        "intelligence",
+        "computer",
+        "human",
+        "learn"
+      ],
+      "max_tokens": 200
+    },
+    {
+      "id": "open_ended_2",
+      "prompt": "Describe the process of photosynthesis.",
+      "expected_contains": [
+        "plants",
+        "light",
+        "energy",
+        "carbon dioxide",
+        "oxygen"
+      ],
+      "max_tokens": 200
+    },
+    {
+      "id": "creative_1",
+      "prompt": "Write a short poem about the ocean.",
+      "expected_contains": [
+        "ocean",
+        "sea",
+        "wave",
+        "water"
+      ],
+      "max_tokens": 150
+    }
+  ]
+}

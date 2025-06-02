@@ -2,6 +2,7 @@
  * @fileoverview Personal Assistant Tentacle - Main entry point for the Personal Assistant functionality.
  * Integrates task management, calendar, contacts, communication, information organization,
  * lifestyle management, personal branding, social media management, and proactive intelligence.
+ * Enhanced with advanced multi-LLM orchestration for superintelligent capabilities.
  * 
  * @module src/tentacles/personal_assistant/PersonalAssistantTentacle
  */
@@ -20,8 +21,13 @@ const ModelIntegrationService = require('./ai/ModelIntegrationService');
 const ModelIntegratedBrandingService = require('./branding/ModelIntegratedBrandingService');
 const ModelIntegratedSocialMediaService = require('./social_media/ModelIntegratedSocialMediaService');
 
+// Import advanced orchestration components
+const { ModelType, ModelSelectionStrategy, CollaborationStrategy } = require('../../core/miif/models/ModelEnums');
+const { ModelOrchestrationSystem } = require('../../core/miif/models/orchestration/ModelOrchestrationSystem');
+
 /**
  * Personal Assistant Tentacle
+ * Enhanced with advanced multi-LLM orchestration for superintelligent capabilities
  * @extends BaseTentacle
  */
 class PersonalAssistantTentacle extends BaseTentacle {
@@ -38,7 +44,11 @@ class PersonalAssistantTentacle extends BaseTentacle {
       enablePersonalBranding: true,
       enableSocialMediaManagement: true,
       offlineCapability: 'full', // 'limited', 'standard', 'full'
-      privacyLevel: 'high', // 'standard', 'high', 'maximum'
+      privacyLevel: 'high', // 'standard', 'high', 'maximum',
+      collaborativeIntelligence: true, // Enable collaborative model orchestration
+      specializedModelSelection: true, // Enable specialized model selection
+      adaptiveResourceAllocation: true, // Enable adaptive resource allocation
+      selfEvaluation: true, // Enable self-evaluation and correction
       ...options
     };
     
@@ -52,7 +62,10 @@ class PersonalAssistantTentacle extends BaseTentacle {
       };
     }
     
-    this.logger.info("[PersonalAssistantTentacle] Initializing Personal Assistant Tentacle");
+    this.logger.info("[PersonalAssistantTentacle] Initializing Personal Assistant Tentacle with advanced orchestration");
+    
+    // Initialize advanced model orchestration
+    this._initializeAdvancedOrchestration();
     
     // Initialize model integration service
     this._initializeModelIntegration();
@@ -63,7 +76,42 @@ class PersonalAssistantTentacle extends BaseTentacle {
     // Register event listeners
     this._registerEventListeners();
     
-    this.logger.info("[PersonalAssistantTentacle] Personal Assistant Tentacle initialized");
+    // Initialize collaboration sessions
+    this._initializeCollaborationSessions();
+    
+    this.logger.info("[PersonalAssistantTentacle] Personal Assistant Tentacle initialized with superintelligent capabilities");
+  }
+  
+  /**
+   * Initialize advanced model orchestration
+   * @private
+   */
+  _initializeAdvancedOrchestration() {
+    this.logger.debug("[PersonalAssistantTentacle] Initializing advanced model orchestration");
+    
+    // Get model orchestration system from dependencies or create new one
+    this.modelOrchestrationSystem = this.dependencies.modelOrchestrationSystem || 
+      new ModelOrchestrationSystem(
+        {
+          offlineCapability: this.options.offlineCapability,
+          collaborativeIntelligence: this.options.collaborativeIntelligence,
+          specializedModelSelection: this.options.specializedModelSelection,
+          adaptiveResourceAllocation: this.options.adaptiveResourceAllocation,
+          selfEvaluation: this.options.selfEvaluation
+        },
+        {
+          logger: this.logger,
+          adminPanel: this.dependencies.adminPanel,
+          securityFramework: this.dependencies.securityFramework
+        }
+      );
+    
+    // Initialize orchestration system if not already initialized
+    if (!this.modelOrchestrationSystem.initialized) {
+      this.modelOrchestrationSystem.initialize().catch(error => {
+        this.logger.error("[PersonalAssistantTentacle] Failed to initialize model orchestration system", { error: error.message });
+      });
+    }
   }
   
   /**
@@ -73,7 +121,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
   _initializeModelIntegration() {
     this.logger.debug("[PersonalAssistantTentacle] Initializing model integration");
     
-    // Create model integration service
+    // Create model integration service with advanced orchestration
     this.modelIntegrationService = new ModelIntegrationService(
       {
         offlineCapability: this.options.offlineCapability,
@@ -81,13 +129,16 @@ class PersonalAssistantTentacle extends BaseTentacle {
         featureFlags: {
           enablePersonalBranding: this.options.enablePersonalBranding,
           enableSocialMediaManagement: this.options.enableSocialMediaManagement,
-          enableProactiveIntelligence: this.options.enableProactiveIntelligence
+          enableProactiveIntelligence: this.options.enableProactiveIntelligence,
+          enableCollaborativeIntelligence: this.options.collaborativeIntelligence,
+          enableSpecializedModelSelection: this.options.specializedModelSelection
         }
       },
       {
         logger: this.logger,
         modelIntegrationManager: this.dependencies.modelIntegrationManager,
-        securityFramework: this.dependencies.securityFramework
+        securityFramework: this.dependencies.securityFramework,
+        modelOrchestrationSystem: this.modelOrchestrationSystem
       }
     );
   }
@@ -97,7 +148,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
    * @private
    */
   _initializeComponents() {
-    this.logger.debug("[PersonalAssistantTentacle] Initializing components");
+    this.logger.debug("[PersonalAssistantTentacle] Initializing components with advanced orchestration");
     
     // Core components
     this.taskManagement = new TaskManagementSystem(
@@ -106,7 +157,8 @@ class PersonalAssistantTentacle extends BaseTentacle {
         logger: this.logger,
         memoryTentacle: this.dependencies.memoryTentacle,
         securityFramework: this.dependencies.securityFramework,
-        modelIntegrationManager: this.dependencies.modelIntegrationManager
+        modelIntegrationManager: this.dependencies.modelIntegrationManager,
+        modelOrchestrationSystem: this.modelOrchestrationSystem
       }
     );
     
@@ -117,6 +169,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
         memoryTentacle: this.dependencies.memoryTentacle,
         securityFramework: this.dependencies.securityFramework,
         modelIntegrationManager: this.dependencies.modelIntegrationManager,
+        modelOrchestrationSystem: this.modelOrchestrationSystem,
         taskManagementSystem: this.taskManagement
       }
     );
@@ -127,7 +180,8 @@ class PersonalAssistantTentacle extends BaseTentacle {
         logger: this.logger,
         memoryTentacle: this.dependencies.memoryTentacle,
         securityFramework: this.dependencies.securityFramework,
-        modelIntegrationManager: this.dependencies.modelIntegrationManager
+        modelIntegrationManager: this.dependencies.modelIntegrationManager,
+        modelOrchestrationSystem: this.modelOrchestrationSystem
       }
     );
     
@@ -138,6 +192,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
         memoryTentacle: this.dependencies.memoryTentacle,
         securityFramework: this.dependencies.securityFramework,
         modelIntegrationManager: this.dependencies.modelIntegrationManager,
+        modelOrchestrationSystem: this.modelOrchestrationSystem,
         contactManagementSystem: this.contactManagement
       }
     );
@@ -149,6 +204,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
         memoryTentacle: this.dependencies.memoryTentacle,
         securityFramework: this.dependencies.securityFramework,
         modelIntegrationManager: this.dependencies.modelIntegrationManager,
+        modelOrchestrationSystem: this.modelOrchestrationSystem,
         fileSystemTentacle: this.dependencies.fileSystemTentacle
       }
     );
@@ -160,6 +216,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
         memoryTentacle: this.dependencies.memoryTentacle,
         securityFramework: this.dependencies.securityFramework,
         modelIntegrationManager: this.dependencies.modelIntegrationManager,
+        modelOrchestrationSystem: this.modelOrchestrationSystem,
         calendarEngine: this.calendarEngine,
         taskManagementSystem: this.taskManagement
       }
@@ -174,6 +231,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
           memoryTentacle: this.dependencies.memoryTentacle,
           securityFramework: this.dependencies.securityFramework,
           modelIntegrationManager: this.dependencies.modelIntegrationManager,
+          modelOrchestrationSystem: this.modelOrchestrationSystem,
           webTentacle: this.dependencies.webTentacle
         }
       );
@@ -183,11 +241,14 @@ class PersonalAssistantTentacle extends BaseTentacle {
         {
           offlineCapability: this.options.offlineCapability,
           contentGenerationQuality: 'high',
-          audienceAnalysisDepth: 'comprehensive'
+          audienceAnalysisDepth: 'comprehensive',
+          enableCollaborativeIntelligence: this.options.collaborativeIntelligence,
+          enableSpecializedModelSelection: this.options.specializedModelSelection
         },
         {
           logger: this.logger,
           modelIntegrationManager: this.dependencies.modelIntegrationManager,
+          modelOrchestrationSystem: this.modelOrchestrationSystem,
           securityFramework: this.dependencies.securityFramework,
           personalBrandingSystem: this.personalBranding
         }
@@ -202,6 +263,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
           memoryTentacle: this.dependencies.memoryTentacle,
           securityFramework: this.dependencies.securityFramework,
           modelIntegrationManager: this.dependencies.modelIntegrationManager,
+          modelOrchestrationSystem: this.modelOrchestrationSystem,
           webTentacle: this.dependencies.webTentacle,
           personalBrandingSystem: this.personalBranding
         }
@@ -213,11 +275,14 @@ class PersonalAssistantTentacle extends BaseTentacle {
           offlineCapability: this.options.offlineCapability,
           contentGenerationQuality: 'high',
           engagementResponseSpeed: 'balanced',
-          trendDetectionFrequency: 'daily'
+          trendDetectionFrequency: 'daily',
+          enableCollaborativeIntelligence: this.options.collaborativeIntelligence,
+          enableSpecializedModelSelection: this.options.specializedModelSelection
         },
         {
           logger: this.logger,
           modelIntegrationManager: this.dependencies.modelIntegrationManager,
+          modelOrchestrationSystem: this.modelOrchestrationSystem,
           securityFramework: this.dependencies.securityFramework,
           socialMediaManagementSystem: this.socialMediaManagement
         }
@@ -233,6 +298,7 @@ class PersonalAssistantTentacle extends BaseTentacle {
           memoryTentacle: this.dependencies.memoryTentacle,
           securityFramework: this.dependencies.securityFramework,
           modelIntegrationManager: this.dependencies.modelIntegrationManager,
+          modelOrchestrationSystem: this.modelOrchestrationSystem,
           taskManagementSystem: this.taskManagement,
           calendarEngine: this.calendarEngine,
           contactManagementSystem: this.contactManagement,
@@ -240,6 +306,88 @@ class PersonalAssistantTentacle extends BaseTentacle {
           webTentacle: this.dependencies.webTentacle
         }
       );
+    }
+  }
+  
+  /**
+   * Initialize collaboration sessions for advanced orchestration
+   * @private
+   */
+  _initializeCollaborationSessions() {
+    if (!this.options.collaborativeIntelligence || !this.modelOrchestrationSystem) {
+      return;
+    }
+    
+    this.logger.debug("[PersonalAssistantTentacle] Initializing collaboration sessions");
+    
+    // Create collaboration sessions for different domains
+    this._createCollaborationSessions().catch(error => {
+      this.logger.error("[PersonalAssistantTentacle] Failed to create collaboration sessions", { error: error.message });
+    });
+  }
+  
+  /**
+   * Create collaboration sessions for different domains
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _createCollaborationSessions() {
+    try {
+      // Task Management collaboration session
+      this.taskCollaborationSession = await this.modelOrchestrationSystem.createCollaborationSession({
+        sessionId: 'personal_assistant_task_management',
+        modelType: ModelType.TEXT,
+        taskType: 'task_management',
+        collaborationStrategy: CollaborationStrategy.TASK_DECOMPOSITION,
+        offlineOnly: this.options.offlineCapability === 'full'
+      });
+      
+      // Communication collaboration session
+      this.communicationCollaborationSession = await this.modelOrchestrationSystem.createCollaborationSession({
+        sessionId: 'personal_assistant_communication',
+        modelType: ModelType.TEXT,
+        taskType: 'communication',
+        collaborationStrategy: CollaborationStrategy.ENSEMBLE,
+        offlineOnly: this.options.offlineCapability === 'full'
+      });
+      
+      // If personal branding is enabled, create branding collaboration session
+      if (this.options.enablePersonalBranding) {
+        this.brandingCollaborationSession = await this.modelOrchestrationSystem.createCollaborationSession({
+          sessionId: 'personal_assistant_branding',
+          modelType: ModelType.TEXT,
+          taskType: 'content_generation',
+          collaborationStrategy: CollaborationStrategy.CHAIN_OF_THOUGHT,
+          offlineOnly: false // Allow online models for branding
+        });
+      }
+      
+      // If social media management is enabled, create social media collaboration session
+      if (this.options.enableSocialMediaManagement) {
+        this.socialMediaCollaborationSession = await this.modelOrchestrationSystem.createCollaborationSession({
+          sessionId: 'personal_assistant_social_media',
+          modelTypes: [ModelType.TEXT, ModelType.IMAGE],
+          taskType: 'social_media_management',
+          collaborationStrategy: CollaborationStrategy.SPECIALIZED_ROUTING,
+          offlineOnly: false // Allow online models for social media
+        });
+      }
+      
+      // If proactive intelligence is enabled, create proactive collaboration session
+      if (this.options.enableProactiveIntelligence) {
+        this.proactiveCollaborationSession = await this.modelOrchestrationSystem.createCollaborationSession({
+          sessionId: 'personal_assistant_proactive',
+          modelTypes: [ModelType.TEXT, ModelType.IMAGE, ModelType.VIDEO],
+          taskType: 'proactive_intelligence',
+          collaborationStrategy: CollaborationStrategy.CONSENSUS,
+          offlineOnly: this.options.offlineCapability === 'full'
+        });
+      }
+      
+      this.logger.debug("[PersonalAssistantTentacle] Collaboration sessions initialized");
+    } catch (error) {
+      this.logger.error("[PersonalAssistantTentacle] Failed to create collaboration sessions", { error: error.message });
+      throw error;
     }
   }
   
@@ -326,6 +474,24 @@ class PersonalAssistantTentacle extends BaseTentacle {
         this.logger.debug("[PersonalAssistantTentacle] Social media engagement opportunity", { opportunityId: opportunity.id });
       });
     }
+    
+    // Model Orchestration events
+    if (this.modelOrchestrationSystem) {
+      this.modelOrchestrationSystem.on('modelPerformanceRecorded', (performance) => {
+        this.emit('modelPerformanceRecorded', performance);
+        this.logger.debug("[PersonalAssistantTentacle] Model performance recorded", { modelId: performance.modelId });
+      });
+      
+      this.modelOrchestrationSystem.on('collaborationSessionCreated', (sessionId) => {
+        this.emit('collaborationSessionCreated', sessionId);
+        this.logger.debug("[PersonalAssistantTentacle] Collaboration session created", { sessionId });
+      });
+      
+      this.modelOrchestrationSystem.on('collaborationSessionClosed', (sessionId) => {
+        this.emit('collaborationSessionClosed', sessionId);
+        this.logger.debug("[PersonalAssistantTentacle] Collaboration session closed", { sessionId });
+      });
+    }
   }
   
   /**
@@ -349,7 +515,21 @@ class PersonalAssistantTentacle extends BaseTentacle {
         enablePersonalBranding: this.options.enablePersonalBranding,
         enableSocialMediaManagement: this.options.enableSocialMediaManagement,
         offlineCapability: this.options.offlineCapability,
-        privacyLevel: this.options.privacyLevel
+        privacyLevel: this.options.privacyLevel,
+        collaborativeIntelligence: this.options.collaborativeIntelligence,
+        specializedModelSelection: this.options.specializedModelSelection,
+        adaptiveResourceAllocation: this.options.adaptiveResourceAllocation,
+        selfEvaluation: this.options.selfEvaluation
+      },
+      advancedOrchestration: {
+        initialized: this.modelOrchestrationSystem ? this.modelOrchestrationSystem.initialized : false,
+        collaborationSessions: {
+          taskManagement: this.taskCollaborationSession || null,
+          communication: this.communicationCollaborationSession || null,
+          branding: this.brandingCollaborationSession || null,
+          socialMedia: this.socialMediaCollaborationSession || null,
+          proactive: this.proactiveCollaborationSession || null
+        }
       }
     };
     
@@ -376,15 +556,41 @@ class PersonalAssistantTentacle extends BaseTentacle {
     return status;
   }
   
-  // --- Task Management API ---
+  // --- Task Management API with Collaborative Intelligence ---
   
   /**
-   * Create a new task
+   * Create a new task with collaborative intelligence
    * @param {Object} taskData - Task data
    * @returns {Promise<Object>} Created task
    */
   async createTask(taskData) {
-    this.logger.debug("[PersonalAssistantTentacle] Creating task");
+    this.logger.debug("[PersonalAssistantTentacle] Creating task with collaborative intelligence");
+    
+    if (this.options.collaborativeIntelligence && this.taskCollaborationSession) {
+      try {
+        // Use collaborative intelligence to enhance task data
+        const enhancedTaskData = await this.modelOrchestrationSystem.executeCollaborativeTask({
+          sessionId: this.taskCollaborationSession,
+          input: {
+            operation: 'enhance_task',
+            taskData
+          },
+          options: {
+            useContextualMemory: true,
+            enableSelfEvaluation: this.options.selfEvaluation
+          }
+        });
+        
+        // Create task with enhanced data
+        return this.taskManagement.createTask(enhancedTaskData);
+      } catch (error) {
+        this.logger.warn("[PersonalAssistantTentacle] Failed to use collaborative intelligence for task creation", { error: error.message });
+        // Fall back to standard task creation
+        return this.taskManagement.createTask(taskData);
+      }
+    }
+    
+    // Standard task creation
     return this.taskManagement.createTask(taskData);
   }
   
@@ -398,500 +604,371 @@ class PersonalAssistantTentacle extends BaseTentacle {
   }
   
   /**
-   * Get all tasks
+   * Get all tasks with intelligent filtering
    * @param {Object} [filter] - Filter criteria
    * @returns {Promise<Array<Object>>} Tasks
    */
   async getAllTasks(filter) {
+    if (this.options.specializedModelSelection && this.modelOrchestrationSystem) {
+      try {
+        // Use specialized model to enhance filter criteria
+        const model = await this.modelOrchestrationSystem.getModelForTask({
+          modelType: ModelType.TEXT,
+          taskType: 'task_filtering',
+          selectionStrategy: ModelSelectionStrategy.SPECIALIZED
+        });
+        
+        if (model) {
+          // Enhance filter criteria
+          const enhancedFilter = await model.execute({
+            operation: 'enhance_task_filter',
+            filter
+          });
+          
+          // Use enhanced filter
+          return this.taskManagement.getAllTasks(enhancedFilter);
+        }
+      } catch (error) {
+        this.logger.warn("[PersonalAssistantTentacle] Failed to use specialized model for task filtering", { error: error.message });
+      }
+    }
+    
+    // Standard task retrieval
     return this.taskManagement.getAllTasks(filter);
   }
   
   /**
-   * Update task
+   * Update task with intelligent enhancement
    * @param {string} taskId - Task ID
    * @param {Object} updates - Task updates
    * @returns {Promise<Object>} Updated task
    */
   async updateTask(taskId, updates) {
+    if (this.options.collaborativeIntelligence && this.taskCollaborationSession) {
+      try {
+        // Get current task
+        const currentTask = await this.taskManagement.getTask(taskId);
+        
+        // Use collaborative intelligence to enhance updates
+        const enhancedUpdates = await this.modelOrchestrationSystem.executeCollaborativeTask({
+          sessionId: this.taskCollaborationSession,
+          input: {
+            operation: 'enhance_task_update',
+            currentTask,
+            updates
+          },
+          options: {
+            useContextualMemory: true,
+            enableSelfEvaluation: this.options.selfEvaluation
+          }
+        });
+        
+        // Update task with enhanced updates
+        return this.taskManagement.updateTask(taskId, enhancedUpdates);
+      } catch (error) {
+        this.logger.warn("[PersonalAssistantTentacle] Failed to use collaborative intelligence for task update", { error: error.message });
+        // Fall back to standard task update
+        return this.taskManagement.updateTask(taskId, updates);
+      }
+    }
+    
+    // Standard task update
     return this.taskManagement.updateTask(taskId, updates);
   }
   
   /**
-   * Complete task
+   * Complete task with intelligent verification
    * @param {string} taskId - Task ID
    * @param {Object} [completionData] - Completion data
    * @returns {Promise<Object>} Completed task
    */
   async completeTask(taskId, completionData) {
+    if (this.options.selfEvaluation && this.modelOrchestrationSystem) {
+      try {
+        // Get current task
+        const currentTask = await this.taskManagement.getTask(taskId);
+        
+        // Use specialized model to verify task completion
+        const model = await this.modelOrchestrationSystem.getModelForTask({
+          modelType: ModelType.TEXT,
+          taskType: 'task_verification',
+          selectionStrategy: ModelSelectionStrategy.SPECIALIZED
+        });
+        
+        if (model) {
+          // Verify task completion
+          const verificationResult = await model.execute({
+            operation: 'verify_task_completion',
+            task: currentTask,
+            completionData
+          });
+          
+          // If verification failed, return task with verification feedback
+          if (!verificationResult.verified) {
+            this.logger.warn("[PersonalAssistantTentacle] Task completion verification failed", { 
+              taskId, 
+              feedback: verificationResult.feedback 
+            });
+            
+            // Update task with verification feedback
+            return this.taskManagement.updateTask(taskId, {
+              verificationFeedback: verificationResult.feedback,
+              status: 'verification_failed'
+            });
+          }
+          
+          // Use verified completion data
+          return this.taskManagement.completeTask(taskId, verificationResult.enhancedCompletionData || completionData);
+        }
+      } catch (error) {
+        this.logger.warn("[PersonalAssistantTentacle] Failed to use self-evaluation for task completion", { error: error.message });
+      }
+    }
+    
+    // Standard task completion
     return this.taskManagement.completeTask(taskId, completionData);
   }
   
-  // --- Calendar API ---
+  // --- Enhanced Personal Branding API with Collaborative Intelligence ---
   
   /**
-   * Create calendar event
-   * @param {Object} eventData - Event data
-   * @returns {Promise<Object>} Created event
-   */
-  async createCalendarEvent(eventData) {
-    this.logger.debug("[PersonalAssistantTentacle] Creating calendar event");
-    return this.calendarEngine.createEvent(eventData);
-  }
-  
-  /**
-   * Get calendar event by ID
-   * @param {string} eventId - Event ID
-   * @returns {Promise<Object>} Event
-   */
-  async getCalendarEvent(eventId) {
-    return this.calendarEngine.getEvent(eventId);
-  }
-  
-  /**
-   * Get calendar events
-   * @param {Object} [filter] - Filter criteria
-   * @returns {Promise<Array<Object>>} Events
-   */
-  async getCalendarEvents(filter) {
-    return this.calendarEngine.getEvents(filter);
-  }
-  
-  /**
-   * Update calendar event
-   * @param {string} eventId - Event ID
-   * @param {Object} updates - Event updates
-   * @returns {Promise<Object>} Updated event
-   */
-  async updateCalendarEvent(eventId, updates) {
-    return this.calendarEngine.updateEvent(eventId, updates);
-  }
-  
-  /**
-   * Delete calendar event
-   * @param {string} eventId - Event ID
-   * @returns {Promise<boolean>} Success
-   */
-  async deleteCalendarEvent(eventId) {
-    return this.calendarEngine.deleteEvent(eventId);
-  }
-  
-  // --- Contact Management API ---
-  
-  /**
-   * Create contact
-   * @param {Object} contactData - Contact data
-   * @returns {Promise<Object>} Created contact
-   */
-  async createContact(contactData) {
-    this.logger.debug("[PersonalAssistantTentacle] Creating contact");
-    return this.contactManagement.createContact(contactData);
-  }
-  
-  /**
-   * Get contact by ID
-   * @param {string} contactId - Contact ID
-   * @returns {Promise<Object>} Contact
-   */
-  async getContact(contactId) {
-    return this.contactManagement.getContact(contactId);
-  }
-  
-  /**
-   * Get all contacts
-   * @param {Object} [filter] - Filter criteria
-   * @returns {Promise<Array<Object>>} Contacts
-   */
-  async getAllContacts(filter) {
-    return this.contactManagement.getAllContacts(filter);
-  }
-  
-  /**
-   * Update contact
-   * @param {string} contactId - Contact ID
-   * @param {Object} updates - Contact updates
-   * @returns {Promise<Object>} Updated contact
-   */
-  async updateContact(contactId, updates) {
-    return this.contactManagement.updateContact(contactId, updates);
-  }
-  
-  /**
-   * Delete contact
-   * @param {string} contactId - Contact ID
-   * @returns {Promise<boolean>} Success
-   */
-  async deleteContact(contactId) {
-    return this.contactManagement.deleteContact(contactId);
-  }
-  
-  // --- Communication API ---
-  
-  /**
-   * Send message
-   * @param {Object} messageData - Message data
-   * @returns {Promise<Object>} Sent message
-   */
-  async sendMessage(messageData) {
-    this.logger.debug("[PersonalAssistantTentacle] Sending message");
-    return this.communicationAssistant.sendMessage(messageData);
-  }
-  
-  /**
-   * Get message by ID
-   * @param {string} messageId - Message ID
-   * @returns {Promise<Object>} Message
-   */
-  async getMessage(messageId) {
-    return this.communicationAssistant.getMessage(messageId);
-  }
-  
-  /**
-   * Get messages
-   * @param {Object} [filter] - Filter criteria
-   * @returns {Promise<Array<Object>>} Messages
-   */
-  async getMessages(filter) {
-    return this.communicationAssistant.getMessages(filter);
-  }
-  
-  /**
-   * Generate message draft
-   * @param {Object} context - Message context
-   * @returns {Promise<Object>} Message draft
-   */
-  async generateMessageDraft(context) {
-    this.logger.debug("[PersonalAssistantTentacle] Generating message draft");
-    return this.communicationAssistant.generateDraft(context);
-  }
-  
-  // --- Information Organization API ---
-  
-  /**
-   * Store information
-   * @param {Object} informationData - Information data
-   * @returns {Promise<Object>} Stored information
-   */
-  async storeInformation(informationData) {
-    this.logger.debug("[PersonalAssistantTentacle] Storing information");
-    return this.informationSystem.storeInformation(informationData);
-  }
-  
-  /**
-   * Get information by ID
-   * @param {string} informationId - Information ID
-   * @returns {Promise<Object>} Information
-   */
-  async getInformation(informationId) {
-    return this.informationSystem.getInformation(informationId);
-  }
-  
-  /**
-   * Search information
-   * @param {Object} searchParams - Search parameters
-   * @returns {Promise<Array<Object>>} Search results
-   */
-  async searchInformation(searchParams) {
-    return this.informationSystem.searchInformation(searchParams);
-  }
-  
-  /**
-   * Organize information
-   * @param {Array<string>} informationIds - Information IDs
-   * @param {Object} organizationData - Organization data
-   * @returns {Promise<Object>} Organization result
-   */
-  async organizeInformation(informationIds, organizationData) {
-    this.logger.debug("[PersonalAssistantTentacle] Organizing information");
-    return this.informationSystem.organizeInformation(informationIds, organizationData);
-  }
-  
-  // --- Lifestyle Management API ---
-  
-  /**
-   * Create lifestyle goal
-   * @param {Object} goalData - Goal data
-   * @returns {Promise<Object>} Created goal
-   */
-  async createLifestyleGoal(goalData) {
-    this.logger.debug("[PersonalAssistantTentacle] Creating lifestyle goal");
-    return this.lifestyleAssistant.createGoal(goalData);
-  }
-  
-  /**
-   * Get lifestyle goal by ID
-   * @param {string} goalId - Goal ID
-   * @returns {Promise<Object>} Goal
-   */
-  async getLifestyleGoal(goalId) {
-    return this.lifestyleAssistant.getGoal(goalId);
-  }
-  
-  /**
-   * Get lifestyle goals
-   * @param {Object} [filter] - Filter criteria
-   * @returns {Promise<Array<Object>>} Goals
-   */
-  async getLifestyleGoals(filter) {
-    return this.lifestyleAssistant.getGoals(filter);
-  }
-  
-  /**
-   * Update lifestyle goal
-   * @param {string} goalId - Goal ID
-   * @param {Object} updates - Goal updates
-   * @returns {Promise<Object>} Updated goal
-   */
-  async updateLifestyleGoal(goalId, updates) {
-    return this.lifestyleAssistant.updateGoal(goalId, updates);
-  }
-  
-  /**
-   * Track lifestyle metric
-   * @param {Object} metricData - Metric data
-   * @returns {Promise<Object>} Tracked metric
-   */
-  async trackLifestyleMetric(metricData) {
-    this.logger.debug("[PersonalAssistantTentacle] Tracking lifestyle metric");
-    return this.lifestyleAssistant.trackMetric(metricData);
-  }
-  
-  /**
-   * Get lifestyle insights
-   * @param {Object} [params] - Insight parameters
-   * @returns {Promise<Object>} Insights
-   */
-  async getLifestyleInsights(params) {
-    return this.lifestyleAssistant.getInsights(params);
-  }
-  
-  // --- Personal Branding API ---
-  
-  /**
-   * Create or update brand strategy
-   * @param {Object} strategyData - Strategy data
-   * @returns {Promise<Object>} Created/updated strategy
-   */
-  async createOrUpdateBrandStrategy(strategyData) {
-    if (!this.personalBranding) {
-      throw new Error("Personal Branding is not enabled");
-    }
-    
-    this.logger.debug("[PersonalAssistantTentacle] Creating/updating brand strategy");
-    return this.personalBranding.createOrUpdateBrandStrategy(strategyData);
-  }
-  
-  /**
-   * Get brand strategy
-   * @returns {Promise<Object>} Brand strategy
-   */
-  async getBrandStrategy() {
-    if (!this.personalBranding) {
-      throw new Error("Personal Branding is not enabled");
-    }
-    
-    return this.personalBranding.getBrandStrategy();
-  }
-  
-  /**
-   * Add or update brand asset
-   * @param {Object} assetData - Asset data
-   * @returns {Promise<Object>} Created/updated asset
-   */
-  async addOrUpdateBrandAsset(assetData) {
-    if (!this.personalBranding) {
-      throw new Error("Personal Branding is not enabled");
-    }
-    
-    this.logger.debug("[PersonalAssistantTentacle] Adding/updating brand asset");
-    return this.personalBranding.addOrUpdateBrandAsset(assetData);
-  }
-  
-  /**
-   * Get brand assets
-   * @param {Object} [criteria] - Filter criteria
-   * @returns {Promise<Array<Object>>} Brand assets
-   */
-  async getBrandAssets(criteria) {
-    if (!this.personalBranding) {
-      throw new Error("Personal Branding is not enabled");
-    }
-    
-    return this.personalBranding.getBrandAssets(criteria);
-  }
-  
-  /**
-   * Generate branding content
-   * @param {Object} params - Content parameters
+   * Generate personal branding content with collaborative intelligence
+   * @param {Object} contentRequest - Content request
    * @returns {Promise<Object>} Generated content
    */
-  async generateBrandingContent(params) {
-    if (!this.personalBranding || !this.brandingService) {
-      throw new Error("Personal Branding is not enabled");
+  async generateBrandingContent(contentRequest) {
+    if (!this.options.enablePersonalBranding || !this.brandingService) {
+      throw new Error("Personal branding is not enabled");
     }
     
-    this.logger.debug("[PersonalAssistantTentacle] Generating branding content");
+    this.logger.debug("[PersonalAssistantTentacle] Generating branding content with collaborative intelligence");
     
-    // Use model integrated branding service
-    const offlineMode = !this.dependencies.modelIntegrationManager || 
-                        this.options.offlineCapability === 'full';
+    if (this.options.collaborativeIntelligence && this.brandingCollaborationSession) {
+      try {
+        // Use collaborative intelligence to generate content
+        const enhancedContent = await this.modelOrchestrationSystem.executeCollaborativeTask({
+          sessionId: this.brandingCollaborationSession,
+          input: {
+            operation: 'generate_branding_content',
+            contentRequest
+          },
+          options: {
+            useContextualMemory: true,
+            enableSelfEvaluation: this.options.selfEvaluation,
+            qualityThreshold: 0.95
+          }
+        });
+        
+        // Record model performance
+        await this.modelOrchestrationSystem.recordModelPerformance('branding_content_generation', {
+          taskType: 'content_generation',
+          strategy: CollaborationStrategy.CHAIN_OF_THOUGHT,
+          accuracy: enhancedContent.qualityScore || 0.9,
+          latency: enhancedContent.generationTime || 500
+        });
+        
+        return enhancedContent;
+      } catch (error) {
+        this.logger.warn("[PersonalAssistantTentacle] Failed to use collaborative intelligence for branding content", { error: error.message });
+        // Fall back to standard content generation
+        return this.brandingService.generateContent(contentRequest);
+      }
+    }
     
-    return this.brandingService.generateBrandingContent(params, offlineMode);
+    // Standard content generation
+    return this.brandingService.generateContent(contentRequest);
   }
   
   /**
-   * Analyze brand strategy
-   * @param {Object} [strategy] - Brand strategy (uses current if not provided)
-   * @returns {Promise<Object>} Strategy insights
+   * Analyze audience with specialized model selection
+   * @param {Object} audienceData - Audience data
+   * @returns {Promise<Object>} Audience analysis
    */
-  async analyzeBrandStrategy(strategy) {
-    if (!this.personalBranding || !this.brandingService) {
-      throw new Error("Personal Branding is not enabled");
+  async analyzeAudience(audienceData) {
+    if (!this.options.enablePersonalBranding || !this.brandingService) {
+      throw new Error("Personal branding is not enabled");
     }
     
-    this.logger.debug("[PersonalAssistantTentacle] Analyzing brand strategy");
+    this.logger.debug("[PersonalAssistantTentacle] Analyzing audience with specialized model selection");
     
-    // Get current strategy if not provided
-    if (!strategy) {
-      strategy = await this.personalBranding.getBrandStrategy();
+    if (this.options.specializedModelSelection && this.modelOrchestrationSystem) {
+      try {
+        // Use specialized model for audience analysis
+        const model = await this.modelOrchestrationSystem.getModelForTask({
+          modelType: ModelType.TEXT,
+          taskType: 'audience_analysis',
+          selectionStrategy: ModelSelectionStrategy.SPECIALIZED
+        });
+        
+        if (model) {
+          // Perform audience analysis
+          const analysis = await model.execute({
+            operation: 'analyze_audience',
+            audienceData
+          });
+          
+          // Record model performance
+          await this.modelOrchestrationSystem.recordModelPerformance(model.modelId, {
+            taskType: 'audience_analysis',
+            accuracy: analysis.confidenceScore || 0.9,
+            latency: analysis.analysisTime || 300
+          });
+          
+          return analysis;
+        }
+      } catch (error) {
+        this.logger.warn("[PersonalAssistantTentacle] Failed to use specialized model for audience analysis", { error: error.message });
+      }
     }
     
-    // Use model integrated branding service
-    const offlineMode = !this.dependencies.modelIntegrationManager || 
-                        this.options.offlineCapability === 'full';
-    
-    return this.brandingService.generateBrandStrategyInsights(strategy, offlineMode);
+    // Standard audience analysis
+    return this.brandingService.analyzeAudience(audienceData);
   }
   
-  // --- Social Media Management API ---
+  // --- Enhanced Social Media API with Cross-Modal Intelligence ---
   
   /**
-   * Connect social media profile
-   * @param {Object} profileData - Profile data
-   * @returns {Promise<Object>} Connected profile
+   * Generate social media content with cross-modal intelligence
+   * @param {Object} contentRequest - Content request
+   * @returns {Promise<Object>} Generated content
    */
-  async connectSocialMediaProfile(profileData) {
-    if (!this.socialMediaManagement) {
-      throw new Error("Social Media Management is not enabled");
+  async generateSocialMediaContent(contentRequest) {
+    if (!this.options.enableSocialMediaManagement || !this.socialMediaService) {
+      throw new Error("Social media management is not enabled");
     }
     
-    this.logger.debug("[PersonalAssistantTentacle] Connecting social media profile");
-    return this.socialMediaManagement.connectProfile(profileData);
-  }
-  
-  /**
-   * Get connected social media profiles
-   * @param {Object} [criteria] - Filter criteria
-   * @returns {Promise<Array<Object>>} Connected profiles
-   */
-  async getConnectedSocialMediaProfiles(criteria) {
-    if (!this.socialMediaManagement) {
-      throw new Error("Social Media Management is not enabled");
+    this.logger.debug("[PersonalAssistantTentacle] Generating social media content with cross-modal intelligence");
+    
+    if (this.options.collaborativeIntelligence && this.socialMediaCollaborationSession) {
+      try {
+        // Use cross-modal collaborative intelligence to generate content
+        const enhancedContent = await this.modelOrchestrationSystem.executeCollaborativeTask({
+          sessionId: this.socialMediaCollaborationSession,
+          input: {
+            operation: 'generate_social_media_content',
+            contentRequest,
+            includeVisualSuggestions: true
+          },
+          options: {
+            useContextualMemory: true,
+            enableSelfEvaluation: this.options.selfEvaluation,
+            qualityThreshold: 0.95,
+            maxIterations: 3
+          }
+        });
+        
+        // Record model performance
+        await this.modelOrchestrationSystem.recordModelPerformance('social_media_content_generation', {
+          taskType: 'content_generation',
+          strategy: CollaborationStrategy.SPECIALIZED_ROUTING,
+          accuracy: enhancedContent.qualityScore || 0.9,
+          latency: enhancedContent.generationTime || 800
+        });
+        
+        return enhancedContent;
+      } catch (error) {
+        this.logger.warn("[PersonalAssistantTentacle] Failed to use cross-modal intelligence for social media content", { error: error.message });
+        // Fall back to standard content generation
+        return this.socialMediaService.generateContent(contentRequest);
+      }
     }
     
-    return this.socialMediaManagement.getConnectedProfiles(criteria);
-  }
-  
-  /**
-   * Schedule social media post
-   * @param {Object} postData - Post data
-   * @returns {Promise<Object>} Scheduled post
-   */
-  async scheduleSocialMediaPost(postData) {
-    if (!this.socialMediaManagement) {
-      throw new Error("Social Media Management is not enabled");
-    }
-    
-    this.logger.debug("[PersonalAssistantTentacle] Scheduling social media post");
-    return this.socialMediaManagement.schedulePost(postData);
-  }
-  
-  /**
-   * Get scheduled social media posts
-   * @param {Object} [criteria] - Filter criteria
-   * @returns {Promise<Array<Object>>} Scheduled posts
-   */
-  async getScheduledSocialMediaPosts(criteria) {
-    if (!this.socialMediaManagement) {
-      throw new Error("Social Media Management is not enabled");
-    }
-    
-    return this.socialMediaManagement.getScheduledPosts(criteria);
-  }
-  
-  /**
-   * Generate social media content ideas
-   * @param {Object} params - Content parameters
-   * @returns {Promise<Object>} Generated content ideas
-   */
-  async generateSocialMediaContentIdeas(params) {
-    if (!this.socialMediaManagement || !this.socialMediaService) {
-      throw new Error("Social Media Management is not enabled");
-    }
-    
-    this.logger.debug("[PersonalAssistantTentacle] Generating social media content ideas");
-    
-    // Use model integrated social media service
-    const offlineMode = !this.dependencies.modelIntegrationManager || 
-                        this.options.offlineCapability === 'full';
-    
-    return this.socialMediaService.generateContentIdeas(params, offlineMode);
-  }
-  
-  /**
-   * Optimize social media content
-   * @param {Object} params - Optimization parameters
-   * @returns {Promise<Object>} Optimized content
-   */
-  async optimizeSocialMediaContent(params) {
-    if (!this.socialMediaManagement || !this.socialMediaService) {
-      throw new Error("Social Media Management is not enabled");
-    }
-    
-    this.logger.debug("[PersonalAssistantTentacle] Optimizing social media content");
-    
-    // Use model integrated social media service
-    const offlineMode = !this.dependencies.modelIntegrationManager || 
-                        this.options.offlineCapability === 'full';
-    
-    return this.socialMediaService.optimizeContent(params, offlineMode);
+    // Standard content generation
+    return this.socialMediaService.generateContent(contentRequest);
   }
   
   /**
-   * Generate engagement response
-   * @param {Object} params - Response parameters
-   * @returns {Promise<Object>} Generated response
+   * Analyze social media engagement with specialized model selection
+   * @param {Object} engagementData - Engagement data
+   * @returns {Promise<Object>} Engagement analysis
    */
-  async generateEngagementResponse(params) {
-    if (!this.socialMediaManagement || !this.socialMediaService) {
-      throw new Error("Social Media Management is not enabled");
+  async analyzeSocialMediaEngagement(engagementData) {
+    if (!this.options.enableSocialMediaManagement || !this.socialMediaService) {
+      throw new Error("Social media management is not enabled");
     }
     
-    this.logger.debug("[PersonalAssistantTentacle] Generating engagement response");
+    this.logger.debug("[PersonalAssistantTentacle] Analyzing social media engagement with specialized model selection");
     
-    // Use model integrated social media service
-    const offlineMode = !this.dependencies.modelIntegrationManager || 
-                        this.options.offlineCapability === 'full';
+    if (this.options.specializedModelSelection && this.modelOrchestrationSystem) {
+      try {
+        // Use specialized model for engagement analysis
+        const model = await this.modelOrchestrationSystem.getModelForTask({
+          modelType: ModelType.TEXT,
+          taskType: 'engagement_analysis',
+          selectionStrategy: ModelSelectionStrategy.SPECIALIZED
+        });
+        
+        if (model) {
+          // Perform engagement analysis
+          const analysis = await model.execute({
+            operation: 'analyze_engagement',
+            engagementData
+          });
+          
+          // Record model performance
+          await this.modelOrchestrationSystem.recordModelPerformance(model.modelId, {
+            taskType: 'engagement_analysis',
+            accuracy: analysis.confidenceScore || 0.9,
+            latency: analysis.analysisTime || 400
+          });
+          
+          return analysis;
+        }
+      } catch (error) {
+        this.logger.warn("[PersonalAssistantTentacle] Failed to use specialized model for engagement analysis", { error: error.message });
+      }
+    }
     
-    return this.socialMediaService.generateEngagementResponse(params, offlineMode);
+    // Standard engagement analysis
+    return this.socialMediaService.analyzeEngagement(engagementData);
   }
   
   /**
-   * Detect social media trends
-   * @param {Object} [params] - Detection parameters
-   * @returns {Promise<Object>} Detected trends
+   * Shutdown tentacle and clean up resources
+   * @returns {Promise<boolean>} Success status
    */
-  async detectSocialMediaTrends(params = {}) {
-    if (!this.socialMediaManagement || !this.socialMediaService) {
-      throw new Error("Social Media Management is not enabled");
+  async shutdown() {
+    this.logger.info("[PersonalAssistantTentacle] Shutting down Personal Assistant Tentacle");
+    
+    // Close collaboration sessions
+    if (this.modelOrchestrationSystem) {
+      if (this.taskCollaborationSession) {
+        await this.modelOrchestrationSystem.closeCollaborationSession(this.taskCollaborationSession);
+      }
+      
+      if (this.communicationCollaborationSession) {
+        await this.modelOrchestrationSystem.closeCollaborationSession(this.communicationCollaborationSession);
+      }
+      
+      if (this.brandingCollaborationSession) {
+        await this.modelOrchestrationSystem.closeCollaborationSession(this.brandingCollaborationSession);
+      }
+      
+      if (this.socialMediaCollaborationSession) {
+        await this.modelOrchestrationSystem.closeCollaborationSession(this.socialMediaCollaborationSession);
+      }
+      
+      if (this.proactiveCollaborationSession) {
+        await this.modelOrchestrationSystem.closeCollaborationSession(this.proactiveCollaborationSession);
+      }
     }
     
-    this.logger.debug("[PersonalAssistantTentacle] Detecting social media trends");
+    // Shutdown components
+    await Promise.all([
+      this.taskManagement.shutdown(),
+      this.calendarEngine.shutdown(),
+      this.contactManagement.shutdown(),
+      this.communicationAssistant.shutdown(),
+      this.informationSystem.shutdown(),
+      this.lifestyleAssistant.shutdown(),
+      this.personalBranding?.shutdown(),
+      this.socialMediaManagement?.shutdown(),
+      this.proactiveIntelligence?.shutdown(),
+      this.modelIntegrationService.shutdown()
+    ]);
     
-    // Use model integrated social media service
-    const offlineMode = !this.dependencies.modelIntegrationManager || 
-                        this.options.offlineCapability === 'full';
-    
-    return this.socialMediaService.detectTrends(params, offlineMode);
+    this.logger.info("[PersonalAssistantTentacle] Personal Assistant Tentacle shutdown complete");
+    return super.shutdown();
   }
 }
 

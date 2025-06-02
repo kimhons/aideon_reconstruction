@@ -1,21 +1,30 @@
 /**
- * ArtificerTentacle.js
+ * @fileoverview Enhanced Artificer Tentacle with advanced multi-LLM orchestration
+ * Expert Developer & DevOps Engineer tentacle with superintelligent capabilities
  * 
- * Implementation of the Artificer tentacle - Expert Developer & DevOps Engineer
- * for the Aideon AI Desktop Agent.
+ * @module src/tentacles/artificer/ArtificerTentacle
  */
 
 const TentacleBase = require('./TentacleBase');
 const path = require('path');
 const fs = require('fs').promises;
+const EnhancedTentacleIntegration = require('../common/EnhancedTentacleIntegration');
 
+// Import advanced orchestration components
+const { ModelType, CollaborationStrategy } = require('../../core/miif/models/ModelEnums');
+
+/**
+ * Enhanced Artificer Tentacle with superintelligent capabilities
+ * Expert Developer & DevOps Engineer tentacle of Aideon AI Desktop Agent
+ * @extends TentacleBase
+ */
 class ArtificerTentacle extends TentacleBase {
   /**
-   * Constructor for the ArtificerTentacle class
+   * Constructor for the enhanced ArtificerTentacle class
    * @param {Object} config - Configuration object for the tentacle
    * @param {Object} dependencies - System dependencies required by the tentacle
    */
-  constructor(config, dependencies) {
+  constructor(config = {}, dependencies = {}) {
     // Default configuration for Artificer
     const defaultConfig = {
       id: 'artificer',
@@ -40,7 +49,13 @@ class ArtificerTentacle extends TentacleBase {
           integrationTesting: ['Supertest', 'TestContainers', 'Cypress'],
           e2eTesting: ['Selenium', 'Cypress', 'Playwright', 'Puppeteer']
         }
-      }
+      },
+      // Advanced orchestration options
+      collaborativeIntelligence: config.collaborativeIntelligence !== false,
+      specializedModelSelection: config.specializedModelSelection !== false,
+      adaptiveResourceAllocation: config.adaptiveResourceAllocation !== false,
+      selfEvaluation: config.selfEvaluation !== false,
+      offlineCapability: config.offlineCapability || 'full' // 'limited', 'standard', 'full'
     };
     
     // Merge provided config with defaults
@@ -48,13 +63,107 @@ class ArtificerTentacle extends TentacleBase {
     
     super(mergedConfig, dependencies);
     
+    this.dependencies = dependencies;
+    
+    // Initialize advanced orchestration
+    this._initializeAdvancedOrchestration();
+    
     // Load the prompt template
     this.promptTemplate = this._loadPromptTemplate();
     
     // Initialize specialized tools
     this._initializeTools();
     
-    this.log.info('Artificer tentacle fully initialized');
+    // Initialize collaboration sessions
+    this._initializeCollaborationSessions();
+    
+    this.log.info('Artificer tentacle fully initialized with superintelligent capabilities');
+  }
+  
+  /**
+   * Initialize advanced orchestration
+   * @private
+   */
+  _initializeAdvancedOrchestration() {
+    this.log.debug("Initializing advanced orchestration for Artificer");
+    
+    // Configure enhanced tentacle integration
+    this.enhancedIntegration = new EnhancedTentacleIntegration(
+      {
+        collaborativeIntelligence: this.config.collaborativeIntelligence,
+        specializedModelSelection: this.config.specializedModelSelection,
+        adaptiveResourceAllocation: this.config.adaptiveResourceAllocation,
+        selfEvaluation: this.config.selfEvaluation,
+        offlineCapability: this.config.offlineCapability
+      },
+      {
+        logger: this.log,
+        modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem
+      }
+    );
+  }
+  
+  /**
+   * Initialize collaboration sessions for advanced orchestration
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _initializeCollaborationSessions() {
+    if (!this.config.collaborativeIntelligence) {
+      this.log.info('Collaborative intelligence disabled, skipping collaboration sessions');
+      return;
+    }
+    
+    this.log.debug('Initializing collaboration sessions for Artificer');
+    
+    try {
+      // Define collaboration configurations
+      const collaborationConfigs = [
+        {
+          name: 'code_generation',
+          modelType: ModelType.TEXT,
+          taskType: 'code_generation',
+          collaborationStrategy: CollaborationStrategy.CHAIN_OF_THOUGHT,
+          offlineOnly: true
+        },
+        {
+          name: 'code_review',
+          modelType: ModelType.TEXT,
+          taskType: 'code_review',
+          collaborationStrategy: CollaborationStrategy.ENSEMBLE,
+          offlineOnly: true
+        },
+        {
+          name: 'architecture_design',
+          modelType: ModelType.TEXT,
+          taskType: 'architecture_design',
+          collaborationStrategy: CollaborationStrategy.TASK_DECOMPOSITION,
+          offlineOnly: false
+        },
+        {
+          name: 'devops_configuration',
+          modelType: ModelType.TEXT,
+          taskType: 'devops_configuration',
+          collaborationStrategy: CollaborationStrategy.SPECIALIZED_ROUTING,
+          offlineOnly: true
+        },
+        {
+          name: 'debugging',
+          modelType: ModelType.TEXT,
+          taskType: 'debugging',
+          collaborationStrategy: CollaborationStrategy.CONSENSUS,
+          offlineOnly: true
+        }
+      ];
+      
+      // Initialize all collaboration sessions
+      await this.enhancedIntegration.initializeAdvancedOrchestration('artificer', collaborationConfigs);
+      
+      this.log.info('Collaboration sessions initialized successfully for Artificer');
+      
+    } catch (error) {
+      this.log.error(`Failed to initialize collaboration sessions: ${error.message}`);
+    }
   }
   
   /**
@@ -112,6 +221,13 @@ class ArtificerTentacle extends TentacleBase {
       projectManagement: {
         createProjectStructure: this._createProjectStructure.bind(this),
         generateBoilerplate: this._generateBoilerplate.bind(this)
+      },
+      collaborativeIntelligence: {
+        generateCodeCollaboratively: this._generateCodeCollaboratively.bind(this),
+        reviewCodeCollaboratively: this._reviewCodeCollaboratively.bind(this),
+        designArchitectureCollaboratively: this._designArchitectureCollaboratively.bind(this),
+        generateDevOpsConfigCollaboratively: this._generateDevOpsConfigCollaboratively.bind(this),
+        debugCollaboratively: this._debugCollaboratively.bind(this)
       }
     };
   }
@@ -128,21 +244,11 @@ class ArtificerTentacle extends TentacleBase {
     try {
       let result;
       
-      switch (task.type) {
-        case 'code_development':
-          result = await this._handleCodeDevelopment(task);
-          break;
-        case 'devops_setup':
-          result = await this._handleDevOpsSetup(task);
-          break;
-        case 'code_review':
-          result = await this._handleCodeReview(task);
-          break;
-        case 'deployment':
-          result = await this._handleDeployment(task);
-          break;
-        default:
-          throw new Error(`Unsupported task type: ${task.type}`);
+      // Determine if we should use collaborative intelligence
+      if (this.config.collaborativeIntelligence && this._canUseCollaborativeIntelligence(task)) {
+        result = await this._processTaskCollaboratively(task);
+      } else {
+        result = await this._processTaskStandard(task);
       }
       
       this.updateStatus('idle');
@@ -154,12 +260,123 @@ class ArtificerTentacle extends TentacleBase {
     } catch (error) {
       this.log.error(`Error processing task ${task.id}: ${error.message}`);
       this.updateStatus('error');
+      
+      // If collaborative processing failed, try standard processing as fallback
+      if (error.message.includes('collaborative') && this.config.collaborativeIntelligence) {
+        this.log.info(`Falling back to standard processing for task ${task.id}`);
+        try {
+          const result = await this._processTaskStandard(task);
+          this.updateStatus('idle');
+          return {
+            success: true,
+            taskId: task.id,
+            result,
+            note: 'Processed with fallback to standard method'
+          };
+        } catch (fallbackError) {
+          this.log.error(`Fallback processing also failed: ${fallbackError.message}`);
+        }
+      }
+      
       return {
         success: false,
         taskId: task.id,
         error: error.message
       };
     }
+  }
+  
+  /**
+   * Process task using collaborative intelligence
+   * @private
+   * @param {Object} task - Task to process
+   * @returns {Promise<Object>} - Task result
+   */
+  async _processTaskCollaboratively(task) {
+    this.log.info(`Processing task collaboratively: ${task.id} - ${task.type}`);
+    
+    let collaborationSession;
+    let result;
+    
+    switch (task.type) {
+      case 'code_development':
+        collaborationSession = 'code_generation';
+        result = await this.tools.collaborativeIntelligence.generateCodeCollaboratively(task);
+        break;
+      case 'devops_setup':
+        collaborationSession = 'devops_configuration';
+        result = await this.tools.collaborativeIntelligence.generateDevOpsConfigCollaboratively(task);
+        break;
+      case 'code_review':
+        collaborationSession = 'code_review';
+        result = await this.tools.collaborativeIntelligence.reviewCodeCollaboratively(task);
+        break;
+      case 'deployment':
+        collaborationSession = 'devops_configuration';
+        result = await this.tools.collaborativeIntelligence.generateDevOpsConfigCollaboratively(task);
+        break;
+      default:
+        throw new Error(`Unsupported task type for collaborative processing: ${task.type}`);
+    }
+    
+    return {
+      ...result,
+      processedCollaboratively: true,
+      collaborationSession
+    };
+  }
+  
+  /**
+   * Process task using standard approach
+   * @private
+   * @param {Object} task - Task to process
+   * @returns {Promise<Object>} - Task result
+   */
+  async _processTaskStandard(task) {
+    switch (task.type) {
+      case 'code_development':
+        return await this._handleCodeDevelopment(task);
+      case 'devops_setup':
+        return await this._handleDevOpsSetup(task);
+      case 'code_review':
+        return await this._handleCodeReview(task);
+      case 'deployment':
+        return await this._handleDeployment(task);
+      default:
+        throw new Error(`Unsupported task type: ${task.type}`);
+    }
+  }
+  
+  /**
+   * Check if collaborative intelligence can be used for a task
+   * @private
+   * @param {Object} task - Task to evaluate
+   * @returns {boolean} - Whether collaborative intelligence can be used
+   */
+  _canUseCollaborativeIntelligence(task) {
+    // Check if task type is supported for collaborative intelligence
+    const supportedCollaborativeTasks = [
+      'code_development',
+      'devops_setup',
+      'code_review',
+      'deployment'
+    ];
+    
+    if (!supportedCollaborativeTasks.includes(task.type)) {
+      return false;
+    }
+    
+    // Check if task has any specific flags that would prevent collaborative processing
+    if (task.disableCollaborative) {
+      return false;
+    }
+    
+    // Check if task requires offline-only processing but some sessions are online
+    if (task.offlineOnly && this.config.offlineCapability !== 'full') {
+      return false;
+    }
+    
+    return true;
   }
   
   /**
@@ -194,6 +411,34 @@ class ArtificerTentacle extends TentacleBase {
     // 4. Testing code
     // 5. Documenting code
     
+    // Use specialized model selection if enabled
+    if (this.config.specializedModelSelection) {
+      const model = await this.enhancedIntegration.selectSpecializedModel({
+        taskType: 'code_generation',
+        requirements: {
+          language: task.language,
+          complexity: task.complexity || 'medium',
+          domain: task.domain || 'general'
+        }
+      });
+      
+      const specializedResult = await model.execute({
+        task: 'code_generation',
+        requirements: task.requirements,
+        language: task.language,
+        context: task.context
+      });
+      
+      return {
+        message: 'Code development task completed with specialized model',
+        code: specializedResult.code,
+        documentation: specializedResult.documentation,
+        tests: specializedResult.tests,
+        modelId: model.modelId
+      };
+    }
+    
+    // Standard implementation (fallback)
     return {
       message: 'Code development task completed',
       // Additional result details would be included here
@@ -267,14 +512,247 @@ class ArtificerTentacle extends TentacleBase {
   }
   
   /**
+   * Generate code collaboratively
+   * @private
+   * @param {Object} task - Code generation task
+   * @returns {Promise<Object>} - Generated code
+   */
+  async _generateCodeCollaboratively(task) {
+    this.log.info(`Generating code collaboratively for: ${task.language || 'unspecified language'}`);
+    
+    try {
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'code_generation',
+        {
+          requirements: task.requirements,
+          language: task.language,
+          context: task.context,
+          complexity: task.complexity || 'medium',
+          domain: task.domain || 'general'
+        },
+        {
+          priority: task.priority || 'normal',
+          timeout: task.timeout || 60000
+        }
+      );
+      
+      return {
+        code: result.result.code,
+        documentation: result.result.documentation,
+        tests: result.result.tests,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.log.error(`Collaborative code generation failed: ${error.message}`);
+      throw new Error(`Collaborative code generation failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Review code collaboratively
+   * @private
+   * @param {Object} task - Code review task
+   * @returns {Promise<Object>} - Review results
+   */
+  async _reviewCodeCollaboratively(task) {
+    this.log.info(`Reviewing code collaboratively for: ${task.language || 'unspecified language'}`);
+    
+    try {
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'code_review',
+        {
+          code: task.code,
+          language: task.language,
+          context: task.context,
+          reviewFocus: task.reviewFocus || ['quality', 'security', 'performance']
+        },
+        {
+          priority: task.priority || 'normal',
+          timeout: task.timeout || 60000
+        }
+      );
+      
+      return {
+        issues: result.result.issues,
+        suggestions: result.result.suggestions,
+        securityConcerns: result.result.securityConcerns,
+        performanceIssues: result.result.performanceIssues,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.log.error(`Collaborative code review failed: ${error.message}`);
+      throw new Error(`Collaborative code review failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Design architecture collaboratively
+   * @private
+   * @param {Object} task - Architecture design task
+   * @returns {Promise<Object>} - Architecture design
+   */
+  async _designArchitectureCollaboratively(task) {
+    this.log.info(`Designing architecture collaboratively for: ${task.projectType || 'unspecified project'}`);
+    
+    try {
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'architecture_design',
+        {
+          requirements: task.requirements,
+          projectType: task.projectType,
+          scale: task.scale || 'medium',
+          constraints: task.constraints || {}
+        },
+        {
+          priority: task.priority || 'high',
+          timeout: task.timeout || 120000
+        }
+      );
+      
+      return {
+        architecture: result.result.architecture,
+        components: result.result.components,
+        dataFlow: result.result.dataFlow,
+        technologies: result.result.technologies,
+        diagrams: result.result.diagrams,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.log.error(`Collaborative architecture design failed: ${error.message}`);
+      throw new Error(`Collaborative architecture design failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Generate DevOps configuration collaboratively
+   * @private
+   * @param {Object} task - DevOps configuration task
+   * @returns {Promise<Object>} - DevOps configuration
+   */
+  async _generateDevOpsConfigCollaboratively(task) {
+    this.log.info(`Generating DevOps configuration collaboratively for: ${task.platform || 'unspecified platform'}`);
+    
+    try {
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'devops_configuration',
+        {
+          projectType: task.projectType,
+          platform: task.platform,
+          requirements: task.requirements,
+          environment: task.environment || 'production'
+        },
+        {
+          priority: task.priority || 'normal',
+          timeout: task.timeout || 60000
+        }
+      );
+      
+      return {
+        configurations: result.result.configurations,
+        scripts: result.result.scripts,
+        documentation: result.result.documentation,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.log.error(`Collaborative DevOps configuration generation failed: ${error.message}`);
+      throw new Error(`Collaborative DevOps configuration generation failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Debug collaboratively
+   * @private
+   * @param {Object} task - Debugging task
+   * @returns {Promise<Object>} - Debugging results
+   */
+  async _debugCollaboratively(task) {
+    this.log.info(`Debugging collaboratively for: ${task.language || 'unspecified language'}`);
+    
+    try {
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'debugging',
+        {
+          code: task.code,
+          language: task.language,
+          error: task.error,
+          context: task.context,
+          stackTrace: task.stackTrace
+        },
+        {
+          priority: task.priority || 'high',
+          timeout: task.timeout || 60000
+        }
+      );
+      
+      return {
+        rootCause: result.result.rootCause,
+        solution: result.result.solution,
+        fixedCode: result.result.fixedCode,
+        preventionTips: result.result.preventionTips,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.log.error(`Collaborative debugging failed: ${error.message}`);
+      throw new Error(`Collaborative debugging failed: ${error.message}`);
+    }
+  }
+  
+  /**
    * Analyze code for quality, issues, and improvements
    * @private
    * @param {string} code - Code to analyze
    * @param {string} language - Programming language of the code
    * @returns {Object} - Analysis results
    */
-  _analyzeCode(code, language) {
-    // This would be implemented with actual code analysis logic
+  async _analyzeCode(code, language) {
+    // Use specialized model selection if enabled
+    if (this.config.specializedModelSelection) {
+      try {
+        const model = await this.enhancedIntegration.selectSpecializedModel({
+          taskType: 'code_analysis',
+          requirements: {
+            language,
+            analysisType: 'comprehensive'
+          }
+        });
+        
+        const result = await model.execute({
+          task: 'code_analysis',
+          code,
+          language
+        });
+        
+        return {
+          ...result,
+          modelId: model.modelId
+        };
+      } catch (error) {
+        this.log.error(`Specialized code analysis failed: ${error.message}`);
+        // Fall back to standard analysis
+      }
+    }
+    
+    // Standard implementation (fallback)
     return {
       quality: 'medium',
       issues: [
@@ -295,8 +773,37 @@ class ArtificerTentacle extends TentacleBase {
    * @param {string} language - Programming language of the code
    * @returns {Object} - Refactoring suggestions
    */
-  _suggestRefactoring(code, language) {
-    // This would be implemented with actual refactoring logic
+  async _suggestRefactoring(code, language) {
+    // Use collaborative intelligence if enabled
+    if (this.config.collaborativeIntelligence) {
+      try {
+        const result = await this.enhancedIntegration.executeCollaborativeTask(
+          'code_review',
+          {
+            code,
+            language,
+            reviewFocus: ['refactoring']
+          },
+          {
+            priority: 'normal',
+            timeout: 30000
+          }
+        );
+        
+        return {
+          suggestions: result.result.suggestions,
+          collaborativeExecution: {
+            strategy: result.strategy,
+            modelCount: result.modelResults?.length || 0
+          }
+        };
+      } catch (error) {
+        this.log.error(`Collaborative refactoring suggestion failed: ${error.message}`);
+        // Fall back to standard refactoring
+      }
+    }
+    
+    // Standard implementation (fallback)
     return {
       suggestions: [
         {
@@ -314,8 +821,32 @@ class ArtificerTentacle extends TentacleBase {
    * @param {Object} projectInfo - Information about the project
    * @returns {string} - Generated Dockerfile content
    */
-  _generateDockerfile(projectInfo) {
-    // This would be implemented with actual Dockerfile generation logic
+  async _generateDockerfile(projectInfo) {
+    // Use specialized model selection if enabled
+    if (this.config.specializedModelSelection) {
+      try {
+        const model = await this.enhancedIntegration.selectSpecializedModel({
+          taskType: 'devops_configuration',
+          requirements: {
+            configurationType: 'dockerfile',
+            projectType: projectInfo.type,
+            language: projectInfo.language
+          }
+        });
+        
+        const result = await model.execute({
+          task: 'generate_dockerfile',
+          projectInfo
+        });
+        
+        return result.dockerfile;
+      } catch (error) {
+        this.log.error(`Specialized Dockerfile generation failed: ${error.message}`);
+        // Fall back to standard generation
+      }
+    }
+    
+    // Standard implementation (fallback)
     return `FROM node:14-alpine\n\nWORKDIR /app\n\nCOPY package*.json ./\n\nRUN npm install\n\nCOPY . .\n\nEXPOSE 3000\n\nCMD ["npm", "start"]`;
   }
   
@@ -326,8 +857,32 @@ class ArtificerTentacle extends TentacleBase {
    * @param {string} ciSystem - CI/CD system to generate config for
    * @returns {string} - Generated CI/CD configuration
    */
-  _generateCicdConfig(projectInfo, ciSystem) {
-    // This would be implemented with actual CI/CD config generation logic
+  async _generateCicdConfig(projectInfo, ciSystem) {
+    // Use collaborative intelligence if enabled
+    if (this.config.collaborativeIntelligence) {
+      try {
+        const result = await this.enhancedIntegration.executeCollaborativeTask(
+          'devops_configuration',
+          {
+            projectType: projectInfo.type,
+            language: projectInfo.language,
+            ciSystem,
+            requirements: projectInfo.requirements || {}
+          },
+          {
+            priority: 'normal',
+            timeout: 30000
+          }
+        );
+        
+        return result.result.configuration;
+      } catch (error) {
+        this.log.error(`Collaborative CI/CD config generation failed: ${error.message}`);
+        // Fall back to standard generation
+      }
+    }
+    
+    // Standard implementation (fallback)
     return `# Example GitHub Actions workflow\nname: CI\n\non:\n  push:\n    branches: [ main ]\n  pull_request:\n    branches: [ main ]\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v2\n    - name: Setup Node.js\n      uses: actions/setup-node@v1\n      with:\n        node-version: 14.x\n    - run: npm ci\n    - run: npm test`;
   }
   
@@ -337,8 +892,32 @@ class ArtificerTentacle extends TentacleBase {
    * @param {Object} projectInfo - Information about the project
    * @returns {Object} - Project structure
    */
-  _createProjectStructure(projectInfo) {
-    // This would be implemented with actual project structure generation logic
+  async _createProjectStructure(projectInfo) {
+    // Use specialized model selection if enabled
+    if (this.config.specializedModelSelection) {
+      try {
+        const model = await this.enhancedIntegration.selectSpecializedModel({
+          taskType: 'architecture_design',
+          requirements: {
+            projectType: projectInfo.type,
+            language: projectInfo.language,
+            scale: projectInfo.scale || 'medium'
+          }
+        });
+        
+        const result = await model.execute({
+          task: 'create_project_structure',
+          projectInfo
+        });
+        
+        return result.projectStructure;
+      } catch (error) {
+        this.log.error(`Specialized project structure creation failed: ${error.message}`);
+        // Fall back to standard creation
+      }
+    }
+    
+    // Standard implementation (fallback)
     return {
       directories: [
         'src',
@@ -364,13 +943,57 @@ class ArtificerTentacle extends TentacleBase {
    * @param {Object} projectInfo - Information about the project
    * @returns {Object} - Generated boilerplate files
    */
-  _generateBoilerplate(projectInfo) {
-    // This would be implemented with actual boilerplate generation logic
+  async _generateBoilerplate(projectInfo) {
+    // Use collaborative intelligence if enabled
+    if (this.config.collaborativeIntelligence) {
+      try {
+        const result = await this.enhancedIntegration.executeCollaborativeTask(
+          'code_generation',
+          {
+            projectType: projectInfo.type,
+            language: projectInfo.language,
+            requirements: projectInfo.requirements || {},
+            boilerplateType: 'project_initialization'
+          },
+          {
+            priority: 'normal',
+            timeout: 60000
+          }
+        );
+        
+        return result.result.files;
+      } catch (error) {
+        this.log.error(`Collaborative boilerplate generation failed: ${error.message}`);
+        // Fall back to standard generation
+      }
+    }
+    
+    // Standard implementation (fallback)
     return {
       'package.json': '{\n  "name": "example-project",\n  "version": "1.0.0",\n  "description": "Example project",\n  "main": "index.js",\n  "scripts": {\n    "test": "jest"\n  }\n}',
       'README.md': '# Example Project\n\nThis is an example project.\n\n## Installation\n\n```\nnpm install\n```',
       '.gitignore': 'node_modules\n.env\ndist\ncoverage'
     };
+  }
+  
+  /**
+   * Clean up resources before shutdown
+   * @returns {Promise<boolean>} Success status
+   */
+  async cleanup() {
+    this.log.info("Cleaning up Artificer Tentacle resources");
+    
+    try {
+      // Clean up enhanced integration
+      if (this.enhancedIntegration) {
+        await this.enhancedIntegration.cleanup();
+      }
+      
+      return true;
+    } catch (error) {
+      this.log.error(`Cleanup failed: ${error.message}`);
+      return false;
+    }
   }
 }
 
