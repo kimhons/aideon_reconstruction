@@ -1,0 +1,50 @@
+[
+  {
+    "name": "optimize_model_orchestrator",
+    "startTime": 10425.477968,
+    "endTime": 10425.58508,
+    "duration": 0.10711200000150711,
+    "events": [],
+    "tags": {
+      "component": "model_orchestrator"
+    },
+    "relativeStartTime": 10366.153497,
+    "relativeEndTime": 10366.260609
+  },
+  {
+    "name": "optimize_academic_research",
+    "startTime": 10425.668941,
+    "endTime": 10425.680404,
+    "duration": 0.011463000000730972,
+    "events": [],
+    "tags": {
+      "component": "academic_research"
+    },
+    "relativeStartTime": 10366.34447,
+    "relativeEndTime": 10366.355933
+  },
+  {
+    "name": "optimize_data_integration",
+    "startTime": 10425.715087,
+    "endTime": 10425.721951,
+    "duration": 0.006863999999040971,
+    "events": [],
+    "tags": {
+      "component": "data_integration"
+    },
+    "relativeStartTime": 10366.390616,
+    "relativeEndTime": 10366.39748
+  },
+  {
+    "name": "optimize_business_operations",
+    "startTime": 10425.750181,
+    "endTime": 10425.756027,
+    "duration": 0.005846000000019558,
+    "events": [],
+    "tags": {
+      "component": "business_operations"
+    },
+    "relativeStartTime": 10366.42571,
+    "relativeEndTime": 10366.431556
+  }
+]

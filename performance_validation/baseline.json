@@ -1,0 +1,802 @@
+{
+  "core_system": {
+    "name": "Core System Tests",
+    "startTime": 10425.845315,
+    "tests": [
+      {
+        "name": "system_initialization",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 100.40522299999975,
+            "result": {
+              "initialized": true
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 100.33256299999994,
+            "result": {
+              "initialized": true
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 100.33018900000025,
+            "result": {
+              "initialized": true
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 100.33973100000003,
+            "result": {
+              "initialized": true
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 100.04693199999929,
+            "result": {
+              "initialized": true
+            }
+          }
+        ],
+        "avgDuration": 100.29092759999985,
+        "minDuration": 100.04693199999929,
+        "maxDuration": 100.40522299999975,
+        "totalDuration": 501.45463799999925,
+        "startTime": 10425.865364,
+        "endTime": 11128.061481
+      },
+      {
+        "name": "context_switching",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 0.018261000001075445,
+            "result": {
+              "switches": 1000,
+              "result": 499500
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 0.37522100000023784,
+            "result": {
+              "switches": 1000,
+              "result": 499500
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 0.010870000000068103,
+            "result": {
+              "switches": 1000,
+              "result": 499500
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 0.012206999999762047,
+            "result": {
+              "switches": 1000,
+              "result": 499500
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 0.010610999999698834,
+            "result": {
+              "switches": 1000,
+              "result": 499500
+            }
+          }
+        ],
+        "avgDuration": 0.08543400000016846,
+        "minDuration": 0.010610999999698834,
+        "maxDuration": 0.37522100000023784,
+        "totalDuration": 0.42717000000084226,
+        "startTime": 11128.26985,
+        "endTime": 11128.728381
+      },
+      {
+        "name": "message_bus",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 0.010625000000800355,
+            "result": {
+              "messagesSent": 100
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 0.010776999999507098,
+            "result": {
+              "messagesSent": 100
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 0.010240000001431326,
+            "result": {
+              "messagesSent": 100
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 0.0121579999995447,
+            "result": {
+              "messagesSent": 100
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 0.014782000000195694,
+            "result": {
+              "messagesSent": 100
+            }
+          }
+        ],
+        "avgDuration": 0.011716400000295835,
+        "minDuration": 0.010240000001431326,
+        "maxDuration": 0.014782000000195694,
+        "totalDuration": 0.05858200000147917,
+        "startTime": 11128.805354,
+        "endTime": 11128.893469
+      }
+    ],
+    "endTime": 11128.922891,
+    "duration": 703.0775759999997
+  },
+  "model_execution": {
+    "name": "Model Execution Tests",
+    "startTime": 11128.999157,
+    "tests": [
+      {
+        "name": "model_loading",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 200.46991700000035,
+            "result": {
+              "modelLoaded": true,
+              "size": "500MB"
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 200.49962699999924,
+            "result": {
+              "modelLoaded": true,
+              "size": "500MB"
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 200.07168999999885,
+            "result": {
+              "modelLoaded": true,
+              "size": "500MB"
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 200.49123300000065,
+            "result": {
+              "modelLoaded": true,
+              "size": "500MB"
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 200.49997900000017,
+            "result": {
+              "modelLoaded": true,
+              "size": "500MB"
+            }
+          }
+        ],
+        "avgDuration": 200.40648919999984,
+        "minDuration": 200.07168999999885,
+        "maxDuration": 200.49997900000017,
+        "totalDuration": 1002.0324459999993,
+        "startTime": 11129.027817,
+        "endTime": 12532.158467
+      },
+      {
+        "name": "model_inference",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 150.38268699999935,
+            "result": {
+              "inferenceDone": true,
+              "tokens": 100
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 150.17568500000016,
+            "result": {
+              "inferenceDone": true,
+              "tokens": 100
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 150.36070800000016,
+            "result": {
+              "inferenceDone": true,
+              "tokens": 100
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 150.57549100000142,
+            "result": {
+              "inferenceDone": true,
+              "tokens": 100
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 150.37627099999918,
+            "result": {
+              "inferenceDone": true,
+              "tokens": 100
+            }
+          }
+        ],
+        "avgDuration": 150.37416840000006,
+        "minDuration": 150.17568500000016,
+        "maxDuration": 150.57549100000142,
+        "totalDuration": 751.8708420000003,
+        "startTime": 12532.397264,
+        "endTime": 13585.611583
+      },
+      {
+        "name": "model_switching",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 180.0774739999997,
+            "result": {
+              "switched": true,
+              "fromModel": "small",
+              "toModel": "medium"
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 180.4788410000001,
+            "result": {
+              "switched": true,
+              "fromModel": "small",
+              "toModel": "medium"
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 180.50793899999917,
+            "result": {
+              "switched": true,
+              "fromModel": "small",
+              "toModel": "medium"
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 180.47422499999993,
+            "result": {
+              "switched": true,
+              "fromModel": "small",
+              "toModel": "medium"
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 180.43378500000108,
+            "result": {
+              "switched": true,
+              "fromModel": "small",
+              "toModel": "medium"
+            }
+          }
+        ],
+        "avgDuration": 180.3944528,
+        "minDuration": 180.0774739999997,
+        "maxDuration": 180.50793899999917,
+        "totalDuration": 901.972264,
+        "startTime": 13585.901636,
+        "endTime": 14848.955871
+      }
+    ],
+    "endTime": 14849.118322,
+    "duration": 3720.119165
+  },
+  "memory_management": {
+    "name": "Memory Management Tests",
+    "startTime": 14849.191246,
+    "tests": [
+      {
+        "name": "memory_allocation",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 0.47603200000048673,
+            "result": {
+              "allocated": true,
+              "arrayCount": 10
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 0.32158499999968626,
+            "result": {
+              "allocated": true,
+              "arrayCount": 10
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 0.3389499999993859,
+            "result": {
+              "allocated": true,
+              "arrayCount": 10
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 0.35066100000040024,
+            "result": {
+              "allocated": true,
+              "arrayCount": 10
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 0.28738200000043435,
+            "result": {
+              "allocated": true,
+              "arrayCount": 10
+            }
+          }
+        ],
+        "avgDuration": 0.3549220000000787,
+        "minDuration": 0.28738200000043435,
+        "maxDuration": 0.47603200000048673,
+        "totalDuration": 1.7746100000003935,
+        "startTime": 14849.214906,
+        "endTime": 14852.326921
+      },
+      {
+        "name": "garbage_collection",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 100.80379499999981,
+            "result": {
+              "gcTriggered": true
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 100.41069699999935,
+            "result": {
+              "gcTriggered": true
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 100.40464600000087,
+            "result": {
+              "gcTriggered": true
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 100.37569299999996,
+            "result": {
+              "gcTriggered": true
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 100.37616600000001,
+            "result": {
+              "gcTriggered": true
+            }
+          }
+        ],
+        "avgDuration": 100.4741994,
+        "minDuration": 100.37569299999996,
+        "maxDuration": 100.80379499999981,
+        "totalDuration": 502.370997,
+        "startTime": 14852.441173,
+        "endTime": 15555.870278
+      },
+      {
+        "name": "memory_pressure",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 0.010782999999719323,
+            "result": {
+              "heapUsed": 4801656,
+              "heapTotal": 6303744,
+              "rss": 53673984
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 0.02065500000026077,
+            "result": {
+              "heapUsed": 4802960,
+              "heapTotal": 6303744,
+              "rss": 53673984
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 0.020422000001417473,
+            "result": {
+              "heapUsed": 4804352,
+              "heapTotal": 6303744,
+              "rss": 53673984
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 0.013431000001219218,
+            "result": {
+              "heapUsed": 4805504,
+              "heapTotal": 6303744,
+              "rss": 53673984
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 0.008057999999437016,
+            "result": {
+              "heapUsed": 4806816,
+              "heapTotal": 6303744,
+              "rss": 53673984
+            }
+          }
+        ],
+        "avgDuration": 0.01466980000041076,
+        "minDuration": 0.008057999999437016,
+        "maxDuration": 0.02065500000026077,
+        "totalDuration": 0.0733490000020538,
+        "startTime": 15556.092086,
+        "endTime": 15556.274202
+      }
+    ],
+    "endTime": 15556.312034,
+    "duration": 707.1207880000002
+  },
+  "io_network": {
+    "name": "I/O and Network Tests",
+    "startTime": 15556.357901,
+    "tests": [
+      {
+        "name": "file_io",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 120.42525100000057,
+            "result": {
+              "fileOperations": 100,
+              "bytesProcessed": 1048576
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 120.4921489999997,
+            "result": {
+              "fileOperations": 100,
+              "bytesProcessed": 1048576
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 120.04432699999961,
+            "result": {
+              "fileOperations": 100,
+              "bytesProcessed": 1048576
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 120.35367600000063,
+            "result": {
+              "fileOperations": 100,
+              "bytesProcessed": 1048576
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 120.41773999999896,
+            "result": {
+              "fileOperations": 100,
+              "bytesProcessed": 1048576
+            }
+          }
+        ],
+        "avgDuration": 120.34662859999989,
+        "minDuration": 120.04432699999961,
+        "maxDuration": 120.4921489999997,
+        "totalDuration": 601.7331429999995,
+        "startTime": 15556.376241,
+        "endTime": 16398.984159
+      },
+      {
+        "name": "network_request",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 150.43414399999892,
+            "result": {
+              "requestsSent": 10,
+              "bytesTransferred": 524288
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 150.47456799999782,
+            "result": {
+              "requestsSent": 10,
+              "bytesTransferred": 524288
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 150.11357900000075,
+            "result": {
+              "requestsSent": 10,
+              "bytesTransferred": 524288
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 150.4691690000036,
+            "result": {
+              "requestsSent": 10,
+              "bytesTransferred": 524288
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 150.46731,
+            "result": {
+              "requestsSent": 10,
+              "bytesTransferred": 524288
+            }
+          }
+        ],
+        "avgDuration": 150.39175400000022,
+        "minDuration": 150.11357900000075,
+        "maxDuration": 150.47456799999782,
+        "totalDuration": 751.9587700000011,
+        "startTime": 16399.187406,
+        "endTime": 17452.104067
+      },
+      {
+        "name": "data_serialization",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 0.3981869999988703,
+            "result": {
+              "objectsProcessed": 1000,
+              "serializedSize": 30781
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 0.23080800000025192,
+            "result": {
+              "objectsProcessed": 1000,
+              "serializedSize": 30781
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 0.24807199999850127,
+            "result": {
+              "objectsProcessed": 1000,
+              "serializedSize": 30781
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 0.7308239999983925,
+            "result": {
+              "objectsProcessed": 1000,
+              "serializedSize": 30781
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 0.2479459999995015,
+            "result": {
+              "objectsProcessed": 1000,
+              "serializedSize": 30781
+            }
+          }
+        ],
+        "avgDuration": 0.37116739999910353,
+        "minDuration": 0.23080800000025192,
+        "maxDuration": 0.7308239999983925,
+        "totalDuration": 1.8558369999955175,
+        "startTime": 17452.364088,
+        "endTime": 17455.131938
+      }
+    ],
+    "endTime": 17455.22298,
+    "duration": 1898.8650789999992
+  },
+  "tentacles": {
+    "name": "Tentacle Tests",
+    "startTime": 17455.287247,
+    "tests": [
+      {
+        "name": "academic_research_tentacle",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 180.38365200000044,
+            "result": {
+              "operationsCompleted": 5,
+              "documentsProcessed": 20
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 180.21468000000095,
+            "result": {
+              "operationsCompleted": 5,
+              "documentsProcessed": 20
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 180.36802700000044,
+            "result": {
+              "operationsCompleted": 5,
+              "documentsProcessed": 20
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 180.43138499999986,
+            "result": {
+              "operationsCompleted": 5,
+              "documentsProcessed": 20
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 180.36364999999932,
+            "result": {
+              "operationsCompleted": 5,
+              "documentsProcessed": 20
+            }
+          }
+        ],
+        "avgDuration": 180.3522788000002,
+        "minDuration": 180.21468000000095,
+        "maxDuration": 180.43138499999986,
+        "totalDuration": 901.761394000001,
+        "startTime": 17455.314392,
+        "endTime": 18718.20255
+      },
+      {
+        "name": "data_integration_tentacle",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 150.10562500000015,
+            "result": {
+              "sourcesConnected": 3,
+              "recordsProcessed": 1000
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 150.5900279999987,
+            "result": {
+              "sourcesConnected": 3,
+              "recordsProcessed": 1000
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 150.4701380000006,
+            "result": {
+              "sourcesConnected": 3,
+              "recordsProcessed": 1000
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 150.37707199999932,
+            "result": {
+              "sourcesConnected": 3,
+              "recordsProcessed": 1000
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 150.46527699999933,
+            "result": {
+              "sourcesConnected": 3,
+              "recordsProcessed": 1000
+            }
+          }
+        ],
+        "avgDuration": 150.40162799999962,
+        "minDuration": 150.10562500000015,
+        "maxDuration": 150.5900279999987,
+        "totalDuration": 752.0081399999981,
+        "startTime": 18718.384603,
+        "endTime": 19771.303691
+      },
+      {
+        "name": "business_operations_tentacle",
+        "iterations": [
+          {
+            "iteration": 0,
+            "duration": 130.28182500000185,
+            "result": {
+              "workflowsExecuted": 2,
+              "reportsGenerated": 5
+            }
+          },
+          {
+            "iteration": 1,
+            "duration": 130.41334699999788,
+            "result": {
+              "workflowsExecuted": 2,
+              "reportsGenerated": 5
+            }
+          },
+          {
+            "iteration": 2,
+            "duration": 130.35160299999916,
+            "result": {
+              "workflowsExecuted": 2,
+              "reportsGenerated": 5
+            }
+          },
+          {
+            "iteration": 3,
+            "duration": 130.41245700000218,
+            "result": {
+              "workflowsExecuted": 2,
+              "reportsGenerated": 5
+            }
+          },
+          {
+            "iteration": 4,
+            "duration": 130.4464850000004,
+            "result": {
+              "workflowsExecuted": 2,
+              "reportsGenerated": 5
+            }
+          }
+        ],
+        "avgDuration": 130.3811434000003,
+        "minDuration": 130.28182500000185,
+        "maxDuration": 130.4464850000004,
+        "totalDuration": 651.9057170000015,
+        "startTime": 19771.638193,
+        "endTime": 20684.448432
+      }
+    ],
+    "endTime": 20684.703677,
+    "duration": 3229.416430000001
+  }
+}

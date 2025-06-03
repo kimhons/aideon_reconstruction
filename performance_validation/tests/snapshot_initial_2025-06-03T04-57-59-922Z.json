@@ -1,0 +1,25 @@
+{
+  "label": "initial",
+  "timestamp": 48.872604,
+  "memory": {
+    "rss": 46059520,
+    "heapTotal": 5779456,
+    "heapUsed": 4944320,
+    "external": 1594004,
+    "arrayBuffers": 11515,
+    "timestamp": 49.031056
+  },
+  "cpu": {
+    "system": 12068,
+    "user": 28159,
+    "cores": 4,
+    "load": [
+      0,
+      0,
+      0
+    ],
+    "timestamp": 49.4009
+  },
+  "counters": {},
+  "gauges": {}
+}

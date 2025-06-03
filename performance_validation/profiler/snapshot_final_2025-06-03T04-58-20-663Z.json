@@ -1,0 +1,36 @@
+{
+  "label": "final",
+  "timestamp": 20790.587505,
+  "memory": {
+    "rss": 54161408,
+    "heapTotal": 7352320,
+    "heapUsed": 5395056,
+    "external": 1616080,
+    "arrayBuffers": 33551,
+    "timestamp": 20790.632661
+  },
+  "cpu": {
+    "system": 39774,
+    "user": 126262,
+    "cores": 4,
+    "load": [
+      0,
+      0,
+      0
+    ],
+    "timestamp": 20790.823009
+  },
+  "counters": {},
+  "gauges": {
+    "memory.rss": 54161408,
+    "memory.heapTotal": 7352320,
+    "memory.heapUsed": 5158536,
+    "memory.external": 1593044,
+    "memory.arrayBuffers": 10515,
+    "cpu.system": 39774,
+    "cpu.user": 117496,
+    "cpu.load.1m": 0,
+    "cpu.load.5m": 0,
+    "cpu.load.15m": 0
+  }
+}
