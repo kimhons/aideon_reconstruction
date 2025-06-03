@@ -2,146 +2,164 @@
 
 ## Overview
 
-The Standardized Metrics Collection system provides a comprehensive framework for collecting, processing, analyzing, and visualizing metrics across all components of the Aideon system. This system enables performance monitoring, resource optimization, anomaly detection, and data-driven decision making.
+The Standardized Metrics Collection System provides a comprehensive framework for collecting, processing, analyzing, and visualizing metrics across all components of the Aideon system. This system enables real-time monitoring, historical analysis, anomaly detection, and performance optimization through a unified metrics interface.
 
-## Key Components
+## Architecture
 
-### MetricsCollector
+The metrics system consists of the following core components:
 
-The `MetricsCollector` class serves as the central component of the metrics collection system, providing a standardized interface for:
+### Core Components
 
-- Defining metrics and dimensions
-- Recording metric values with optional dimensions
-- Flushing metrics to persistent storage
-- Querying historical metrics data
-- Calculating statistics on metric values
-- Subscribing to real-time metric events
-- Collecting system-level metrics automatically
+1. **MetricsCollector**: Central component for defining, collecting, and storing metrics
+2. **MetricsIntegration**: Integration utilities for connecting with other Aideon components
+3. **MetricsVisualization**: Tools for generating visual representations of metrics data
+4. **MetricsAnalytics**: Advanced analytics capabilities for trend analysis and anomaly detection
 
-## Features
+### Key Features
 
-### Metric Types
-
-The system supports multiple metric types:
-
-- **Counter**: Monotonically increasing values (e.g., request count, error count)
-- **Gauge**: Values that can increase or decrease (e.g., memory usage, CPU usage)
-- **Histogram**: Distribution of values (e.g., request duration, response size)
-- **Summary**: Statistical summary of values (e.g., percentiles of request duration)
-
-### Dimensions
-
-Metrics can be segmented by dimensions, which provide additional context:
-
-- **User-defined dimensions**: Custom dimensions for specific use cases
-- **System dimensions**: Automatically added dimensions like hostname, process ID
-- **Dimension validation**: Optional validation of dimension values against allowed values
-
-### Storage and Retention
-
-Metrics are stored with configurable retention policies:
-
-- **In-memory buffer**: For real-time access and processing
-- **Persistent storage**: JSON files with timestamp-based organization
-- **Retention period**: Configurable retention period for historical data
-- **Automatic cleanup**: Removal of metrics data beyond the retention period
-
-### Real-Time Analysis
-
-The system provides real-time metrics processing capabilities:
-
-- **Event-based subscription**: Subscribe to metric events as they occur
-- **Real-time alerting**: Set up alerts based on metric thresholds
-- **Stream processing**: Process metrics in real-time for immediate insights
-
-### System Metrics
-
-The system automatically collects key system-level metrics:
-
-- **CPU usage**: Overall and per-core CPU utilization
-- **Memory usage**: Total, used, and available memory
-- **Disk usage**: Storage utilization and I/O statistics
-- **Network usage**: Bytes sent/received and connection statistics
+- **Multiple Metric Types**: Support for counters, gauges, histograms, and summaries
+- **Dimensional Data**: Rich context through multi-dimensional metrics segmentation
+- **Real-Time Analysis**: Subscription-based real-time metrics monitoring
+- **Persistent Storage**: Configurable storage with retention policies
+- **System Metrics**: Automatic collection of system-level performance metrics
+- **Advanced Analytics**: Trend analysis, anomaly detection, and correlation analysis
+- **Visualization**: Rich visualization options for dashboards and reports
+- **Integration Points**: Seamless integration with caching, performance, error, and configuration systems
 
 ## Usage Examples
 
-### Basic Usage
+### Basic Metrics Collection
 
 ```javascript
 const MetricsCollector = require('./MetricsCollector');
 
-// Create a metrics collector instance
-const metrics = new MetricsCollector({
-  storageDir: '/path/to/metrics/storage',
+// Initialize collector
+const collector = new MetricsCollector({
+  storageDir: '/path/to/metrics',
   flushInterval: 60000, // 1 minute
   retentionPeriod: 30 // 30 days
 });
 
 // Define metrics
-metrics.defineMetric('api.request.count', 'counter', 'API request count');
-metrics.defineMetric('api.request.duration', 'histogram', 'API request duration in ms');
+collector.defineMetric('app.requests', 'counter', 'Request count');
+collector.defineMetric('app.response_time', 'histogram', 'Response time in ms');
+collector.defineMetric('app.error_rate', 'gauge', 'Error rate percentage');
 
 // Define dimensions
-metrics.defineDimension('endpoint', 'API endpoint');
-metrics.defineDimension('status', 'HTTP status code');
+collector.defineDimension('app.endpoint', 'API endpoint');
+collector.defineDimension('app.status', 'Response status');
 
 // Record metrics
-metrics.recordMetric('api.request.count', 1, {
-  endpoint: '/users',
-  status: '200'
+collector.recordMetric('app.requests', 1, {
+  'app.endpoint': '/api/users',
+  'app.status': 'success'
 });
 
-metrics.recordMetric('api.request.duration', 42, {
-  endpoint: '/users',
-  status: '200'
+collector.recordMetric('app.response_time', 42.5, {
+  'app.endpoint': '/api/users'
 });
 
-// Query metrics
-const results = await metrics.queryMetrics({
-  metricName: 'api.request.duration',
-  startTime: Date.now() - 3600000, // Last hour
-  dimensions: { endpoint: '/users' }
-});
-
-// Calculate statistics
-const stats = metrics.calculateStatistics(results);
-console.log(`Average request duration: ${stats.avg}ms`);
-console.log(`95th percentile: ${stats.p95}ms`);
-
-// Clean up
-await metrics.stop();
+collector.recordMetric('app.error_rate', 0.5);
 ```
 
-### Real-Time Monitoring
+### Integration with Other Systems
 
 ```javascript
-// Subscribe to real-time metric events
-const unsubscribe = metrics.subscribeToMetrics((metric) => {
-  if (metric.name === 'api.request.duration' && metric.value > 1000) {
-    console.log(`Slow request detected: ${metric.value}ms for ${metric.dimensions.endpoint}`);
-  }
-});
+const { integrateCachingMetrics } = require('./MetricsIntegration');
+const MetricsCollector = require('./MetricsCollector');
+const CacheManager = require('../caching/CacheManager');
 
-// Later, unsubscribe when no longer needed
-unsubscribe();
+// Initialize components
+const metricsCollector = new MetricsCollector();
+const cacheManager = new CacheManager();
+
+// Set up integration
+const cleanup = integrateCachingMetrics(metricsCollector, cacheManager);
+
+// Later, when no longer needed
+cleanup();
 ```
 
-## Integration with Other Components
+### Advanced Analytics
 
-The Standardized Metrics Collection system integrates with other Aideon components:
+```javascript
+const { analyzeTrends, detectAnomalies } = require('./MetricsAnalytics');
+const MetricsCollector = require('./MetricsCollector');
 
-- **Performance Optimization**: Provides data for performance analysis and optimization
-- **Advanced Caching Strategies**: Monitors cache performance and usage patterns
-- **Error Recovery**: Tracks error rates and recovery effectiveness
-- **Configuration System**: Adapts metrics collection based on configuration
-- **Tentacles**: Each tentacle can define and record domain-specific metrics
+// Initialize collector
+const collector = new MetricsCollector();
+
+// Query metrics data
+const metricsData = await collector.queryMetrics({
+  metricName: 'app.response_time',
+  startTime: Date.now() - (24 * 60 * 60 * 1000) // Last 24 hours
+});
+
+// Analyze trends
+const trends = analyzeTrends(metricsData, {
+  windowSize: 10,
+  detectChangePoints: true,
+  forecastPoints: 12
+});
+
+console.log(`Trend direction: ${trends.trendDirection}`);
+console.log(`Trend strength: ${trends.trendStrength}`);
+
+// Detect anomalies
+const anomalies = detectAnomalies(metricsData, {
+  method: 'zscore',
+  threshold: 3.0
+});
+
+console.log(`Found ${anomalies.anomalyCount} anomalies`);
+```
+
+### Visualization
+
+```javascript
+const { generateMetricsDashboard } = require('./MetricsVisualization');
+const MetricsCollector = require('./MetricsCollector');
+
+// Initialize collector
+const collector = new MetricsCollector();
+
+// Generate dashboard
+const dashboard = await generateMetricsDashboard(collector, {
+  title: 'System Performance',
+  refreshInterval: 30000, // 30 seconds
+  timeRange: 3600000, // 1 hour
+  metrics: [
+    'system.cpu.usage',
+    'system.memory.usage',
+    'app.requests',
+    'app.response_time'
+  ]
+});
+
+// Use dashboard configuration with visualization library
+renderDashboard(dashboard);
+```
+
+## Integration Points
+
+The Metrics Collection System integrates with the following Aideon components:
+
+1. **Caching System**: Tracks cache hits, misses, evictions, and performance
+2. **Performance Profiling**: Monitors operation times, resource usage, and throughput
+3. **Error Recovery**: Measures error occurrences, recovery attempts, and success rates
+4. **Configuration System**: Tracks configuration changes, load times, and validation failures
+
+## Performance Considerations
+
+- The metrics system is designed for minimal overhead during collection
+- Real-time analysis can be disabled for performance-critical applications
+- Storage and retention policies can be configured based on system requirements
+- Metrics are buffered in memory and flushed periodically to reduce I/O overhead
 
 ## Future Enhancements
 
-Planned enhancements for the metrics collection system include:
-
-- **Distributed metrics aggregation**: Aggregating metrics across multiple instances
-- **Advanced visualization**: Enhanced dashboards and visualization tools
-- **Machine learning integration**: Anomaly detection and predictive analytics
-- **Custom metric types**: Support for user-defined metric types
-- **Metric metadata**: Additional metadata for richer context and analysis
+- Distributed metrics collection across multiple nodes
+- Machine learning-based predictive analytics
+- Automated alerting based on anomaly detection
+- Integration with external monitoring systems
+- Custom metrics visualization templates
