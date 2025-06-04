@@ -1,529 +1,286 @@
 /**
- * EventBus.js
+ * @fileoverview Enhanced EventBus implementation with improved debugging, instance tracking,
+ * and robust event handling for the Autonomous Error Recovery System.
  * 
- * A centralized event bus for the Autonomous Error Recovery System.
- * Provides robust event registration, propagation, and tracking.
+ * @module core/error_recovery/foundation/EventBus
  */
 
 const EventEmitter = require('events');
-const { v4: uuidv4 } = require('uuid');
 
+/**
+ * Enhanced EventBus with debugging capabilities and instance tracking.
+ * Provides a robust event system for component communication.
+ */
 class EventBus {
-  static instance;
-  
   /**
-   * Creates a new EventBus instance
+   * Creates a new EventBus instance.
+   * @param {Object} options - Configuration options
+   * @param {number} [options.maxHistorySize=1000] - Maximum number of events to keep in history
+   * @param {boolean} [options.debug=false] - Enable debug logging
    */
-  constructor() {
+  constructor(options = {}) {
+    // Create unique instance ID for tracking
+    this.instanceId = Math.random().toString(36).substr(2, 9);
+    
+    // Create internal event emitter
     this.emitter = new EventEmitter();
-    this.eventRegistry = new Map();
-    this.handlerRegistry = new Map();
-    this.logger = console;
-    this.historyEnabled = false;
+    
+    // Configure options
+    this.maxHistorySize = options.maxHistorySize || 1000;
+    this.debug = options.debug || false;
+    
+    // Event history tracking
     this.eventHistory = [];
-    this.historyMaxSize = 1000;
+    this.historyEnabled = true;
+    
+    // Debug output
+    console.log(`Created EventBus with ID: ${this.instanceId}`);
+    console.log(`Event history tracking enabled with max size ${this.maxHistorySize}`);
   }
   
   /**
-   * Gets the singleton instance of EventBus
-   * 
-   * @returns {EventBus} - The singleton EventBus instance
-   */
-  static getInstance() {
-    if (!EventBus.instance) {
-      EventBus.instance = new EventBus();
-    }
-    return EventBus.instance;
-  }
-  
-  /**
-   * Registers an event listener
-   * 
+   * Registers an event listener.
    * @param {string} event - Event name
-   * @param {Function} listener - Event handler function
-   * @param {Object} metadata - Optional metadata about the listener
-   * @returns {string} - Unique handler ID for later removal
+   * @param {Function} listener - Event listener function
+   * @returns {EventBus} This EventBus instance for chaining
    */
-  on(event, listener, metadata = {}) {
-    if (!event || typeof event !== 'string') {
-      throw new Error('Event name must be a non-empty string');
+  on(event, listener) {
+    // Generate unique ID for this listener for tracking
+    const listenerId = require('crypto').randomUUID();
+    
+    // Debug output
+    if (this.debug) {
+      console.log(`[${this.instanceId}] Registering listener for event '${event}' with ID ${listenerId}`);
     }
     
-    if (!listener || typeof listener !== 'function') {
-      throw new Error(`Invalid listener for event '${event}': must be a function`);
-    }
-    
-    // Handle wildcard listeners
-    if (event === '*') {
-      const handlerId = uuidv4();
-      
-      // Create a wrapper function that will be called for all events
-      const wildcardListener = (eventName, ...args) => {
-        try {
-          listener(eventName, ...args);
-        } catch (error) {
-          this.logger.error(`Error in wildcard listener ${handlerId} for event '${eventName}': ${error.message}`, error);
-        }
-      };
-      
-      // Register for all existing events
-      for (const existingEvent of this.eventRegistry.keys()) {
-        this.emitter.on(existingEvent, (...args) => wildcardListener(existingEvent, ...args));
+    // Wrap listener to add debugging
+    const wrappedListener = (...args) => {
+      if (this.debug) {
+        console.log(`[${this.instanceId}] Listener ${listenerId} called for event '${event}'`);
       }
-      
-      // Register the wildcard listener for tracking
-      if (!this.handlerRegistry.has('*')) {
-        this.handlerRegistry.set('*', new Map());
-      }
-      
-      this.handlerRegistry.get('*').set(handlerId, {
-        listener,
-        wildcardListener,
-        registeredEvents: new Set(this.eventRegistry.keys()),
-        metadata: {
-          ...metadata,
-          registeredAt: Date.now(),
-          isWildcard: true
-        }
-      });
-      
-      this.logger.debug(`Registered wildcard listener with ID ${handlerId}`);
-      
-      return handlerId;
-    }
-    
-    this.emitter.on(event, listener);
-    
-    // Register the listener for tracking
-    if (!this.handlerRegistry.has(event)) {
-      this.handlerRegistry.set(event, new Map());
-    }
-    
-    const handlerId = uuidv4();
-    this.handlerRegistry.get(event).set(handlerId, {
-      listener,
-      metadata: {
-        ...metadata,
-        registeredAt: Date.now()
-      }
-    });
-    
-    // Register event metadata
-    if (!this.eventRegistry.has(event)) {
-      this.eventRegistry.set(event, {
-        subscribers: 0,
-        lastEmitted: null,
-        emitCount: 0
-      });
-    }
-    
-    const eventMeta = this.eventRegistry.get(event);
-    eventMeta.subscribers++;
-    
-    this.logger.debug(`Registered listener for event '${event}' with ID ${handlerId}`);
-    
-    return handlerId;
-  }
-  
-  /**
-   * Removes an event listener
-   * 
-   * @param {string} event - Event name or listener ID
-   * @param {Function|string} listenerOrId - Listener function or handler ID
-   * @returns {boolean} - Whether the listener was successfully removed
-   */
-  off(event, listenerOrId) {
-    // Handle case where only ID is provided
-    if (arguments.length === 1 && typeof event === 'string') {
-      // Try to find the listener ID across all events
-      for (const [eventName, handlers] of this.handlerRegistry.entries()) {
-        if (handlers.has(event)) {
-          const handler = handlers.get(event);
-          this.emitter.off(eventName, handler.listener);
-          handlers.delete(event);
-          
-          // Update event metadata
-          const eventMeta = this.eventRegistry.get(eventName);
-          if (eventMeta) {
-            eventMeta.subscribers--;
-          }
-          
-          this.logger.debug(`Removed listener for event '${eventName}' with ID ${event}`);
-          return true;
-        }
-      }
-      
-      this.logger.warn(`Failed to remove listener: no handler found with ID ${event}`);
-      return false;
-    }
-    
-    if (!event || typeof event !== 'string') {
-      throw new Error('Event name must be a non-empty string');
-    }
-    
-    if (!listenerOrId) {
-      throw new Error(`Invalid listener or ID for event '${event}'`);
-    }
-    
-    // Handle wildcard listeners
-    if (event === '*' && typeof listenerOrId === 'string') {
-      if (this.handlerRegistry.has('*') && this.handlerRegistry.get('*').has(listenerOrId)) {
-        const handler = this.handlerRegistry.get('*').get(listenerOrId);
-        
-        // Remove from all events
-        for (const existingEvent of this.eventRegistry.keys()) {
-          this.emitter.off(existingEvent, handler.wildcardListener);
-        }
-        
-        this.handlerRegistry.get('*').delete(listenerOrId);
-        this.logger.debug(`Removed wildcard listener with ID ${listenerOrId}`);
-        return true;
-      }
-      
-      this.logger.warn(`Failed to remove wildcard listener: no handler found with ID ${listenerOrId}`);
-      return false;
-    }
-    
-    if (typeof listenerOrId === 'string') {
-      // Remove by ID
-      if (this.handlerRegistry.has(event)) {
-        const handler = this.handlerRegistry.get(event).get(listenerOrId);
-        if (handler) {
-          this.emitter.off(event, handler.listener);
-          this.handlerRegistry.get(event).delete(listenerOrId);
-          
-          // Update event metadata
-          const eventMeta = this.eventRegistry.get(event);
-          if (eventMeta) {
-            eventMeta.subscribers--;
-          }
-          
-          this.logger.debug(`Removed listener for event '${event}' with ID ${listenerOrId}`);
-          return true;
-        }
-      }
-      
-      this.logger.warn(`Failed to remove listener: no handler found for event '${event}' with ID ${listenerOrId}`);
-      return false;
-    } else {
-      // Remove by listener function
-      this.emitter.off(event, listenerOrId);
-      
-      // Update handler registry
-      if (this.handlerRegistry.has(event)) {
-        const handlers = this.handlerRegistry.get(event);
-        for (const [id, handler] of handlers.entries()) {
-          if (handler.listener === listenerOrId) {
-            handlers.delete(id);
-            
-            // Update event metadata
-            const eventMeta = this.eventRegistry.get(event);
-            if (eventMeta) {
-              eventMeta.subscribers--;
-            }
-            
-            this.logger.debug(`Removed listener for event '${event}' with ID ${id}`);
-            return true;
-          }
-        }
-      }
-      
-      this.logger.warn(`Failed to remove listener: no matching handler found for event '${event}'`);
-      return false;
-    }
-  }
-  
-  /**
-   * Registers a one-time event listener
-   * 
-   * @param {string} event - Event name
-   * @param {Function} listener - Event handler function
-   * @param {Object} metadata - Optional metadata about the listener
-   * @returns {string} - Unique handler ID for later removal
-   */
-  once(event, listener, metadata = {}) {
-    if (!event || typeof event !== 'string') {
-      throw new Error('Event name must be a non-empty string');
-    }
-    
-    if (!listener || typeof listener !== 'function') {
-      throw new Error(`Invalid listener for event '${event}': must be a function`);
-    }
-    
-    const handlerId = uuidv4();
-    
-    const onceListener = (...args) => {
-      // Remove from registry
-      if (this.handlerRegistry.has(event)) {
-        this.handlerRegistry.get(event).delete(handlerId);
-        
-        // Update event metadata
-        const eventMeta = this.eventRegistry.get(event);
-        if (eventMeta) {
-          eventMeta.subscribers--;
-        }
-      }
-      
-      // Call original listener
-      listener(...args);
+      return listener(...args);
     };
     
-    this.emitter.once(event, onceListener);
+    // Store original listener for removal
+    wrappedListener.originalListener = listener;
+    wrappedListener.listenerId = listenerId;
     
-    // Register the listener for tracking
-    if (!this.handlerRegistry.has(event)) {
-      this.handlerRegistry.set(event, new Map());
-    }
+    // Register with emitter
+    this.emitter.on(event, wrappedListener);
     
-    this.handlerRegistry.get(event).set(handlerId, {
-      listener: onceListener,
-      metadata: {
-        ...metadata,
-        once: true,
-        registeredAt: Date.now()
-      }
-    });
+    // Debug output
+    console.log(`Registered listener for event '${event}' with ID ${listenerId}`);
     
-    // Register event metadata
-    if (!this.eventRegistry.has(event)) {
-      this.eventRegistry.set(event, {
-        subscribers: 0,
-        lastEmitted: null,
-        emitCount: 0
-      });
-    }
-    
-    const eventMeta = this.eventRegistry.get(event);
-    eventMeta.subscribers++;
-    
-    this.logger.debug(`Registered one-time listener for event '${event}' with ID ${handlerId}`);
-    
-    return handlerId;
+    return this;
   }
   
   /**
-   * Emits an event
-   * 
+   * Registers a one-time event listener.
    * @param {string} event - Event name
-   * @param {...any} args - Arguments to pass to listeners
-   * @returns {boolean} - Whether any listeners were called
+   * @param {Function} listener - Event listener function
+   * @returns {EventBus} This EventBus instance for chaining
+   */
+  once(event, listener) {
+    // Generate unique ID for this listener for tracking
+    const listenerId = require('crypto').randomUUID();
+    
+    // Debug output
+    if (this.debug) {
+      console.log(`[${this.instanceId}] Registering one-time listener for event '${event}' with ID ${listenerId}`);
+    }
+    
+    // Wrap listener to add debugging
+    const wrappedListener = (...args) => {
+      if (this.debug) {
+        console.log(`[${this.instanceId}] One-time listener ${listenerId} called for event '${event}'`);
+      }
+      return listener(...args);
+    };
+    
+    // Store original listener for removal
+    wrappedListener.originalListener = listener;
+    wrappedListener.listenerId = listenerId;
+    
+    // Register with emitter
+    this.emitter.once(event, wrappedListener);
+    
+    return this;
+  }
+  
+  /**
+   * Removes an event listener.
+   * @param {string} event - Event name
+   * @param {Function} listener - Event listener function to remove
+   * @returns {EventBus} This EventBus instance for chaining
+   */
+  off(event, listener) {
+    // Find wrapped listener
+    const listeners = this.emitter.listeners(event);
+    const wrappedListener = listeners.find(l => l.originalListener === listener);
+    
+    if (wrappedListener) {
+      // Debug output
+      if (this.debug) {
+        console.log(`[${this.instanceId}] Removing listener ${wrappedListener.listenerId} for event '${event}'`);
+      }
+      
+      // Remove from emitter
+      this.emitter.off(event, wrappedListener);
+    } else {
+      // Direct removal attempt
+      this.emitter.off(event, listener);
+    }
+    
+    return this;
+  }
+  
+  /**
+   * Emits an event.
+   * @param {string} event - Event name
+   * @param {...any} args - Event arguments
+   * @returns {boolean} True if the event had listeners, false otherwise
    */
   emit(event, ...args) {
-    if (!event || typeof event !== 'string') {
-      throw new Error('Event name must be a non-empty string');
-    }
-    
-    // Update event metadata
-    if (this.eventRegistry.has(event)) {
-      const eventMeta = this.eventRegistry.get(event);
-      eventMeta.lastEmitted = Date.now();
-      eventMeta.emitCount++;
-    } else {
-      // Create metadata if this is the first emission
-      this.eventRegistry.set(event, {
-        subscribers: 0,
-        lastEmitted: Date.now(),
-        emitCount: 1
-      });
-      
-      // Register new event for existing wildcard listeners
-      if (this.handlerRegistry.has('*')) {
-        const wildcardHandlers = this.handlerRegistry.get('*');
-        for (const [id, handler] of wildcardHandlers.entries()) {
-          if (!handler.registeredEvents.has(event)) {
-            this.emitter.on(event, (...eventArgs) => {
-              try {
-                handler.wildcardListener(event, ...eventArgs);
-              } catch (error) {
-                this.logger.error(`Error in wildcard listener ${id} for event '${event}': ${error.message}`, error);
-              }
-            });
-            handler.registeredEvents.add(event);
-          }
-        }
-      }
-    }
-    
-    // Record in history if enabled
+    // Track in history if enabled
     if (this.historyEnabled) {
-      // Store the first argument as 'data' for compatibility with tests
-      // while preserving all arguments in 'args' for backward compatibility
+      const eventData = args[0] || {};
       this.eventHistory.push({
         event,
         args,
-        data: args[0], // Extract the first argument as 'data'
+        data: eventData,
         timestamp: Date.now()
       });
       
-      // Trim history if it exceeds max size
-      if (this.eventHistory.length > this.historyMaxSize) {
+      // Trim history if needed
+      if (this.eventHistory.length > this.maxHistorySize) {
         this.eventHistory.shift();
       }
     }
     
-    // Call regular listeners
-    const result = this.emitter.emit(event, ...args);
+    // Get listener count for debugging
+    const listenerCount = this.emitter.listenerCount(event);
     
-    // Call wildcard listeners directly for immediate notification
-    // This ensures wildcard listeners are called even for events that weren't registered at listener creation time
-    if (this.handlerRegistry.has('*')) {
-      const wildcardHandlers = this.handlerRegistry.get('*');
-      for (const [id, handler] of wildcardHandlers.entries()) {
-        try {
-          // Call the original listener directly with the event name and arguments
-          handler.listener(event, ...args);
-        } catch (error) {
-          this.logger.error(`Error in wildcard listener ${id}: ${error.message}`, error);
-        }
+    // Debug output
+    const listenerText = listenerCount > 0 ? `with ${listenerCount} listeners` : 'with no listeners';
+    console.log(`Emitted event '${event}' ${listenerText}`);
+    
+    // Emit event
+    return this.emitter.emit(event, ...args);
+  }
+  
+  /**
+   * Gets the number of listeners for an event.
+   * @param {string} event - Event name
+   * @returns {number} Number of listeners
+   */
+  listenerCount(event) {
+    return this.emitter.listenerCount(event);
+  }
+  
+  /**
+   * Gets all listeners for an event.
+   * @param {string} event - Event name
+   * @returns {Function[]} Array of listener functions
+   */
+  listeners(event) {
+    return this.emitter.listeners(event);
+  }
+  
+  /**
+   * Removes all listeners for an event or all events.
+   * @param {string} [event] - Event name, or all events if not specified
+   * @returns {EventBus} This EventBus instance for chaining
+   */
+  removeAllListeners(event) {
+    // Debug output
+    if (this.debug) {
+      if (event) {
+        console.log(`[${this.instanceId}] Removing all listeners for event '${event}'`);
+      } else {
+        console.log(`[${this.instanceId}] Removing all listeners for all events`);
       }
     }
     
-    this.logger.debug(`Emitted event '${event}' with ${result ? 'listeners' : 'no listeners'}`);
+    // Remove listeners
+    this.emitter.removeAllListeners(event);
+    console.log('Removed all event listeners');
     
-    return result;
-  }
-  
-  /**
-   * Gets metadata for a specific event
-   * 
-   * @param {string} event - Event name
-   * @returns {Object|null} - Event metadata or null if not found
-   */
-  getEventMetadata(event) {
-    return this.eventRegistry.get(event) || null;
-  }
-  
-  /**
-   * Gets all registered event names
-   * 
-   * @returns {Array<string>} - Array of event names
-   */
-  getRegisteredEvents() {
-    return Array.from(this.eventRegistry.keys());
-  }
-  
-  /**
-   * Gets all subscribers for a specific event
-   * 
-   * @param {string} event - Event name
-   * @returns {Array<Object>} - Array of subscriber objects with id and metadata
-   */
-  getEventSubscribers(event) {
-    if (!this.handlerRegistry.has(event)) {
-      return [];
-    }
-    
-    return Array.from(this.handlerRegistry.get(event).entries())
-      .map(([id, handler]) => ({
-        id,
-        metadata: handler.metadata
-      }));
-  }
-  
-  /**
-   * Removes all event listeners
-   */
-  removeAllListeners() {
-    this.emitter.removeAllListeners();
-    this.handlerRegistry.clear();
-    
-    // Update event metadata
-    for (const [event, metadata] of this.eventRegistry.entries()) {
-      metadata.subscribers = 0;
-    }
-    
-    this.logger.info('Removed all event listeners');
-  }
-  
-  /**
-   * Resets the event bus to its initial state
-   */
-  reset() {
-    this.emitter.removeAllListeners();
-    this.eventRegistry.clear();
-    this.handlerRegistry.clear();
-    this.eventHistory = [];
-    this.logger.info('Event bus reset to initial state');
-  }
-  
-  /**
-   * Sets the logger instance
-   * 
-   * @param {Object} logger - Logger instance with debug, info, warn, error methods
-   * @returns {EventBus} - This EventBus instance for chaining
-   */
-  setLogger(logger) {
-    if (!logger || typeof logger !== 'object') {
-      throw new Error('Invalid logger: must be an object');
-    }
-    
-    if (!logger.debug || !logger.info || !logger.warn || !logger.error) {
-      throw new Error('Invalid logger: must have debug, info, warn, error methods');
-    }
-    
-    this.logger = logger;
     return this;
   }
   
   /**
-   * Enables or disables event history tracking
-   * 
-   * @param {boolean} enabled - Whether to enable history tracking
-   * @param {number} maxSize - Maximum number of events to keep in history
-   * @returns {EventBus} - This EventBus instance for chaining
+   * Gets the event history.
+   * @returns {Array} Event history
    */
-  setHistoryEnabled(enabled, maxSize = 1000) {
-    this.historyEnabled = !!enabled;
-    
-    if (typeof maxSize === 'number' && maxSize > 0) {
-      this.historyMaxSize = maxSize;
-    }
-    
-    if (!this.historyEnabled) {
-      this.eventHistory = [];
-    }
-    
-    this.logger.debug(`Event history tracking ${this.historyEnabled ? 'enabled' : 'disabled'} with max size ${this.historyMaxSize}`);
-    return this;
+  getEventHistory() {
+    return [...this.eventHistory];
   }
   
   /**
-   * Gets the event history
-   * 
-   * @param {number} limit - Maximum number of events to return
-   * @returns {Array<Object>} - Array of event history entries
+   * Alias for getEventHistory for backward compatibility.
+   * @returns {Array} Event history
    */
-  getEventHistory(limit = null) {
-    if (!this.historyEnabled) {
-      return [];
-    }
-    
-    if (limit === null) {
-      return [...this.eventHistory];
-    }
-    
-    return this.eventHistory.slice(-limit);
+  getHistory() {
+    return this.getEventHistory();
   }
   
   /**
-   * Alias for getEventHistory for backward compatibility
-   * 
-   * @param {number} limit - Maximum number of events to return
-   * @returns {Array<Object>} - Array of event history entries
-   */
-  getHistory(limit = null) {
-    return this.getEventHistory(limit);
-  }
-  
-  /**
-   * Clears the event history
-   * 
-   * @returns {EventBus} - This EventBus instance for chaining
+   * Clears the event history.
+   * @returns {EventBus} This EventBus instance for chaining
    */
   clearEventHistory() {
     this.eventHistory = [];
-    this.logger.debug('Event history cleared');
+    console.log('Event history cleared');
     return this;
+  }
+  
+  /**
+   * Enables or disables event history tracking.
+   * @param {boolean} enabled - Whether to enable history tracking
+   * @returns {EventBus} This EventBus instance for chaining
+   */
+  setHistoryTracking(enabled) {
+    this.historyEnabled = enabled;
+    console.log(`Event history tracking ${enabled ? 'enabled' : 'disabled'}`);
+    return this;
+  }
+  
+  /**
+   * Gets the current state of the EventBus for debugging.
+   * @returns {Object} EventBus state
+   */
+  getDebugState() {
+    const events = {};
+    const eventNames = this.emitter.eventNames();
+    
+    for (const event of eventNames) {
+      events[event] = this.emitter.listenerCount(event);
+    }
+    
+    return {
+      instanceId: this.instanceId,
+      events,
+      historySize: this.eventHistory.length,
+      historyEnabled: this.historyEnabled
+    };
+  }
+  
+  /**
+   * Prints the current state of the EventBus for debugging.
+   */
+  printDebugState() {
+    const state = this.getDebugState();
+    console.log('EventBus Debug State:');
+    console.log(`- Instance ID: ${state.instanceId}`);
+    console.log('- Event Listeners:');
+    
+    const eventNames = this.emitter.eventNames();
+    for (const event of eventNames) {
+      console.log(`  - ${event}: ${this.emitter.listenerCount(event)} listeners`);
+    }
+    
+    console.log(`- History Size: ${state.historySize}`);
+    console.log(`- History Enabled: ${state.historyEnabled}`);
   }
 }
 

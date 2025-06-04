@@ -1,255 +1,169 @@
 /**
- * DependencyContainer.js
+ * @fileoverview Enhanced DependencyContainer implementation with improved singleton handling
+ * and robust dependency resolution for the Autonomous Error Recovery System.
  * 
- * A robust dependency injection container for the Autonomous Error Recovery System.
- * Manages component lifecycle, dependency resolution, and initialization sequence.
+ * @module core/error_recovery/foundation/DependencyContainer
  */
 
+/**
+ * Enhanced DependencyContainer with improved singleton handling and dependency tracking.
+ * Provides a robust dependency injection system for component wiring.
+ */
 class DependencyContainer {
   /**
-   * Creates a new DependencyContainer instance
+   * Creates a new DependencyContainer instance.
    */
   constructor() {
-    this.registry = new Map();
+    // Maps for storing registrations and instances
+    this.instances = new Map();
+    this.factories = new Map();
     this.singletons = new Map();
-    this.initializers = new Map();
-    this.logger = console;
-    this.resolutionStacks = new Map(); // Track resolution stacks per call chain
-    this.resolutionInProgress = new Set(); // Global set to track all dependencies currently being resolved
-  }
-
-  /**
-   * Registers a component factory with the container
-   * 
-   * @param {string} name - Unique identifier for the dependency
-   * @param {Function} factory - Async factory function that creates the dependency
-   * @param {Object} options - Registration options
-   * @param {boolean} options.singleton - Whether to cache and reuse the instance (default: true)
-   * @returns {DependencyContainer} - This container instance for chaining
-   */
-  register(name, factory, options = { singleton: true }) {
-    if (!name || typeof name !== 'string') {
-      throw new Error('Dependency name must be a non-empty string');
-    }
     
-    if (!factory || typeof factory !== 'function') {
-      throw new Error(`Invalid factory for dependency '${name}': must be a function`);
-    }
+    // Dependency resolution tracking to detect circular dependencies
+    this.resolutionStack = [];
     
-    this.registry.set(name, { factory, options });
-    this.logger.debug(`Registered dependency: ${name}`);
-    return this;
+    console.log('DependencyContainer initialized');
   }
-
+  
   /**
-   * Registers an initializer function for a dependency
-   * 
+   * Registers a factory function for a dependency.
    * @param {string} name - Dependency name
-   * @param {Function} initializer - Async initializer function
-   * @returns {DependencyContainer} - This container instance for chaining
+   * @param {Function} factory - Factory function that creates the dependency
+   * @param {boolean} [singleton=false] - Whether this dependency should be a singleton
+   * @returns {DependencyContainer} This container instance for chaining
    */
-  registerInitializer(name, initializer) {
-    if (!name || typeof name !== 'string') {
-      throw new Error('Dependency name must be a non-empty string');
+  register(name, factory, singleton = false) {
+    if (typeof factory !== 'function') {
+      throw new Error(`Factory for '${name}' must be a function`);
     }
     
-    if (!initializer || typeof initializer !== 'function') {
-      throw new Error(`Invalid initializer for dependency '${name}': must be a function`);
+    this.factories.set(name, factory);
+    
+    if (singleton) {
+      this.singletons.set(name, true);
     }
     
-    this.initializers.set(name, initializer);
-    this.logger.debug(`Registered initializer for dependency: ${name}`);
     return this;
   }
-
+  
   /**
-   * Resolves a dependency by name with cycle detection
-   * 
-   * @param {string} name - Dependency name to resolve
-   * @param {string} [callerId] - ID of the caller for tracking resolution chains
-   * @returns {Promise<any>} - Resolved dependency instance
-   * @throws {Error} - If dependency is not registered, resolution fails, or circular dependency detected
+   * Registers a factory function as a singleton.
+   * @param {string} name - Dependency name
+   * @param {Function} factory - Factory function that creates the dependency
+   * @returns {DependencyContainer} This container instance for chaining
    */
-  async resolve(name, callerId = 'root') {
-    if (!this.registry.has(name)) {
-      throw new Error(`Dependency not registered: ${name}`);
-    }
-
-    const { factory, options } = this.registry.get(name);
-
-    // Return cached singleton if available
-    if (options.singleton && this.singletons.has(name)) {
-      return this.singletons.get(name);
-    }
-
-    // Check global resolution set first - this catches circular dependencies across different call chains
-    if (this.resolutionInProgress.has(name)) {
-      const stackInfo = Array.from(this.resolutionInProgress).join(' -> ') + ' -> ' + name;
-      throw new Error(`Circular dependency detected (global): ${stackInfo}`);
-    }
-
-    // Initialize resolution stack for this call chain if not exists
-    if (!this.resolutionStacks.has(callerId)) {
-      this.resolutionStacks.set(callerId, new Set());
+  registerSingleton(name, factory) {
+    return this.register(name, factory, true);
+  }
+  
+  /**
+   * Registers an existing instance for a dependency.
+   * @param {string} name - Dependency name
+   * @param {any} instance - Instance to register
+   * @returns {DependencyContainer} This container instance for chaining
+   */
+  registerInstance(name, instance) {
+    this.instances.set(name, instance);
+    return this;
+  }
+  
+  /**
+   * Resolves a dependency by name.
+   * @param {string} name - Dependency name
+   * @returns {any} Resolved dependency instance
+   */
+  resolve(name) {
+    // Check for circular dependencies
+    if (this.resolutionStack.includes(name)) {
+      const dependencyChain = [...this.resolutionStack, name].join(' -> ');
+      throw new Error(`Circular dependency detected: ${dependencyChain}`);
     }
     
-    const resolutionStack = this.resolutionStacks.get(callerId);
-
-    // Check for circular dependencies in this specific call chain
-    if (resolutionStack.has(name)) {
-      const stackArray = Array.from(resolutionStack);
-      stackArray.push(name); // Add current dependency to show the complete cycle
-      
-      // Clear the resolution stack to prevent memory leaks
-      this.resolutionStacks.delete(callerId);
-      
-      throw new Error(`Circular dependency detected (local): ${stackArray.join(' -> ')}`);
+    // Check if instance already exists (for singletons)
+    if (this.instances.has(name)) {
+      return this.instances.get(name);
     }
-
-    // Add to both local and global resolution tracking
-    resolutionStack.add(name);
-    this.resolutionInProgress.add(name);
     
-    // Generate a unique ID for this resolution chain
-    const resolutionId = `${callerId}_${name}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // Check if factory exists
+    if (!this.factories.has(name)) {
+      throw new Error(`No registration found for dependency: ${name}`);
+    }
     
-    this.logger.debug(`Resolving dependency: ${name} (stack: ${Array.from(resolutionStack).join(', ')})`);
-
+    // Track resolution stack for circular dependency detection
+    this.resolutionStack.push(name);
+    
     try {
-      // Create new instance with this resolution chain ID
-      const instance = await factory(this, resolutionId);
-
-      // Initialize if needed
-      if (this.initializers.has(name)) {
-        await this.initializers.get(name)(instance, this, resolutionId);
+      // Create instance using factory
+      const factory = this.factories.get(name);
+      const instance = factory(this);
+      
+      // Store instance if singleton
+      if (this.singletons.has(name)) {
+        this.instances.set(name, instance);
       }
-
-      // Cache singleton
-      if (options.singleton) {
-        this.singletons.set(name, instance);
-      }
-
+      
       return instance;
-    } catch (error) {
-      this.logger.error(`Failed to resolve dependency '${name}': ${error.message}`);
-      throw error; // Preserve original error for better debugging
     } finally {
-      // Remove from both local and global resolution tracking
-      resolutionStack.delete(name);
-      this.resolutionInProgress.delete(name);
-      
-      // Clean up empty resolution stacks
-      if (resolutionStack.size === 0) {
-        this.resolutionStacks.delete(callerId);
-      }
-      
-      this.logger.debug(`Completed resolving dependency: ${name}`);
+      // Remove from resolution stack
+      this.resolutionStack.pop();
     }
   }
-
+  
   /**
-   * Initializes all registered dependencies in the correct order
-   * 
-   * @returns {Promise<DependencyContainer>} - This container instance for chaining
+   * Checks if a dependency is registered.
+   * @param {string} name - Dependency name
+   * @returns {boolean} True if dependency is registered
    */
-  async initializeAll() {
-    const initialized = new Set();
-    const dependencies = Array.from(this.registry.keys());
-
-    this.logger.info(`Initializing ${dependencies.length} dependencies...`);
-
-    // Reset global resolution tracking before initialization
-    this.resolutionInProgress.clear();
-
-    for (const name of dependencies) {
-      await this.initializeDependency(name, initialized, new Set());
-    }
-
-    this.logger.info(`Successfully initialized ${initialized.size} dependencies`);
-    return this;
+  has(name) {
+    return this.instances.has(name) || this.factories.has(name);
   }
-
+  
   /**
-   * Initializes a single dependency and its dependencies
-   * 
-   * @param {string} name - Dependency name to initialize
-   * @param {Set<string>} initialized - Set of already initialized dependencies
-   * @param {Set<string>} visiting - Set of dependencies currently being initialized (for cycle detection)
-   * @returns {Promise<void>}
-   * @throws {Error} - If circular dependency is detected
-   * @private
+   * Removes a dependency registration.
+   * @param {string} name - Dependency name
+   * @returns {boolean} True if dependency was removed
    */
-  async initializeDependency(name, initialized, visiting) {
-    if (initialized.has(name)) return;
+  remove(name) {
+    const hadInstance = this.instances.delete(name);
+    const hadFactory = this.factories.delete(name);
+    this.singletons.delete(name);
     
-    // Check both local and global circular dependencies
-    if (visiting.has(name) || this.resolutionInProgress.has(name)) {
-      const visitingArray = Array.from(visiting);
-      visitingArray.push(name);
-      throw new Error(`Circular dependency detected during initialization: ${visitingArray.join(' -> ')}`);
-    }
-
-    visiting.add(name);
-    this.resolutionInProgress.add(name);
-    
-    this.logger.debug(`Initializing dependency: ${name}`);
-
-    try {
-      // Resolve and initialize with a unique initialization chain ID
-      const initId = `init_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      await this.resolve(name, initId);
-      
-      initialized.add(name);
-      this.logger.debug(`Successfully initialized dependency: ${name}`);
-    } finally {
-      visiting.delete(name);
-      this.resolutionInProgress.delete(name);
-    }
+    return hadInstance || hadFactory;
   }
-
+  
   /**
-   * Disposes of all singleton instances that have a dispose method
-   * 
-   * @returns {Promise<void>}
+   * Clears all dependency registrations.
    */
-  async dispose() {
-    this.logger.info(`Disposing ${this.singletons.size} singleton instances...`);
-    
-    // Dispose all singletons that have dispose method
-    for (const [name, instance] of this.singletons.entries()) {
-      if (typeof instance.dispose === 'function') {
-        try {
-          await instance.dispose();
-          this.logger.debug(`Disposed singleton: ${name}`);
-        } catch (error) {
-          this.logger.warn(`Error disposing singleton '${name}': ${error.message}`);
-        }
-      }
-    }
-    
+  clear() {
+    this.instances.clear();
+    this.factories.clear();
     this.singletons.clear();
-    this.resolutionStacks.clear();
-    this.resolutionInProgress.clear();
-    this.logger.info('All singletons disposed');
+    this.resolutionStack = [];
   }
-
+  
   /**
-   * Sets the logger instance
-   * 
-   * @param {Object} logger - Logger instance with debug, info, warn, error methods
-   * @returns {DependencyContainer} - This container instance for chaining
+   * Gets the current state of the container for debugging.
+   * @returns {Object} Container state
    */
-  setLogger(logger) {
-    if (!logger || typeof logger !== 'object') {
-      throw new Error('Invalid logger: must be an object');
-    }
-    
-    if (!logger.debug || !logger.info || !logger.warn || !logger.error) {
-      throw new Error('Invalid logger: must have debug, info, warn, error methods');
-    }
-    
-    this.logger = logger;
-    return this;
+  getDebugState() {
+    return {
+      registeredDependencies: Array.from(this.factories.keys()),
+      resolvedSingletons: Array.from(this.instances.keys()),
+      singletonDependencies: Array.from(this.singletons.keys()),
+      currentResolutionStack: [...this.resolutionStack]
+    };
+  }
+  
+  /**
+   * Prints the current state of the container for debugging.
+   */
+  printDebugState() {
+    const state = this.getDebugState();
+    console.log('DependencyContainer Debug State:');
+    console.log('- Registered Dependencies:', state.registeredDependencies);
+    console.log('- Resolved Singletons:', state.resolvedSingletons);
+    console.log('- Singleton Dependencies:', state.singletonDependencies);
+    console.log('- Current Resolution Stack:', state.currentResolutionStack);
   }
 }
 
