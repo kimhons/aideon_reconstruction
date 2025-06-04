@@ -19,6 +19,9 @@ class EventBus {
     this.eventRegistry = new Map();
     this.handlerRegistry = new Map();
     this.logger = console;
+    this.historyEnabled = false;
+    this.eventHistory = [];
+    this.historyMaxSize = 1000;
   }
   
   /**
@@ -48,6 +51,40 @@ class EventBus {
     
     if (!listener || typeof listener !== 'function') {
       throw new Error(`Invalid listener for event '${event}': must be a function`);
+    }
+    
+    // Handle wildcard listeners
+    if (event === '*') {
+      const wildcardListener = (eventName, ...args) => {
+        listener(eventName, ...args);
+      };
+      
+      // Store the original listener and the wrapper for later removal
+      const handlerId = uuidv4();
+      
+      // Register for all existing events
+      for (const existingEvent of this.eventRegistry.keys()) {
+        this.emitter.on(existingEvent, (...args) => wildcardListener(existingEvent, ...args));
+      }
+      
+      // Register the wildcard listener for tracking
+      if (!this.handlerRegistry.has('*')) {
+        this.handlerRegistry.set('*', new Map());
+      }
+      
+      this.handlerRegistry.get('*').set(handlerId, {
+        listener,
+        wildcardListener,
+        metadata: {
+          ...metadata,
+          registeredAt: Date.now(),
+          isWildcard: true
+        }
+      });
+      
+      this.logger.debug(`Registered wildcard listener with ID ${handlerId}`);
+      
+      return handlerId;
     }
     
     this.emitter.on(event, listener);
@@ -86,17 +123,60 @@ class EventBus {
   /**
    * Removes an event listener
    * 
-   * @param {string} event - Event name
+   * @param {string} event - Event name or listener ID
    * @param {Function|string} listenerOrId - Listener function or handler ID
    * @returns {boolean} - Whether the listener was successfully removed
    */
   off(event, listenerOrId) {
+    // Handle case where only ID is provided
+    if (arguments.length === 1 && typeof event === 'string') {
+      // Try to find the listener ID across all events
+      for (const [eventName, handlers] of this.handlerRegistry.entries()) {
+        if (handlers.has(event)) {
+          const handler = handlers.get(event);
+          this.emitter.off(eventName, handler.listener);
+          handlers.delete(event);
+          
+          // Update event metadata
+          const eventMeta = this.eventRegistry.get(eventName);
+          if (eventMeta) {
+            eventMeta.subscribers--;
+          }
+          
+          this.logger.debug(`Removed listener for event '${eventName}' with ID ${event}`);
+          return true;
+        }
+      }
+      
+      this.logger.warn(`Failed to remove listener: no handler found with ID ${event}`);
+      return false;
+    }
+    
     if (!event || typeof event !== 'string') {
       throw new Error('Event name must be a non-empty string');
     }
     
     if (!listenerOrId) {
       throw new Error(`Invalid listener or ID for event '${event}'`);
+    }
+    
+    // Handle wildcard listeners
+    if (event === '*' && typeof listenerOrId === 'string') {
+      if (this.handlerRegistry.has('*') && this.handlerRegistry.get('*').has(listenerOrId)) {
+        const handler = this.handlerRegistry.get('*').get(listenerOrId);
+        
+        // Remove from all events
+        for (const existingEvent of this.eventRegistry.keys()) {
+          this.emitter.off(existingEvent, handler.wildcardListener);
+        }
+        
+        this.handlerRegistry.get('*').delete(listenerOrId);
+        this.logger.debug(`Removed wildcard listener with ID ${listenerOrId}`);
+        return true;
+      }
+      
+      this.logger.warn(`Failed to remove wildcard listener: no handler found with ID ${listenerOrId}`);
+      return false;
     }
     
     if (typeof listenerOrId === 'string') {
@@ -242,7 +322,35 @@ class EventBus {
       });
     }
     
+    // Record in history if enabled
+    if (this.historyEnabled) {
+      this.eventHistory.push({
+        event,
+        args,
+        timestamp: Date.now()
+      });
+      
+      // Trim history if it exceeds max size
+      if (this.eventHistory.length > this.historyMaxSize) {
+        this.eventHistory.shift();
+      }
+    }
+    
+    // Call regular listeners
     const result = this.emitter.emit(event, ...args);
+    
+    // Call wildcard listeners
+    if (this.handlerRegistry.has('*')) {
+      const wildcardHandlers = this.handlerRegistry.get('*');
+      for (const [id, handler] of wildcardHandlers.entries()) {
+        try {
+          handler.listener(event, ...args);
+        } catch (error) {
+          this.logger.error(`Error in wildcard listener ${id}: ${error.message}`, error);
+        }
+      }
+    }
+    
     this.logger.debug(`Emitted event '${event}' with ${result ? 'listeners' : 'no listeners'}`);
     
     return result;
@@ -307,6 +415,7 @@ class EventBus {
     this.emitter.removeAllListeners();
     this.eventRegistry.clear();
     this.handlerRegistry.clear();
+    this.eventHistory = [];
     this.logger.info('Event bus reset to initial state');
   }
   
@@ -326,6 +435,67 @@ class EventBus {
     }
     
     this.logger = logger;
+    return this;
+  }
+  
+  /**
+   * Enables or disables event history tracking
+   * 
+   * @param {boolean} enabled - Whether to enable history tracking
+   * @param {number} maxSize - Maximum number of events to keep in history
+   * @returns {EventBus} - This EventBus instance for chaining
+   */
+  setHistoryEnabled(enabled, maxSize = 1000) {
+    this.historyEnabled = !!enabled;
+    
+    if (typeof maxSize === 'number' && maxSize > 0) {
+      this.historyMaxSize = maxSize;
+    }
+    
+    if (!this.historyEnabled) {
+      this.eventHistory = [];
+    }
+    
+    this.logger.debug(`Event history tracking ${this.historyEnabled ? 'enabled' : 'disabled'} with max size ${this.historyMaxSize}`);
+    return this;
+  }
+  
+  /**
+   * Gets the event history
+   * 
+   * @param {number} limit - Maximum number of events to return
+   * @returns {Array<Object>} - Array of event history entries
+   */
+  getEventHistory(limit = null) {
+    if (!this.historyEnabled) {
+      return [];
+    }
+    
+    if (limit === null) {
+      return [...this.eventHistory];
+    }
+    
+    return this.eventHistory.slice(-limit);
+  }
+  
+  /**
+   * Alias for getEventHistory for backward compatibility
+   * 
+   * @param {number} limit - Maximum number of events to return
+   * @returns {Array<Object>} - Array of event history entries
+   */
+  getHistory(limit = null) {
+    return this.getEventHistory(limit);
+  }
+  
+  /**
+   * Clears the event history
+   * 
+   * @returns {EventBus} - This EventBus instance for chaining
+   */
+  clearEventHistory() {
+    this.eventHistory = [];
+    this.logger.debug('Event history cleared');
     return this;
   }
 }
