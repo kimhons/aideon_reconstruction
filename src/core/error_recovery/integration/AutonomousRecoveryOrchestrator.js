@@ -91,9 +91,25 @@ class AutonomousRecoveryOrchestrator {
    * @param {Object} options.config - Configuration settings
    */
   constructor(options = {}) {
-    this.container = options.container;
-    this.externalEventEmitter = options.eventEmitter; // Optional external event emitter
-    this.logger = options.logger || console;
+    // Handle both direct container passing and options object with container property
+    if (options && typeof options === 'object' && options.constructor && options.constructor.name === 'DependencyContainer') {
+      // Direct container passing
+      this.container = options;
+      this.externalEventEmitter = null;
+      this.logger = console;
+    } else {
+      // Options object
+      this.container = options.container;
+      this.externalEventEmitter = options.eventEmitter; // Optional external event emitter
+      this.logger = options.logger || console;
+    }
+    
+    // Ensure container is valid
+    if (!this.container || typeof this.container !== 'object' || typeof this.container.resolve !== 'function') {
+      console.error("[ERROR] Invalid container provided to AutonomousRecoveryOrchestrator");
+      throw new Error("Invalid container: must be a DependencyContainer instance with a resolve method");
+    }
+    
     this.config = options.config || {
       maxRecoveryAttempts: 3,
       recoveryTimeoutMs: 60000, // 1 minute
@@ -234,6 +250,83 @@ class AutonomousRecoveryOrchestrator {
     if (this.externalEventEmitter && typeof this.externalEventEmitter.emit === 'function') {
       this.externalEventEmitter.emit(eventName, data);
     }
+  }
+  
+  /**
+   * Creates a unique signature for an error to use with the circuit breaker.
+   * @private
+   * @param {Error} error - Error object
+   * @param {Object} context - Error context
+   * @returns {string} Error signature
+   */
+  _createErrorSignature(error, context) {
+    // Use error type, message, and component ID if available
+    const errorType = error.name || 'Error';
+    const errorMessage = error.message || '';
+    const componentId = error.componentId || context.componentId || 'unknown';
+    
+    return `${errorType}::${errorMessage}::${componentId}`;
+  }
+  
+  /**
+   * Starts a recovery flow for an error.
+   * This is the main entry point for error recovery.
+   * 
+   * @param {Error|string} error - Error object or error message
+   * @param {Object} [context] - Error context
+   * @returns {Promise<Object>} Recovery result
+   */
+  async startRecoveryFlow(error, context = {}) {
+    console.log("[DEBUG] AutonomousRecoveryOrchestrator.startRecoveryFlow() called");
+    
+    // Ensure error is an Error object
+    if (typeof error === 'string') {
+      error = new Error(error);
+    }
+    
+    // Ensure context has an errorId
+    if (!context.errorId) {
+      context.errorId = `error-${uuidv4()}`;
+    }
+    
+    // Record metrics - safely access metricsCollector
+    if (this.metricsCollector && typeof this.metricsCollector.incrementCounter === 'function') {
+      this.metricsCollector.incrementCounter("recovery_flows_requested");
+    }
+    
+    // Initialize dependencies if not already done
+    if (!this.causalAnalyzer) {
+      console.log("[DEBUG] Dependencies not initialized, calling initialize()");
+      await this.initialize();
+    }
+    
+    // Register event listener for flow completion if using external event emitter
+    let flowCompletionPromise = null;
+    if (this.externalEventEmitter) {
+      flowCompletionPromise = new Promise((resolve) => {
+        const listenerID = this.externalEventEmitter.on('recovery:completed', (data) => {
+          if (data.errorId === context.errorId) {
+            this.externalEventEmitter.off(listenerID);
+            resolve(data.result);
+          }
+        });
+      });
+    }
+    
+    // Handle the error through the main recovery pipeline
+    const result = await this.handleError(error, context);
+    
+    // If using external event emitter, wait for flow completion event
+    if (flowCompletionPromise) {
+      const eventResult = await Promise.race([
+        flowCompletionPromise,
+        new Promise(resolve => setTimeout(() => resolve(result), this.config.recoveryTimeoutMs))
+      ]);
+      
+      return eventResult;
+    }
+    
+    return result;
   }
   
   /**
@@ -599,9 +692,9 @@ class AutonomousRecoveryOrchestrator {
       
       this.activeFlows.set(flowId, {
         ...this.activeFlows.get(flowId),
-        status: "error",
+        status: "failed",
         endTime: Date.now(),
-        error: error.message
+        reason: "internal_error"
       });
       
       // Record metrics - safely access metricsCollector
@@ -609,40 +702,31 @@ class AutonomousRecoveryOrchestrator {
         this.metricsCollector.recordMetric("recovery_flow_duration", duration);
       }
       if (this.metricsCollector && typeof this.metricsCollector.incrementCounter === 'function') {
-        this.metricsCollector.incrementCounter("recovery_flows_errored");
+        this.metricsCollector.incrementCounter("recovery_flows_failed");
+        this.metricsCollector.incrementCounter("internal_errors");
       }
       
-      this._emitEvent("recovery:flow:error", { flowId, errorId, error, duration });
+      this._emitEvent("recovery:flow:failed", { 
+        flowId, 
+        errorId, 
+        reason: "internal_error", 
+        error: error.message,
+        duration 
+      });
       
       return {
         success: false,
         flowId,
         errorId,
-        reason: "error",
-        message: `Recovery flow failed with error: ${error.message}`
+        reason: "internal_error",
+        message: `Internal error during recovery flow: ${error.message}`,
+        error: error.message
       };
     }
   }
   
   /**
-   * Creates a unique signature for an error to use with the circuit breaker.
-   * @private
-   * @param {Error} error - Error object
-   * @param {Object} context - Error context
-   * @returns {string} Error signature
-   */
-  _createErrorSignature(error, context) {
-    // Use error name, message, and component ID if available
-    const name = error.name || 'Error';
-    const message = error.message || '';
-    const componentId = context.componentId || '';
-    
-    // Create a simplified signature that groups similar errors
-    return `${name}:${componentId}:${message.substring(0, 50)}`;
-  }
-  
-  /**
-   * Gets the status of a recovery flow.
+   * Gets the status of an active recovery flow.
    * @param {string} flowId - ID of the recovery flow
    * @returns {Object|null} Flow status or null if not found
    */
@@ -655,8 +739,13 @@ class AutonomousRecoveryOrchestrator {
    * @returns {Array<Object>} List of active flows
    */
   getAllFlows() {
-    return Array.from(this.activeFlows.values());
+    return Array.from(this.activeFlows.entries()).map(([id, flow]) => ({
+      id,
+      ...flow
+    }));
   }
 }
 
-module.exports = { AutonomousRecoveryOrchestrator, CircuitBreaker };
+module.exports = {
+  AutonomousRecoveryOrchestrator
+};

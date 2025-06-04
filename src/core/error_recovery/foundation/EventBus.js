@@ -346,9 +346,12 @@ class EventBus {
     
     // Record in history if enabled
     if (this.historyEnabled) {
+      // Store the first argument as 'data' for compatibility with tests
+      // while preserving all arguments in 'args' for backward compatibility
       this.eventHistory.push({
         event,
         args,
+        data: args[0], // Extract the first argument as 'data'
         timestamp: Date.now()
       });
       
@@ -361,11 +364,13 @@ class EventBus {
     // Call regular listeners
     const result = this.emitter.emit(event, ...args);
     
-    // Call wildcard listeners
+    // Call wildcard listeners directly for immediate notification
+    // This ensures wildcard listeners are called even for events that weren't registered at listener creation time
     if (this.handlerRegistry.has('*')) {
       const wildcardHandlers = this.handlerRegistry.get('*');
       for (const [id, handler] of wildcardHandlers.entries()) {
         try {
+          // Call the original listener directly with the event name and arguments
           handler.listener(event, ...args);
         } catch (error) {
           this.logger.error(`Error in wildcard listener ${id}: ${error.message}`, error);
