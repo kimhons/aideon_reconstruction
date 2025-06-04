@@ -55,12 +55,16 @@ class EventBus {
     
     // Handle wildcard listeners
     if (event === '*') {
-      const wildcardListener = (eventName, ...args) => {
-        listener(eventName, ...args);
-      };
-      
-      // Store the original listener and the wrapper for later removal
       const handlerId = uuidv4();
+      
+      // Create a wrapper function that will be called for all events
+      const wildcardListener = (eventName, ...args) => {
+        try {
+          listener(eventName, ...args);
+        } catch (error) {
+          this.logger.error(`Error in wildcard listener ${handlerId} for event '${eventName}': ${error.message}`, error);
+        }
+      };
       
       // Register for all existing events
       for (const existingEvent of this.eventRegistry.keys()) {
@@ -75,6 +79,7 @@ class EventBus {
       this.handlerRegistry.get('*').set(handlerId, {
         listener,
         wildcardListener,
+        registeredEvents: new Set(this.eventRegistry.keys()),
         metadata: {
           ...metadata,
           registeredAt: Date.now(),
@@ -320,6 +325,23 @@ class EventBus {
         lastEmitted: Date.now(),
         emitCount: 1
       });
+      
+      // Register new event for existing wildcard listeners
+      if (this.handlerRegistry.has('*')) {
+        const wildcardHandlers = this.handlerRegistry.get('*');
+        for (const [id, handler] of wildcardHandlers.entries()) {
+          if (!handler.registeredEvents.has(event)) {
+            this.emitter.on(event, (...eventArgs) => {
+              try {
+                handler.wildcardListener(event, ...eventArgs);
+              } catch (error) {
+                this.logger.error(`Error in wildcard listener ${id} for event '${event}': ${error.message}`, error);
+              }
+            });
+            handler.registeredEvents.add(event);
+          }
+        }
+      }
     }
     
     // Record in history if enabled
