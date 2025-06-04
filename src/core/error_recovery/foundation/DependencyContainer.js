@@ -14,6 +14,7 @@ class DependencyContainer {
     this.singletons = new Map();
     this.initializers = new Map();
     this.logger = console;
+    this.resolutionStacks = new Map(); // Track resolution stacks per call chain
   }
 
   /**
@@ -61,13 +62,14 @@ class DependencyContainer {
   }
 
   /**
-   * Resolves a dependency by name
+   * Resolves a dependency by name with cycle detection
    * 
    * @param {string} name - Dependency name to resolve
+   * @param {string} [callerId] - ID of the caller for tracking resolution chains
    * @returns {Promise<any>} - Resolved dependency instance
-   * @throws {Error} - If dependency is not registered or resolution fails
+   * @throws {Error} - If dependency is not registered, resolution fails, or circular dependency detected
    */
-  async resolve(name) {
+  async resolve(name, callerId = 'root') {
     if (!this.registry.has(name)) {
       throw new Error(`Dependency not registered: ${name}`);
     }
@@ -79,13 +81,39 @@ class DependencyContainer {
       return this.singletons.get(name);
     }
 
+    // Initialize resolution stack for this call chain if not exists
+    if (!this.resolutionStacks.has(callerId)) {
+      this.resolutionStacks.set(callerId, new Set());
+    }
+    
+    const resolutionStack = this.resolutionStacks.get(callerId);
+
+    // Check for circular dependencies
+    if (resolutionStack.has(name)) {
+      const stackArray = Array.from(resolutionStack);
+      stackArray.push(name); // Add current dependency to show the complete cycle
+      
+      // Clear the resolution stack to prevent memory leaks
+      this.resolutionStacks.delete(callerId);
+      
+      throw new Error(`Circular dependency detected: ${stackArray.join(' -> ')}`);
+    }
+
+    // Add to resolution stack
+    resolutionStack.add(name);
+    
+    // Generate a unique ID for this resolution chain
+    const resolutionId = `${callerId}_${name}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    this.logger.debug(`Resolving dependency: ${name} (stack: ${Array.from(resolutionStack).join(', ')})`);
+
     try {
-      // Create new instance
-      const instance = await factory(this);
+      // Create new instance with this resolution chain ID
+      const instance = await factory(this, resolutionId);
 
       // Initialize if needed
       if (this.initializers.has(name)) {
-        await this.initializers.get(name)(instance, this);
+        await this.initializers.get(name)(instance, this, resolutionId);
       }
 
       // Cache singleton
@@ -95,8 +123,18 @@ class DependencyContainer {
 
       return instance;
     } catch (error) {
-      this.logger.error(`Failed to resolve dependency '${name}': ${error.message}`, error);
-      throw new Error(`Failed to resolve dependency '${name}': ${error.message}`);
+      this.logger.error(`Failed to resolve dependency '${name}': ${error.message}`);
+      throw error; // Preserve original error for better debugging
+    } finally {
+      // Remove from resolution stack regardless of success or failure
+      resolutionStack.delete(name);
+      
+      // Clean up empty resolution stacks
+      if (resolutionStack.size === 0) {
+        this.resolutionStacks.delete(callerId);
+      }
+      
+      this.logger.debug(`Completed resolving dependency: ${name}`);
     }
   }
 
@@ -138,8 +176,9 @@ class DependencyContainer {
     visiting.add(name);
     this.logger.debug(`Initializing dependency: ${name}`);
 
-    // Resolve and initialize
-    await this.resolve(name);
+    // Resolve and initialize with a unique initialization chain ID
+    const initId = `init_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    await this.resolve(name, initId);
 
     visiting.delete(name);
     initialized.add(name);
@@ -161,12 +200,13 @@ class DependencyContainer {
           await instance.dispose();
           this.logger.debug(`Disposed singleton: ${name}`);
         } catch (error) {
-          this.logger.warn(`Error disposing singleton '${name}': ${error.message}`, error);
+          this.logger.warn(`Error disposing singleton '${name}': ${error.message}`);
         }
       }
     }
     
     this.singletons.clear();
+    this.resolutionStacks.clear();
     this.logger.info('All singletons disposed');
   }
 
