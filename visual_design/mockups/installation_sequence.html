@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aideon Installation Sequence</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f0f0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .desktop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23f5f5f5" width="100" height="100"/></svg>');
+        }
+        
+        .taskbar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            background-color: #202020;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            z-index: 100;
+        }
+        
+        .start-button {
+            width: 30px;
+            height: 30px;
+            background-color: #0078d7;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        .taskbar-icons {
+            display: flex;
+            height: 30px;
+        }
+        
+        .taskbar-icon {
+            width: 30px;
+            height: 30px;
+            background-color: #555;
+            margin-right: 5px;
+            border-radius: 4px;
+        }
+        
+        .system-tray {
+            position: absolute;
+            right: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .tray-icon {
+            width: 20px;
+            height: 20px;
+            background-color: #aaa;
+            margin-left: 5px;
+            border-radius: 50%;
+        }
+        
+        .aideon-icon {
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 70%);
+            transform: scale(0);
+            opacity: 0;
+        }
+        
+        .tentacle {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg, rgba(58,123,213,0.8), rgba(0,210,255,0.8));
+            transform-origin: left center;
+            border-radius: 3px;
+            opacity: 0;
+        }
+        
+        .progress-container {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 6px;
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            opacity: 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #3a7bd5, #00d2ff);
+            border-radius: 3px;
+        }
+        
+        .completion-pulse {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(58,123,213,0.8) 0%, rgba(0,210,255,0) 70%);
+            opacity: 0;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 50px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 200;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            background-color: #0078d7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #0063b1;
+        }
+        
+        .taskbar-glow {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            background: linear-gradient(90deg, 
+                rgba(58,123,213,0) 0%, 
+                rgba(0,210,255,0.2) 50%, 
+                rgba(58,123,213,0) 100%);
+            opacity: 0;
+            z-index: 99;
+        }
+        
+        .system-notification {
+            position: absolute;
+            right: 20px;
+            bottom: 60px;
+            width: 300px;
+            height: 80px;
+            background-color: #202020;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transform: translateX(350px);
+            opacity: 0;
+        }
+        
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .notification-content {
+            flex-grow: 1;
+            color: white;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .notification-message {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="desktop"></div>
+        <div class="taskbar">
+            <div class="start-button"></div>
+            <div class="taskbar-icons">
+                <div class="taskbar-icon"></div>
+                <div class="taskbar-icon"></div>
+                <div class="taskbar-icon"></div>
+                <div class="taskbar-icon"></div>
+            </div>
+            <div class="system-tray">
+                <div class="tray-icon"></div>
+                <div class="tray-icon"></div>
+                <div class="tray-icon aideon-icon"></div>
+            </div>
+        </div>
+        <div class="taskbar-glow"></div>
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+        </div>
+        <div class="completion-pulse"></div>
+        <div class="system-notification">
+            <div class="notification-icon"></div>
+            <div class="notification-content">
+                <div class="notification-title">Aideon Installation Complete</div>
+                <div class="notification-message">Your system is now enhanced with Aideon's capabilities.</div>
+            </div>
+        </div>
+        <div class="controls">
+            <button id="playButton">Play Installation Sequence</button>
+            <button id="resetButton">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const playButton = document.getElementById('playButton');
+            const resetButton = document.getElementById('resetButton');
+            const progressContainer = document.querySelector('.progress-container');
+            const progressBar = document.querySelector('.progress-bar');
+            const completionPulse = document.querySelector('.completion-pulse');
+            const taskbarGlow = document.querySelector('.taskbar-glow');
+            const notification = document.querySelector('.system-notification');
+            const aideonIcon = document.querySelector('.aideon-icon');
+            
+            let tentacles = [];
+            let ripples = [];
+            let animationInProgress = false;
+            
+            function createRipple(x, y, size) {
+                const ripple = document.createElement('div');
+                ripple.className = 'ripple';
+                ripple.style.width = size + 'px';
+                ripple.style.height = size + 'px';
+                ripple.style.left = (x - size/2) + 'px';
+                ripple.style.top = (y - size/2) + 'px';
+                document.querySelector('.container').appendChild(ripple);
+                ripples.push(ripple);
+                return ripple;
+            }
+            
+            function createTentacle(startX, startY, length, angle) {
+                const tentacle = document.createElement('div');
+                tentacle.className = 'tentacle';
+                tentacle.style.left = startX + 'px';
+                tentacle.style.top = startY + 'px';
+                tentacle.style.width = length + 'px';
+                tentacle.style.transform = `rotate(${angle}deg)`;
+                document.querySelector('.container').appendChild(tentacle);
+                tentacles.push(tentacle);
+                return tentacle;
+            }
+            
+            function animateRipple(ripple) {
+                return new Promise(resolve => {
+                    const animation = ripple.animate([
+                        { transform: 'scale(0)', opacity: 0.8 },
+                        { transform: 'scale(1)', opacity: 0 }
+                    ], {
+                        duration: 2000,
+                        easing: 'ease-out'
+                    });
+                    
+                    animation.onfinish = () => {
+                        resolve();
+                    };
+                });
+            }
+            
+            function animateTentacle(tentacle, delay) {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        tentacle.style.opacity = 1;
+                        const animation = tentacle.animate([
+                            { transform: `rotate(${tentacle.style.transform.match(/rotate\((.+)deg\)/)[1]}deg) scaleX(0)` },
+                            { transform: `rotate(${tentacle.style.transform.match(/rotate\((.+)deg\)/)[1]}deg) scaleX(1)` }
+                        ], {
+                            duration: 1000,
+                            easing: 'ease-out',
+                            fill: 'forwards'
+                        });
+                        
+                        animation.onfinish = () => {
+                            setTimeout(() => {
+                                const retractAnimation = tentacle.animate([
+                                    { transform: `rotate(${tentacle.style.transform.match(/rotate\((.+)deg\)/)[1]}deg) scaleX(1)` },
+                                    { transform: `rotate(${tentacle.style.transform.match(/rotate\((.+)deg\)/)[1]}deg) scaleX(0)` }
+                                ], {
+                                    duration: 800,
+                                    easing: 'ease-in',
+                                    fill: 'forwards',
+                                    delay: 1000
+                                });
+                                
+                                retractAnimation.onfinish = () => {
+                                    tentacle.style.opacity = 0;
+                                    resolve();
+                                };
+                            }, 1000);
+                        };
+                    }, delay);
+                });
+            }
+            
+            function animateProgress() {
+                return new Promise(resolve => {
+                    progressContainer.style.opacity = 1;
+                    
+                    const animation = progressBar.animate([
+                        { width: '0%' },
+                        { width: '100%' }
+                    ], {
+                        duration: 3000,
+                        easing: 'ease-in-out',
+                        fill: 'forwards'
+                    });
+                    
+                    animation.onfinish = () => {
+                        setTimeout(() => {
+                            progressContainer.style.opacity = 0;
+                            resolve();
+                        }, 500);
+                    };
+                });
+            }
+            
+            function animateCompletionPulse() {
+                return new Promise(resolve => {
+                    completionPulse.style.opacity = 1;
+                    
+                    const animation = completionPulse.animate([
+                        { transform: 'translate(-50%, -50%) scale(0)', opacity: 0.8 },
+                        { transform: 'translate(-50%, -50%) scale(1)', opacity: 0 }
+                    ], {
+                        duration: 1500,
+                        easing: 'ease-out'
+                    });
+                    
+                    animation.onfinish = () => {
+                        completionPulse.style.opacity = 0;
+                        resolve();
+                    };
+                });
+            }
+            
+            function animateTaskbarGlow() {
+                return new Promise(resolve => {
+                    taskbarGlow.style.opacity = 1;
+                    
+                    const animation = taskbarGlow.animate([
+                        { transform: 'translateX(-100%)' },
+                        { transform: 'translateX(100%)' }
+                    ], {
+                        duration: 2000,
+                        easing: 'ease-in-out',
+                        iterations: 2
+                    });
+                    
+                    animation.onfinish = () => {
+                        const fadeAnimation = taskbarGlow.animate([
+                            { opacity: 1 },
+                            { opacity: 0.3 }
+                        ], {
+                            duration: 1000,
+                            easing: 'ease-out',
+                            fill: 'forwards'
+                        });
+                        
+                        fadeAnimation.onfinish = () => {
+                            resolve();
+                        };
+                    };
+                });
+            }
+            
+            function animateNotification() {
+                return new Promise(resolve => {
+                    notification.style.opacity = 1;
+                    
+                    const animation = notification.animate([
+                        { transform: 'translateX(350px)', opacity: 0 },
+                        { transform: 'translateX(0)', opacity: 1 }
+                    ], {
+                        duration: 800,
+                        easing: 'ease-out',
+                        fill: 'forwards'
+                    });
+                    
+                    animation.onfinish = () => {
+                        setTimeout(() => {
+                            const exitAnimation = notification.animate([
+                                { transform: 'translateX(0)', opacity: 1 },
+                                { transform: 'translateX(350px)', opacity: 0 }
+                            ], {
+                                duration: 800,
+                                easing: 'ease-in',
+                                fill: 'forwards'
+                            });
+                            
+                            exitAnimation.onfinish = () => {
+                                notification.style.opacity = 0;
+                                resolve();
+                            };
+                        }, 3000);
+                    };
+                });
+            }
+            
+            function animateAideonIcon() {
+                return new Promise(resolve => {
+                    const pulseAnimation = aideonIcon.animate([
+                        { boxShadow: '0 0 0 0 rgba(58,123,213,0.7)' },
+                        { boxShadow: '0 0 0 10px rgba(58,123,213,0)' }
+                    ], {
+                        duration: 1500,
+                        iterations: 2
+                    });
+                    
+                    pulseAnimation.onfinish = () => {
+                        resolve();
+                    };
+                });
+            }
+            
+            async function playInstallationSequence() {
+                if (animationInProgress) return;
+                animationInProgress = true;
+                
+                // Reset any previous animations
+                resetAnimation();
+                
+                // Phase 1: Initial Contact
+                const centerX = document.querySelector('.container').offsetWidth / 2;
+                const centerY = document.querySelector('.container').offsetHeight / 2;
+                
+                // Create and animate ripples
+                const ripple1 = createRipple(centerX, centerY, 300);
+                await animateRipple(ripple1);
+                
+                const ripple2 = createRipple(centerX, centerY, 400);
+                await animateRipple(ripple2);
+                
+                // Phase 2: System Integration
+                // Create tentacles in different directions
+                const tentacleCount = 8;
+                const tentaclePromises = [];
+                
+                for (let i = 0; i < tentacleCount; i++) {
+                    const angle = (i * 360 / tentacleCount);
+                    const tentacle = createTentacle(centerX, centerY, 400, angle);
+                    tentaclePromises.push(animateTentacle(tentacle, i * 200));
+                }
+                
+                // Show progress bar
+                const progressPromise = animateProgress();
+                
+                // Wait for all tentacles and progress
+                await Promise.all([...tentaclePromises, progressPromise]);
+                
+                // Phase 3: Completion
+                await animateCompletionPulse();
+                
+                // Show taskbar integration
+                await animateTaskbarGlow();
+                
+                // Show notification
+                await animateNotification();
+                
+                // Animate Aideon icon in system tray
+                await animateAideonIcon();
+                
+                animationInProgress = false;
+            }
+            
+            function resetAnimation() {
+                // Remove all tentacles
+                tentacles.forEach(tentacle => {
+                    if (tentacle.parentNode) {
+                        tentacle.parentNode.removeChild(tentacle);
+                    }
+                });
+                tentacles = [];
+                
+                // Remove all ripples
+                ripples.forEach(ripple => {
+                    if (ripple.parentNode) {
+                        ripple.parentNode.removeChild(ripple);
+                    }
+                });
+                ripples = [];
+                
+                // Reset progress bar
+                progressContainer.style.opacity = 0;
+                progressBar.style.width = '0%';
+                
+                // Reset completion pulse
+                completionPulse.style.opacity = 0;
+                completionPulse.style.transform = 'translate(-50%, -50%) scale(0)';
+                
+                // Reset taskbar glow
+                taskbarGlow.style.opacity = 0;
+                
+                // Reset notification
+                notification.style.opacity = 0;
+                notification.style.transform = 'translateX(350px)';
+            }
+            
+            playButton.addEventListener('click', playInstallationSequence);
+            resetButton.addEventListener('click', resetAnimation);
+        });
+    </script>
+</body>
+</html>
