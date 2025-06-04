@@ -11,193 +11,70 @@ const EventEmitter = require("events");
 // --- Mock Dependencies (Replace with actual implementations or imports) ---
 
 class MetricsCollector {
-  recordMetric(name: string, data: any) {
+  recordMetric(name, data) {
     // console.log(`Metric: ${name}`, data);
   }
 }
 
 class Logger {
-  info(message: string, ...args: any[]) {
+  info(message, ...args) {
     console.log(`[INFO] ${message}`, ...args);
   }
-  debug(message: string, ...args: any[]) {
+  debug(message, ...args) {
     // console.debug(`[DEBUG] ${message}`, ...args);
   }
-  warn(message: string, ...args: any[]) {
+  warn(message, ...args) {
     console.warn(`[WARN] ${message}`, ...args);
   }
-  error(message: string, ...args: any[]) {
+  error(message, ...args) {
     console.error(`[ERROR] ${message}`, ...args);
   }
 }
 
-// Mock HTN Planner Interface
-interface IHTNPlanner {
-  generatePlan(goal: any, context: any): Promise<ITaskPlan>;
-  validatePlan(plan: ITaskPlan): Promise<boolean>;
-  optimizePlan(plan: ITaskPlan): Promise<ITaskPlan>;
-}
+// --- Enums and Constants (from design) ---
 
-// Mock MCP Interface
-interface IMCP {
-  executeTask(task: ITask): Promise<ITaskResult>;
-  getTaskStatus(taskId: string): Promise<ITaskStatus>;
-  cancelTask(taskId: string): Promise<boolean>;
-}
+const TaskStatus = {
+  PENDING: "PENDING",
+  PREPARING: "PREPARING",
+  EXECUTING: "EXECUTING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  CANCELED: "CANCELED",
+  PAUSED: "PAUSED"
+};
 
-// --- Enums and Interfaces (from design) ---
+const TaskPriority = {
+  CRITICAL: 5,
+  HIGH: 4,
+  MEDIUM: 3,
+  LOW: 2,
+  BACKGROUND: 1
+};
 
-enum TaskStatus {
-  PENDING = "PENDING",
-  PREPARING = "PREPARING",
-  EXECUTING = "EXECUTING",
-  COMPLETED = "COMPLETED",
-  FAILED = "FAILED",
-  CANCELED = "CANCELED",
-  PAUSED = "PAUSED"
-}
-
-enum TaskPriority {
-  CRITICAL = 5,
-  HIGH = 4,
-  MEDIUM = 3,
-  LOW = 2,
-  BACKGROUND = 1
-}
-
-enum TaskTrigger {
-  PREDICTION = "PREDICTION",
-  PATTERN = "PATTERN",
-  USER_REQUEST = "USER_REQUEST",
-  SYSTEM_EVENT = "SYSTEM_EVENT",
-  SCHEDULED = "SCHEDULED",
-  DEPENDENCY = "DEPENDENCY"
-}
-
-interface TaskMetadata {
-  createdAt: number;
-  updatedAt: number;
-  sourcePredictionId?: string;
-  sourcePatternId?: string;
-  userId?: string;
-  applicationId?: string;
-  customProperties: Record<string, any>;
-}
-
-interface ITaskStep {
-  id: string;
-  name: string;
-  description?: string;
-  action: any; // Action definition
-  dependencies?: string[]; // IDs of steps this depends on
-  estimatedDuration?: number; // in milliseconds
-  status: TaskStatus;
-  result?: any;
-  error?: any;
-}
-
-interface ITaskPlan {
-  id: string;
-  steps: ITaskStep[];
-  dependencies: Map<string, string[]>; // step ID -> dependent step IDs
-}
-
-interface ITaskResult {
-  taskId: string;
-  success: boolean;
-  completedAt: number;
-  output?: any;
-  error?: any;
-  metrics?: Record<string, any>;
-}
-
-interface ITaskStatus {
-  taskId: string;
-  status: TaskStatus;
-  progress: number; // 0-100
-  currentStepId?: string;
-  startedAt?: number;
-  estimatedCompletionTime?: number;
-  error?: any;
-}
-
-interface ITask {
-  id: string;
-  name: string;
-  description?: string;
-  goal: any; // Task goal definition
-  priority: TaskPriority;
-  trigger: TaskTrigger;
-  context: any; // Task context
-  deadline?: number; // Timestamp
-  plan?: ITaskPlan;
-  status: TaskStatus;
-  metadata: TaskMetadata;
-  result?: ITaskResult;
-}
-
-interface TaskExecutorStatistics {
-  totalTasks: number;
-  completedTasks: number;
-  failedTasks: number;
-  averageExecutionTime: number;
-  tasksByPriority: Record<TaskPriority, number>;
-  tasksByTrigger: Record<TaskTrigger, number>;
-  resourceUtilization: Record<string, number>;
-}
-
-interface TaskExecutorConfig {
-  id?: string;
-  name?: string;
-  description?: string;
-  htnPlanner?: IHTNPlanner;
-  mcp?: IMCP;
-  eventEmitter?: EventEmitter;
-  metrics?: MetricsCollector;
-  logger?: Logger;
-  maxConcurrentTasks?: number;
-  taskQueueProcessingInterval?: number;
-  resourcePreallocator?: any; // IResourcePreallocator
-  [key: string]: any; // Allow additional config options
-}
-
-interface ITaskExecutor {
-  id: string;
-  name: string;
-  description: string;
-  eventEmitter: EventEmitter;
-  
-  initialize(config: TaskExecutorConfig): void;
-  handlePrediction(prediction: any): Promise<void>; // IPrediction
-  executeTask(task: ITask): Promise<ITaskResult>;
-  scheduleTask(task: ITask): Promise<string>; // Returns task ID
-  cancelTask(taskId: string): Promise<boolean>;
-  pauseTask(taskId: string): Promise<boolean>;
-  resumeTask(taskId: string): Promise<boolean>;
-  getTaskStatus(taskId: string): Promise<ITaskStatus>;
-  getStatistics(): TaskExecutorStatistics;
-  reset(): void;
-  on(eventName: string, listener: (...args: any[]) => void): void;
-  off(eventName: string, listener: (...args: any[]) => void): void;
-}
+const TaskTrigger = {
+  PREDICTION: "PREDICTION",
+  PATTERN: "PATTERN",
+  USER_REQUEST: "USER_REQUEST",
+  SYSTEM_EVENT: "SYSTEM_EVENT",
+  SCHEDULED: "SCHEDULED",
+  DEPENDENCY: "DEPENDENCY"
+};
 
 // --- Default Implementations (from design) ---
 
-class MockHTNPlanner implements IHTNPlanner {
-  private logger: Logger;
-  
-  constructor(logger?: Logger) {
+class MockHTNPlanner {
+  constructor(logger) {
     this.logger = logger || new Logger();
     this.logger.info("MockHTNPlanner initialized");
   }
   
-  async generatePlan(goal: any, context: any): Promise<ITaskPlan> {
+  async generatePlan(goal, context) {
     this.logger.debug(`Generating plan for goal:`, goal);
     
     // Create a simple mock plan with a few steps
     const planId = uuidv4();
-    const steps: ITaskStep[] = [];
-    const dependencies = new Map<string, string[]>();
+    const steps = [];
+    const dependencies = new Map();
     
     // Step 1: Initialize
     const step1Id = uuidv4();
@@ -238,7 +115,7 @@ class MockHTNPlanner implements IHTNPlanner {
     return { id: planId, steps, dependencies };
   }
   
-  async validatePlan(plan: ITaskPlan): Promise<boolean> {
+  async validatePlan(plan) {
     this.logger.debug(`Validating plan: ${plan.id}`);
     // Simple validation: check for cycles in dependencies
     try {
@@ -251,19 +128,19 @@ class MockHTNPlanner implements IHTNPlanner {
     }
   }
   
-  async optimizePlan(plan: ITaskPlan): Promise<ITaskPlan> {
+  async optimizePlan(plan) {
     this.logger.debug(`Optimizing plan: ${plan.id}`);
     // Simple optimization: just return the original plan
     this.logger.info(`Plan optimization complete (no changes)`);
     return plan;
   }
   
-  private checkForCycles(plan: ITaskPlan): void {
+  checkForCycles(plan) {
     // Simple cycle detection using DFS
-    const visited = new Set<string>();
-    const recursionStack = new Set<string>();
+    const visited = new Set();
+    const recursionStack = new Set();
     
-    const dfs = (stepId: string) => {
+    const dfs = (stepId) => {
       visited.add(stepId);
       recursionStack.add(stepId);
       
@@ -287,23 +164,19 @@ class MockHTNPlanner implements IHTNPlanner {
   }
 }
 
-class MockMCP implements IMCP {
-  private logger: Logger;
-  private taskResults: Map<string, ITaskResult>;
-  private taskStatuses: Map<string, ITaskStatus>;
-  
-  constructor(logger?: Logger) {
+class MockMCP {
+  constructor(logger) {
     this.logger = logger || new Logger();
     this.taskResults = new Map();
     this.taskStatuses = new Map();
     this.logger.info("MockMCP initialized");
   }
   
-  async executeTask(task: ITask): Promise<ITaskResult> {
+  async executeTask(task) {
     this.logger.debug(`Executing task: ${task.id} (${task.name})`);
     
     // Update task status to executing
-    const status: ITaskStatus = {
+    const status = {
       taskId: task.id,
       status: TaskStatus.EXECUTING,
       progress: 0,
@@ -315,7 +188,7 @@ class MockMCP implements IMCP {
     await this.simulateTaskExecution(task, status);
     
     // Create and store result
-    const result: ITaskResult = {
+    const result = {
       taskId: task.id,
       success: true,
       completedAt: Date.now(),
@@ -332,7 +205,7 @@ class MockMCP implements IMCP {
     return result;
   }
   
-  async getTaskStatus(taskId: string): Promise<ITaskStatus> {
+  async getTaskStatus(taskId) {
     const status = this.taskStatuses.get(taskId);
     if (!status) {
       throw new Error(`Task status not found for ID: ${taskId}`);
@@ -340,7 +213,7 @@ class MockMCP implements IMCP {
     return status;
   }
   
-  async cancelTask(taskId: string): Promise<boolean> {
+  async cancelTask(taskId) {
     const status = this.taskStatuses.get(taskId);
     if (!status) {
       this.logger.warn(`Cannot cancel task: status not found for ID: ${taskId}`);
@@ -357,7 +230,7 @@ class MockMCP implements IMCP {
     return true;
   }
   
-  private async simulateTaskExecution(task: ITask, status: ITaskStatus): Promise<void> {
+  async simulateTaskExecution(task, status) {
     if (!task.plan || !task.plan.steps.length) {
       this.logger.warn(`Task ${task.id} has no plan or steps`);
       await new Promise(resolve => setTimeout(resolve, 500)); // Short delay
@@ -394,7 +267,7 @@ class MockMCP implements IMCP {
     }
   }
   
-  private estimateStepDuration(priority: TaskPriority, step: ITaskStep): number {
+  estimateStepDuration(priority, step) {
     // Higher priority tasks execute faster in this mock
     const baseDuration = 1000; // 1 second base
     const priorityFactor = 1 / priority; // Higher priority = lower factor
@@ -406,26 +279,27 @@ class MockMCP implements IMCP {
 
 // --- Main Class Implementation (from design) ---
 
-class PredictiveTaskExecutor implements ITaskExecutor {
-  public id: string;
-  public name: string;
-  public description: string;
-  public eventEmitter: EventEmitter;
-  
-  private config: TaskExecutorConfig;
-  private htnPlanner: IHTNPlanner;
-  private mcp: IMCP;
-  private metrics: MetricsCollector;
-  private logger: Logger;
-  private resourcePreallocator?: any; // IResourcePreallocator
-  
-  private taskQueue: ITask[];
-  private activeTasks: Map<string, ITask>;
-  private taskStatuses: Map<string, ITaskStatus>;
-  private queueProcessingInterval?: NodeJS.Timeout;
-  private maxConcurrentTasks: number;
-  
-  constructor(config: TaskExecutorConfig) {
+/**
+ * PredictiveTaskExecutor handles the execution of tasks based on predictions.
+ * It manages task queues, scheduling, and execution through the MCP.
+ */
+class PredictiveTaskExecutor {
+  /**
+   * Creates a new PredictiveTaskExecutor instance.
+   * @param {Object} config - Configuration options
+   * @param {string} [config.id] - Unique identifier
+   * @param {string} [config.name] - Name of the executor
+   * @param {string} [config.description] - Description of the executor
+   * @param {Object} [config.htnPlanner] - HTN Planner instance
+   * @param {Object} [config.mcp] - MCP instance
+   * @param {EventEmitter} [config.eventEmitter] - Event emitter
+   * @param {Object} [config.metrics] - Metrics collector
+   * @param {Object} [config.logger] - Logger instance
+   * @param {number} [config.maxConcurrentTasks] - Maximum concurrent tasks
+   * @param {number} [config.taskQueueProcessingInterval] - Queue processing interval
+   * @param {Object} [config.resourcePreallocator] - Resource preallocator
+   */
+  constructor(config = {}) {
     this.id = config.id || uuidv4();
     this.name = config.name || "PredictiveTaskExecutor";
     this.description = config.description || "Executes tasks proactively based on predictions.";
@@ -448,7 +322,11 @@ class PredictiveTaskExecutor implements ITaskExecutor {
     this.initialize(config);
   }
   
-  initialize(config: TaskExecutorConfig): void {
+  /**
+   * Initializes the task executor.
+   * @param {Object} config - Configuration options
+   */
+  initialize(config) {
     this.logger.info(`Initializing PredictiveTaskExecutor (ID: ${this.id})`);
     
     // Start processing the task queue periodically
@@ -457,7 +335,12 @@ class PredictiveTaskExecutor implements ITaskExecutor {
     this.logger.debug(`Task queue processing scheduled every ${queueInterval}ms`);
   }
   
-  async handlePrediction(prediction: any): Promise<void> {
+  /**
+   * Handles a prediction by translating it into tasks and scheduling them.
+   * @param {Object} prediction - Prediction object
+   * @returns {Promise<void>}
+   */
+  async handlePrediction(prediction) {
     this.logger.debug(`Received prediction: ${prediction.id}, Type: ${prediction.type}`);
     
     // Translate prediction into tasks
@@ -469,7 +352,12 @@ class PredictiveTaskExecutor implements ITaskExecutor {
     }
   }
   
-  async executeTask(task: ITask): Promise<ITaskResult> {
+  /**
+   * Executes a task.
+   * @param {Object} task - Task to execute
+   * @returns {Promise<Object>} Task execution result
+   */
+  async executeTask(task) {
     this.logger.info(`Executing task: ${task.id} (${task.name})`);
     
     try {
@@ -520,89 +408,95 @@ class PredictiveTaskExecutor implements ITaskExecutor {
       this.logger.info(`Task ${task.id} execution ${result.success ? "succeeded" : "failed"}`);
       return result;
     } catch (error) {
-      this.logger.error(`Error executing task ${task.id}:`, error);
+      this.logger.error(`Error executing task ${task.id}: ${error.message}`, error);
       
       // Update task status to failed
       task.status = TaskStatus.FAILED;
-      const result: ITaskResult = {
+      task.result = {
         taskId: task.id,
         success: false,
         completedAt: Date.now(),
-        error: error.message
+        error: {
+          message: error.message,
+          stack: error.stack
+        }
       };
-      task.result = result;
       this.updateTaskStatus(task);
       
-      // Release resources if allocated
-      if (this.resourcePreallocator) {
-        await this.releaseResourcesForTask(task).catch(err => {
-          this.logger.error(`Error releasing resources for failed task ${task.id}:`, err);
-        });
-      }
-      
       // Emit event and record metrics
-      this.eventEmitter.emit("task:failed", { taskId: task.id, error: error.message });
-      this.metrics.recordMetric("task_execution_error", {
+      this.eventEmitter.emit("task:failed", { taskId: task.id, error });
+      this.metrics.recordMetric("task_execution", {
         taskId: task.id,
+        success: false,
         error: error.message
       });
       
-      return result;
+      return task.result;
     }
   }
   
-  async scheduleTask(task: ITask): Promise<string> {
+  /**
+   * Schedules a task for execution.
+   * @param {Object} task - Task to schedule
+   * @returns {Promise<string>} Task ID
+   */
+  async scheduleTask(task) {
     // Ensure task has required fields
-    task.id = task.id || uuidv4();
-    task.status = task.status || TaskStatus.PENDING;
-    task.metadata = task.metadata || {
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      customProperties: {}
-    };
+    if (!task.id) task.id = uuidv4();
+    if (!task.status) task.status = TaskStatus.PENDING;
+    if (!task.metadata) {
+      task.metadata = {
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        customProperties: {}
+      };
+    }
     
-    this.logger.info(`Scheduling task: ${task.id} (${task.name}) with priority ${task.priority}`);
+    this.logger.info(`Scheduling task: ${task.id} (${task.name}), Priority: ${task.priority}`);
     
     // Add to queue
     this.taskQueue.push(task);
     
+    // Sort queue by priority (higher priority first)
+    this.taskQueue.sort((a, b) => b.priority - a.priority);
+    
     // Create initial status
-    const status: ITaskStatus = {
+    const status = {
       taskId: task.id,
       status: TaskStatus.PENDING,
       progress: 0
     };
     this.taskStatuses.set(task.id, status);
     
-    // Emit event and record metrics
-    this.eventEmitter.emit("task:scheduled", { taskId: task.id, priority: task.priority });
-    this.metrics.recordMetric("task_scheduled", {
-      taskId: task.id,
-      priority: task.priority,
-      trigger: task.trigger
-    });
-    
-    // Optionally trigger immediate queue processing for high priority tasks
-    if (task.priority >= TaskPriority.HIGH) {
-      this.processTaskQueue();
-    }
+    // Emit event
+    this.eventEmitter.emit("task:scheduled", { taskId: task.id });
     
     return task.id;
   }
   
-  async cancelTask(taskId: string): Promise<boolean> {
+  /**
+   * Cancels a task.
+   * @param {string} taskId - ID of the task to cancel
+   * @returns {Promise<boolean>} Whether cancellation was successful
+   */
+  async cancelTask(taskId) {
+    this.logger.info(`Attempting to cancel task: ${taskId}`);
+    
     // Check if task is in queue
-    const queueIndex = this.taskQueue.findIndex(t => t.id === taskId);
+    const queueIndex = this.taskQueue.findIndex(task => task.id === taskId);
     if (queueIndex >= 0) {
       // Remove from queue
       const task = this.taskQueue.splice(queueIndex, 1)[0];
       task.status = TaskStatus.CANCELED;
       
       // Update status
-      const status = this.taskStatuses.get(taskId);
-      if (status) {
-        status.status = TaskStatus.CANCELED;
-      }
+      const status = this.taskStatuses.get(taskId) || {
+        taskId,
+        status: TaskStatus.CANCELED,
+        progress: 0
+      };
+      status.status = TaskStatus.CANCELED;
+      this.taskStatuses.set(taskId, status);
       
       this.logger.info(`Canceled queued task: ${taskId}`);
       this.eventEmitter.emit("task:canceled", { taskId });
@@ -611,263 +505,132 @@ class PredictiveTaskExecutor implements ITaskExecutor {
     
     // Check if task is active
     if (this.activeTasks.has(taskId)) {
-      // Try to cancel via MCP
-      const success = await this.mcp.cancelTask(taskId);
-      if (success) {
-        const task = this.activeTasks.get(taskId)!;
+      // Delegate cancellation to MCP
+      const result = await this.mcp.cancelTask(taskId);
+      
+      if (result) {
+        // Update local state
+        const task = this.activeTasks.get(taskId);
         task.status = TaskStatus.CANCELED;
         
-        // Release resources if allocated
-        if (this.resourcePreallocator) {
-          await this.releaseResourcesForTask(task).catch(err => {
-            this.logger.error(`Error releasing resources for canceled task ${taskId}:`, err);
-          });
-        }
+        // Remove from active tasks
+        this.activeTasks.delete(taskId);
         
         this.logger.info(`Canceled active task: ${taskId}`);
         this.eventEmitter.emit("task:canceled", { taskId });
+        return true;
       }
-      return success;
     }
     
-    this.logger.warn(`Cannot cancel task: ${taskId} not found in queue or active tasks`);
+    this.logger.warn(`Failed to cancel task: ${taskId} (not found or already completed)`);
     return false;
   }
   
-  async pauseTask(taskId: string): Promise<boolean> {
-    this.logger.warn(`Task pausing not implemented yet`);
-    return false;
-  }
-  
-  async resumeTask(taskId: string): Promise<boolean> {
-    this.logger.warn(`Task resuming not implemented yet`);
-    return false;
-  }
-  
-  async getTaskStatus(taskId: string): Promise<ITaskStatus> {
-    // Check local status cache first
-    const cachedStatus = this.taskStatuses.get(taskId);
-    if (cachedStatus) {
-      return cachedStatus;
+  /**
+   * Gets the status of a task.
+   * @param {string} taskId - ID of the task
+   * @returns {Promise<Object>} Task status
+   */
+  async getTaskStatus(taskId) {
+    const status = this.taskStatuses.get(taskId);
+    if (!status) {
+      throw new Error(`Task status not found for ID: ${taskId}`);
     }
-    
-    // Try to get from MCP for active tasks
+    return status;
+  }
+  
+  /**
+   * Gets a task by ID.
+   * @param {string} taskId - ID of the task
+   * @returns {Promise<Object>} Task object
+   */
+  async getTask(taskId) {
+    // Check active tasks
     if (this.activeTasks.has(taskId)) {
-      try {
-        const status = await this.mcp.getTaskStatus(taskId);
-        this.taskStatuses.set(taskId, status);
-        return status;
-      } catch (error) {
-        this.logger.error(`Error getting task status from MCP for ${taskId}:`, error);
-      }
+      return this.activeTasks.get(taskId);
     }
     
-    throw new Error(`Task status not found for ID: ${taskId}`);
-  }
-  
-  getStatistics(): TaskExecutorStatistics {
-    // Initialize statistics object
-    const stats: TaskExecutorStatistics = {
-      totalTasks: this.taskQueue.length + this.activeTasks.size,
-      completedTasks: 0,
-      failedTasks: 0,
-      averageExecutionTime: 0,
-      tasksByPriority: {} as Record<TaskPriority, number>,
-      tasksByTrigger: {} as Record<TaskTrigger, number>,
-      resourceUtilization: {}
-    };
-    
-    // Initialize counters
-    Object.values(TaskPriority).filter(p => typeof p === "number").forEach(p => {
-      stats.tasksByPriority[p as TaskPriority] = 0;
-    });
-    Object.values(TaskTrigger).forEach(t => {
-      stats.tasksByTrigger[t as TaskTrigger] = 0;
-    });
-    
-    // Count tasks by priority and trigger
-    for (const task of this.taskQueue) {
-      stats.tasksByPriority[task.priority]++;
-      stats.tasksByTrigger[task.trigger]++;
-    }
-    for (const task of this.activeTasks.values()) {
-      stats.tasksByPriority[task.priority]++;
-      stats.tasksByTrigger[task.trigger]++;
-      
-      // Count completed and failed tasks
-      if (task.status === TaskStatus.COMPLETED) {
-        stats.completedTasks++;
-      } else if (task.status === TaskStatus.FAILED) {
-        stats.failedTasks++;
-      }
+    // Check queue
+    const queuedTask = this.taskQueue.find(task => task.id === taskId);
+    if (queuedTask) {
+      return queuedTask;
     }
     
-    // Calculate average execution time (placeholder)
-    stats.averageExecutionTime = 0;
-    
-    // Resource utilization (placeholder)
-    stats.resourceUtilization = {
-      cpu: 0.5, // 50% utilization
-      memory: 0.3 // 30% utilization
-    };
-    
-    this.logger.debug(`Generated task executor statistics`);
-    return stats;
+    throw new Error(`Task not found for ID: ${taskId}`);
   }
   
-  reset(): void {
-    this.logger.info(`Resetting PredictiveTaskExecutor (ID: ${this.id})`);
+  /**
+   * Gets all tasks.
+   * @param {Object} [filter] - Filter criteria
+   * @returns {Promise<Array<Object>>} Array of task objects
+   */
+  async getTasks(filter = {}) {
+    let tasks = [
+      ...this.taskQueue,
+      ...Array.from(this.activeTasks.values())
+    ];
     
-    // Cancel all active tasks
-    for (const taskId of this.activeTasks.keys()) {
-      this.cancelTask(taskId).catch(err => {
-        this.logger.error(`Error canceling task ${taskId} during reset:`, err);
-      });
+    // Apply filters if provided
+    if (filter.status) {
+      tasks = tasks.filter(task => task.status === filter.status);
     }
     
-    // Clear queues and caches
-    this.taskQueue = [];
-    this.activeTasks.clear();
-    this.taskStatuses.clear();
-    
-    this.eventEmitter.emit("executor:reset", { executorId: this.id });
-  }
-  
-  // --- Event Emitter Wrappers ---
-  on(eventName: string, listener: (...args: any[]) => void): void {
-    this.eventEmitter.on(eventName, listener);
-  }
-
-  off(eventName: string, listener: (...args: any[]) => void): void {
-    this.eventEmitter.off(eventName, listener);
-  }
-  
-  // --- Private Methods ---
-  
-  private async translatePredictionToTasks(prediction: any): Promise<ITask[]> {
-    const tasks: ITask[] = [];
-    this.logger.debug(`Translating prediction to tasks: ${prediction.id} (${prediction.type})`);
-    
-    // Logic to determine tasks based on prediction type and value
-    switch (prediction.type) {
-      case "USER_ACTION":
-        if (prediction.predictedValue === "open_application") {
-          // Example: Predict application launch and prepare environment
-          const appName = prediction.metadata?.customProperties?.applicationName || "unknown";
-          this.logger.debug(`Predicting tasks for application launch: ${appName}`);
-          
-          tasks.push({
-            id: uuidv4(),
-            name: `Prepare ${appName} launch`,
-            description: `Preload resources and prepare environment for ${appName}`,
-            goal: { type: "prepare_application", applicationName: appName },
-            priority: TaskPriority.HIGH,
-            trigger: TaskTrigger.PREDICTION,
-            context: { prediction, applicationName: appName },
-            status: TaskStatus.PENDING,
-            metadata: {
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              sourcePredictionId: prediction.id,
-              customProperties: { applicationName: appName }
-            }
-          });
-        }
-        break;
-        
-      case "TASK_COMPLETION":
-        // Example: Predict task completion and prepare follow-up tasks
-        if (prediction.targetVariable === "document_processing" && prediction.confidence > 0.8) {
-          const documentType = prediction.metadata?.customProperties?.documentType || "unknown";
-          this.logger.debug(`Predicting follow-up tasks for document processing: ${documentType}`);
-          
-          tasks.push({
-            id: uuidv4(),
-            name: `Prepare document follow-up`,
-            description: `Prepare follow-up actions for processed ${documentType} document`,
-            goal: { type: "document_followup", documentType },
-            priority: TaskPriority.MEDIUM,
-            trigger: TaskTrigger.PREDICTION,
-            context: { prediction, documentType },
-            status: TaskStatus.PENDING,
-            metadata: {
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              sourcePredictionId: prediction.id,
-              customProperties: { documentType }
-            }
-          });
-        }
-        break;
-        
-      case "RESOURCE_NEED":
-        // Example: Predict resource need and prepare optimization task
-        if (prediction.targetVariable === "memory_need" && Number(prediction.predictedValue) > 4096) {
-          this.logger.debug(`Predicting memory optimization task for high memory need`);
-          
-          tasks.push({
-            id: uuidv4(),
-            name: `Memory optimization`,
-            description: `Optimize memory usage before high-demand operation`,
-            goal: { type: "optimize_resources", resourceType: "memory" },
-            priority: TaskPriority.MEDIUM,
-            trigger: TaskTrigger.PREDICTION,
-            context: { prediction },
-            status: TaskStatus.PENDING,
-            metadata: {
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              sourcePredictionId: prediction.id,
-              customProperties: { predictedMemoryNeed: prediction.predictedValue }
-            }
-          });
-        }
-        break;
+    if (filter.priority) {
+      tasks = tasks.filter(task => task.priority === filter.priority);
     }
     
-    this.logger.info(`Generated ${tasks.length} tasks from prediction ${prediction.id}`);
+    if (filter.trigger) {
+      tasks = tasks.filter(task => task.trigger === filter.trigger);
+    }
+    
     return tasks;
   }
   
-  private async processTaskQueue(): Promise<void> {
-    if (this.taskQueue.length === 0 || this.activeTasks.size >= this.maxConcurrentTasks) {
+  /**
+   * Processes the task queue.
+   * @private
+   */
+  async processTaskQueue() {
+    // Skip if no tasks in queue
+    if (this.taskQueue.length === 0) {
       return;
     }
     
-    this.logger.debug(`Processing task queue (${this.taskQueue.length} items, ${this.activeTasks.size}/${this.maxConcurrentTasks} active)`);
-    
-    // Sort queue by priority and deadline
-    this.taskQueue.sort((a, b) => {
-      // Higher priority first
-      if (a.priority !== b.priority) {
-        return b.priority - a.priority;
-      }
-      
-      // Earlier deadline first
-      const aDeadline = a.deadline || Infinity;
-      const bDeadline = b.deadline || Infinity;
-      return aDeadline - bDeadline;
-    });
-    
-    // Process tasks until max concurrent is reached
-    while (this.taskQueue.length > 0 && this.activeTasks.size < this.maxConcurrentTasks) {
-      const task = this.taskQueue.shift()!;
-      this.activeTasks.set(task.id, task);
-      
-      // Execute task asynchronously
-      this.executeTask(task)
-        .then(result => {
-          // Remove from active tasks when complete
-          this.activeTasks.delete(task.id);
-        })
-        .catch(error => {
-          this.logger.error(`Unhandled error in task execution for ${task.id}:`, error);
-          this.activeTasks.delete(task.id);
-        });
+    // Skip if at max concurrent tasks
+    if (this.activeTasks.size >= this.maxConcurrentTasks) {
+      return;
     }
+    
+    // Get next task from queue
+    const task = this.taskQueue.shift();
+    
+    // Add to active tasks
+    this.activeTasks.set(task.id, task);
+    
+    // Update status
+    task.status = TaskStatus.PREPARING;
+    this.updateTaskStatus(task);
+    
+    // Execute task asynchronously
+    this.executeTask(task)
+      .then(result => {
+        // Remove from active tasks
+        this.activeTasks.delete(task.id);
+      })
+      .catch(error => {
+        // Remove from active tasks
+        this.activeTasks.delete(task.id);
+        this.logger.error(`Error in task queue processing: ${error.message}`, error);
+      });
   }
   
-  private updateTaskStatus(task: ITask): void {
+  /**
+   * Updates the status of a task.
+   * @param {Object} task - Task object
+   * @private
+   */
+  updateTaskStatus(task) {
+    // Get existing status or create new one
     const status = this.taskStatuses.get(task.id) || {
       taskId: task.id,
       status: task.status,
@@ -875,86 +638,408 @@ class PredictiveTaskExecutor implements ITaskExecutor {
     };
     
     status.status = task.status;
+    status.updatedAt = Date.now();
     
-    // Update progress based on plan if available
-    if (task.plan && task.plan.steps.length > 0) {
-      const totalSteps = task.plan.steps.length;
-      const completedSteps = task.plan.steps.filter(s => 
-        s.status === TaskStatus.COMPLETED
-      ).length;
-      
-      status.progress = Math.floor((completedSteps / totalSteps) * 100);
-    } else if (task.status === TaskStatus.COMPLETED) {
-      status.progress = 100;
+    if (task.result) {
+      status.result = task.result;
     }
     
     this.taskStatuses.set(task.id, status);
+    
+    // Emit status update event
+    this.eventEmitter.emit("task:status_updated", {
+      taskId: task.id,
+      status: task.status
+    });
   }
   
-  private async preallocateResourcesForTask(task: ITask): Promise<void> {
-    if (!this.resourcePreallocator) return;
+  /**
+   * Translates a prediction into executable tasks.
+   * @param {Object} prediction - Prediction object
+   * @returns {Promise<Array<Object>>} Array of task objects
+   * @private
+   */
+  async translatePredictionToTasks(prediction) {
+    this.logger.debug(`Translating prediction to tasks: ${prediction.id}`);
     
-    this.logger.debug(`Preallocating resources for task: ${task.id}`);
+    // Default implementation - override in subclasses for specific prediction types
+    const tasks = [];
     
-    // Example: Determine resource needs based on task type and context
-    try {
-      // This is a simplified example - in a real implementation, you would:
-      // 1. Analyze the task to determine resource requirements
-      // 2. Create appropriate resource requests
-      // 3. Use the resource preallocator to allocate resources
-      // 4. Store allocation IDs in task metadata for later release
-      
-      // For now, just store a placeholder in metadata
-      task.metadata.customProperties.resourcesAllocated = true;
-      
-      this.logger.info(`Resources preallocated for task: ${task.id}`);
-    } catch (error) {
-      this.logger.error(`Error preallocating resources for task ${task.id}:`, error);
-      // Continue with task execution even if preallocation fails
+    // Create a basic task from the prediction
+    const task = {
+      id: uuidv4(),
+      name: `Task from prediction ${prediction.id}`,
+      description: `Automatically generated task based on ${prediction.type} prediction`,
+      priority: this.getPriorityFromPrediction(prediction),
+      trigger: TaskTrigger.PREDICTION,
+      goal: {
+        type: "execute_prediction",
+        predictionId: prediction.id,
+        predictionType: prediction.type,
+        targetVariable: prediction.targetVariable
+      },
+      context: {
+        prediction,
+        generatedAt: Date.now()
+      },
+      status: TaskStatus.PENDING
+    };
+    
+    tasks.push(task);
+    
+    return tasks;
+  }
+  
+  /**
+   * Determines task priority based on prediction.
+   * @param {Object} prediction - Prediction object
+   * @returns {number} Priority level
+   * @private
+   */
+  getPriorityFromPrediction(prediction) {
+    // Default implementation - override in subclasses for specific prediction types
+    
+    // Base priority on confidence and urgency
+    const confidence = prediction.confidence || 0.5;
+    const urgency = prediction.urgency || 0.5;
+    
+    if (confidence > 0.8 && urgency > 0.8) {
+      return TaskPriority.CRITICAL;
+    } else if (confidence > 0.7 && urgency > 0.6) {
+      return TaskPriority.HIGH;
+    } else if (confidence > 0.6 || urgency > 0.7) {
+      return TaskPriority.MEDIUM;
+    } else if (confidence > 0.4 || urgency > 0.4) {
+      return TaskPriority.LOW;
+    } else {
+      return TaskPriority.BACKGROUND;
     }
   }
   
-  private async releaseResourcesForTask(task: ITask): Promise<void> {
-    if (!this.resourcePreallocator || !task.metadata.customProperties.resourcesAllocated) return;
+  /**
+   * Preallocates resources for a task.
+   * @param {Object} task - Task object
+   * @returns {Promise<void>}
+   * @private
+   */
+  async preallocateResourcesForTask(task) {
+    if (!this.resourcePreallocator) {
+      return;
+    }
+    
+    this.logger.debug(`Preallocating resources for task: ${task.id}`);
+    
+    try {
+      const resources = await this.resourcePreallocator.allocateResources(task);
+      task.allocatedResources = resources;
+      
+      this.logger.debug(`Resources allocated for task ${task.id}:`, resources);
+    } catch (error) {
+      this.logger.error(`Error preallocating resources for task ${task.id}: ${error.message}`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Releases resources allocated for a task.
+   * @param {Object} task - Task object
+   * @returns {Promise<void>}
+   * @private
+   */
+  async releaseResourcesForTask(task) {
+    if (!this.resourcePreallocator || !task.allocatedResources) {
+      return;
+    }
     
     this.logger.debug(`Releasing resources for task: ${task.id}`);
     
     try {
-      // In a real implementation, you would:
-      // 1. Retrieve allocation IDs from task metadata
-      // 2. Call resourcePreallocator.releaseAllocation for each allocation
-      // 3. Update task metadata
+      await this.resourcePreallocator.releaseResources(task.allocatedResources);
+      delete task.allocatedResources;
       
-      // For now, just update the placeholder
-      task.metadata.customProperties.resourcesAllocated = false;
-      
-      this.logger.info(`Resources released for task: ${task.id}`);
+      this.logger.debug(`Resources released for task ${task.id}`);
     } catch (error) {
-      this.logger.error(`Error releasing resources for task ${task.id}:`, error);
+      this.logger.error(`Error releasing resources for task ${task.id}: ${error.message}`, error);
+      // Don't throw here, as this is cleanup code
     }
   }
   
-  // --- Cleanup Method ---
-  
-  cleanup(): void {
-    this.logger.info(`Cleaning up PredictiveTaskExecutor (ID: ${this.id})`);
+  /**
+   * Predicts resource needs for a strategy.
+   * @param {Object} strategy - Strategy object
+   * @returns {Promise<Object>} Resource prediction
+   */
+  async predictResourceNeeds(strategy) {
+    this.logger.info(`Predicting resource needs for strategy: ${strategy.id}`);
     
-    // Clear interval
-    if (this.queueProcessingInterval) {
-      clearInterval(this.queueProcessingInterval);
+    // Default implementation - override in subclasses for specific strategy types
+    
+    // Analyze actions to estimate resource needs
+    let cpuNeeded = 0.1; // Base CPU usage
+    let memoryNeeded = 50; // Base memory in MB
+    let diskNeeded = 10; // Base disk in MB
+    let networkNeeded = 5; // Base network in MB
+    
+    // Add resource estimates for each action
+    for (const action of strategy.actions || []) {
+      switch (action.actionId) {
+        case "RestartComponentAction":
+          cpuNeeded += 0.2;
+          memoryNeeded += 100;
+          break;
+        case "ReconfigureComponentAction":
+          cpuNeeded += 0.1;
+          memoryNeeded += 50;
+          break;
+        case "ReallocateResourcesAction":
+          cpuNeeded += 0.3;
+          memoryNeeded += 200;
+          break;
+        case "DiagnoseAction":
+          cpuNeeded += 0.4;
+          memoryNeeded += 300;
+          diskNeeded += 50;
+          break;
+        case "DeepDiagnoseAction":
+          cpuNeeded += 0.6;
+          memoryNeeded += 500;
+          diskNeeded += 100;
+          break;
+        case "RepairDataAction":
+          cpuNeeded += 0.5;
+          memoryNeeded += 400;
+          diskNeeded += 200;
+          networkNeeded += 50;
+          break;
+        default:
+          cpuNeeded += 0.1;
+          memoryNeeded += 50;
+      }
     }
     
-    // Reset and clean up
-    this.reset();
+    return {
+      strategyId: strategy.id,
+      resources: {
+        cpu: cpuNeeded,
+        memory: memoryNeeded,
+        disk: diskNeeded,
+        network: networkNeeded
+      },
+      confidence: 0.8,
+      metadata: {
+        estimatedAt: Date.now(),
+        estimationMethod: "action-based"
+      }
+    };
+  }
+  
+  /**
+   * Predicts errors based on system state.
+   * @param {Object} systemState - Current system state
+   * @returns {Promise<Object>} Error prediction
+   */
+  async predictErrors(systemState) {
+    this.logger.info(`Predicting errors based on system state`);
+    
+    // Default implementation - override in subclasses for specific prediction types
+    
+    const potentialErrors = [];
+    
+    // Check for high resource utilization
+    if (systemState.resources) {
+      if (systemState.resources.cpu && systemState.resources.cpu.utilization > 0.8) {
+        potentialErrors.push({
+          type: "HIGH_CPU_UTILIZATION",
+          componentId: "system",
+          probability: 0.7,
+          timeframe: "next_hour",
+          impact: "medium",
+          description: "CPU utilization is approaching critical levels"
+        });
+      }
+      
+      if (systemState.resources.memory && systemState.resources.memory.utilization > 0.85) {
+        potentialErrors.push({
+          type: "MEMORY_PRESSURE",
+          componentId: "system",
+          probability: 0.8,
+          timeframe: "next_30_minutes",
+          impact: "high",
+          description: "Memory pressure is high, potential for out-of-memory errors"
+        });
+      }
+      
+      if (systemState.resources.disk && systemState.resources.disk.utilization > 0.9) {
+        potentialErrors.push({
+          type: "DISK_SPACE_CRITICAL",
+          componentId: "system",
+          probability: 0.9,
+          timeframe: "next_day",
+          impact: "critical",
+          description: "Disk space is critically low"
+        });
+      }
+    }
+    
+    // Check for component issues
+    if (systemState.components) {
+      for (const component of systemState.components) {
+        if (component.status === "degraded") {
+          potentialErrors.push({
+            type: "COMPONENT_DEGRADATION",
+            componentId: component.id,
+            probability: 0.6,
+            timeframe: "current",
+            impact: "medium",
+            description: `Component ${component.id} is in degraded state`
+          });
+        }
+        
+        // Check for high component-specific metrics
+        if (component.metrics) {
+          if (component.metrics.cpu > 0.9) {
+            potentialErrors.push({
+              type: "COMPONENT_CPU_CRITICAL",
+              componentId: component.id,
+              probability: 0.75,
+              timeframe: "next_hour",
+              impact: "high",
+              description: `Component ${component.id} has critical CPU usage`
+            });
+          }
+          
+          if (component.metrics.memory > 0.85) {
+            potentialErrors.push({
+              type: "COMPONENT_MEMORY_PRESSURE",
+              componentId: component.id,
+              probability: 0.7,
+              timeframe: "next_hour",
+              impact: "medium",
+              description: `Component ${component.id} has high memory pressure`
+            });
+          }
+        }
+      }
+    }
+    
+    return {
+      predictionId: uuidv4(),
+      timestamp: Date.now(),
+      systemStateId: systemState.id,
+      potentialErrors,
+      confidence: potentialErrors.length > 0 ? 0.8 : 0.5,
+      metadata: {
+        predictionMethod: "rule-based",
+        dataPoints: Object.keys(systemState).length
+      }
+    };
+  }
+  
+  /**
+   * Gets the status of the executor.
+   * @returns {Promise<Object>} Status information
+   */
+  async getStatus() {
+    return {
+      id: this.id,
+      name: this.name,
+      initialized: true,
+      queuedTasks: this.taskQueue.length,
+      activeTasks: this.activeTasks.size,
+      maxConcurrentTasks: this.maxConcurrentTasks,
+      timestamp: Date.now()
+    };
+  }
+  
+  /**
+   * Cleans up resources when shutting down.
+   */
+  cleanup() {
+    this.logger.info(`Cleaning up PredictiveTaskExecutor (ID: ${this.id})`);
+    
+    // Stop queue processing
+    if (this.queueProcessingInterval) {
+      clearInterval(this.queueProcessingInterval);
+      this.queueProcessingInterval = null;
+    }
+    
+    // Cancel all active tasks
+    for (const taskId of this.activeTasks.keys()) {
+      this.cancelTask(taskId).catch(error => {
+        this.logger.error(`Error canceling task ${taskId} during cleanup: ${error.message}`);
+      });
+    }
+  }
+
+  /**
+   * Registers an event listener.
+   * @param {string} event - Event name
+   * @param {Function} listener - Event listener
+   */
+  on(event, listener) {
+    this.eventEmitter.on(event, listener);
+  }
+
+  /**
+   * Removes an event listener.
+   * @param {string} event - Event name
+   * @param {Function} listener - Event listener
+   */
+  off(event, listener) {
+    this.eventEmitter.off(event, listener);
+  }
+
+  /**
+   * Registers a one-time event listener.
+   * @param {string} event - Event name
+   * @param {Function} listener - Event listener
+   */
+  once(event, listener) {
+    this.eventEmitter.once(event, listener);
+  }
+
+  /**
+   * Registers an event listener.
+   * @param {string} event - Event name
+   * @param {Function} listener - Event listener function
+   * @returns {PredictiveTaskExecutor} this instance for chaining
+   */
+  on(event, listener) {
+    this.eventEmitter.on(event, listener);
+    return this;
+  }
+  
+  /**
+   * Registers a one-time event listener.
+   * @param {string} event - Event name
+   * @param {Function} listener - Event listener function
+   * @returns {PredictiveTaskExecutor} this instance for chaining
+   */
+  once(event, listener) {
+    this.eventEmitter.once(event, listener);
+    return this;
+  }
+  
+  /**
+   * Removes an event listener.
+   * @param {string} event - Event name
+   * @param {Function} listener - Event listener function
+   * @returns {PredictiveTaskExecutor} this instance for chaining
+   */
+  off(event, listener) {
+    this.eventEmitter.off(event, listener);
+    return this;
+  }
+  
+  /**
+   * Emits an event.
+   * @param {string} event - Event name
+   * @param {...any} args - Event arguments
+   * @returns {boolean} Whether the event had listeners
+   */
+  emit(event, ...args) {
+    return this.eventEmitter.emit(event, ...args);
   }
 }
 
-module.exports = {
-  PredictiveTaskExecutor,
-  TaskStatus,
-  TaskPriority,
-  TaskTrigger,
-  MockHTNPlanner,
-  MockMCP
-  // Export other necessary classes/interfaces/enums
-};
+module.exports = PredictiveTaskExecutor;
