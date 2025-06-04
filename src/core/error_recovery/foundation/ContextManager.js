@@ -20,6 +20,13 @@ class ContextManager {
     this.logger = options.logger || console;
     this.eventBus = options.eventBus;
     this.includeMetadata = options.includeMetadata !== false; // Default to true
+    this.systemState = {
+      status: 'operational',
+      lastUpdated: Date.now(),
+      components: {},
+      resources: {},
+      environment: {}
+    };
   }
   
   /**
@@ -66,12 +73,20 @@ class ContextManager {
    * Gets a context by ID
    * 
    * @param {string} contextId - Context ID
+   * @param {boolean} createIfNotFound - Whether to create the context if not found
+   * @param {Object} defaultData - Default data to use if creating a new context
    * @returns {Object} - Context object
-   * @throws {Error} - If context not found
+   * @throws {Error} - If context not found and createIfNotFound is false
    */
-  getContext(contextId) {
+  getContext(contextId, createIfNotFound = false, defaultData = {}) {
     if (!this.contexts.has(contextId)) {
-      throw new Error(`Context not found: ${contextId}`);
+      if (createIfNotFound) {
+        // Create the context with default data if it doesn't exist
+        this.setContext(contextId, defaultData, 'test');
+        this.logger.debug(`Auto-created missing context ${contextId} for test`);
+      } else {
+        throw new Error(`Context not found: ${contextId}`);
+      }
     }
     
     const context = this.contexts.get(contextId);
@@ -83,6 +98,25 @@ class ContextManager {
     }
     
     return context;
+  }
+  
+  /**
+   * Sets a context with the given data, creating it if it doesn't exist
+   * 
+   * @param {string} contextId - Context ID (optional, will be generated if not provided)
+   * @param {Object} data - Context data
+   * @param {string} source - Source identifier for the context creation/update
+   * @returns {string} - Context ID
+   */
+  setContext(contextId = null, data = {}, source = 'system') {
+    // If contextId is not provided or doesn't exist, create a new context
+    if (!contextId || !this.contexts.has(contextId)) {
+      return this.createContext(data, source);
+    }
+    
+    // Otherwise, update the existing context
+    this.updateContext(contextId, data, source);
+    return contextId;
   }
   
   /**
@@ -296,6 +330,84 @@ class ContextManager {
   setIncludeMetadata(include) {
     this.includeMetadata = include;
     return this;
+  }
+  
+  /**
+   * Updates the system state
+   * 
+   * @param {Object} state - System state data to update
+   * @param {string} source - Source identifier for the update
+   * @returns {Object} - Updated system state
+   */
+  updateSystemState(state, source = 'system') {
+    const previousState = JSON.parse(JSON.stringify(this.systemState));
+    
+    // Update system state
+    Object.entries(state).forEach(([key, value]) => {
+      if (typeof value === 'object' && value !== null && typeof this.systemState[key] === 'object') {
+        // Merge objects
+        this.systemState[key] = {
+          ...this.systemState[key],
+          ...value
+        };
+      } else {
+        // Replace primitive values
+        this.systemState[key] = value;
+      }
+    });
+    
+    // Update last updated timestamp
+    this.systemState.lastUpdated = Date.now();
+    
+    if (this.eventBus) {
+      this.eventBus.emit('system:state:updated', { 
+        source,
+        updatedFields: Object.keys(state),
+        previousState
+      });
+    }
+    
+    this.logger.debug(`Updated system state from source ${source}, fields: ${Object.keys(state).join(', ')}`);
+    
+    return this.systemState;
+  }
+  
+  /**
+   * Gets the current system state
+   * 
+   * @returns {Object} - System state
+   */
+  getSystemState() {
+    return { ...this.systemState };
+  }
+  
+  /**
+   * Resets the system state to its default values
+   * 
+   * @param {string} source - Source identifier for the reset
+   * @returns {Object} - Reset system state
+   */
+  resetSystemState(source = 'system') {
+    const previousState = this.systemState;
+    
+    this.systemState = {
+      status: 'operational',
+      lastUpdated: Date.now(),
+      components: {},
+      resources: {},
+      environment: {}
+    };
+    
+    if (this.eventBus) {
+      this.eventBus.emit('system:state:reset', { 
+        source,
+        previousState
+      });
+    }
+    
+    this.logger.info(`Reset system state from source ${source}`);
+    
+    return this.systemState;
   }
 }
 
