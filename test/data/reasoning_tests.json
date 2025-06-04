@@ -1,0 +1,51 @@
+{
+  "name": "reasoning",
+  "description": "Test data for reasoning tasks",
+  "tests": [
+    {
+      "id": "math_problem_1",
+      "prompt": "If a train travels at 60 mph for 3 hours, how far does it go?",
+      "expected_contains": [
+        "180",
+        "miles"
+      ],
+      "max_tokens": 100
+    },
+    {
+      "id": "math_problem_2",
+      "prompt": "If x + y = 10 and x - y = 4, what are the values of x and y?",
+      "expected_contains": [
+        "x = 7",
+        "y = 3"
+      ],
+      "max_tokens": 150
+    },
+    {
+      "id": "logic_problem_1",
+      "prompt": "All men are mortal. Socrates is a man. What can you conclude?",
+      "expected_contains": [
+        "Socrates is mortal"
+      ],
+      "max_tokens": 100
+    },
+    {
+      "id": "logic_problem_2",
+      "prompt": "If it is raining, then the ground is wet. The ground is wet. Can you conclude that it is raining?",
+      "expected_contains": [
+        "No",
+        "not necessarily",
+        "other causes"
+      ],
+      "max_tokens": 150
+    },
+    {
+      "id": "complex_reasoning",
+      "prompt": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
+      "expected_contains": [
+        "$0.05",
+        "5 cents"
+      ],
+      "max_tokens": 200
+    }
+  ]
+}

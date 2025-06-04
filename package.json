@@ -1,0 +1,41 @@
+{
+  "name": "aideon-ai-desktop-agent",
+  "version": "1.0.0",
+  "description": "Aideon AI Desktop Agent - The first general purpose desktop agent designed to be fully autonomous",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha packages/aideon-main/test/**/*.test.js",
+    "test:knowledge": "mocha packages/aideon-main/test/tentacles/cognitive/core/knowledge/**/*.test.js",
+    "test:unit": "mocha packages/aideon-main/test/**/*.test.js --grep -v 'integration|functional'",
+    "test:integration": "mocha packages/aideon-main/test/**/*.integration.test.js",
+    "test:functional": "mocha packages/aideon-main/test/**/*.functional.test.js",
+    "integration-test": "mocha integration_tests/**/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AllienNova/aideon-ai-desktop-agent.git"
+  },
+  "keywords": [
+    "ai",
+    "desktop",
+    "agent",
+    "autonomous",
+    "tentacles"
+  ],
+  "author": "Aideon AI",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AllienNova/aideon-ai-desktop-agent/issues"
+  },
+  "homepage": "https://github.com/AllienNova/aideon-ai-desktop-agent#readme",
+  "devDependencies": {
+    "chai": "^4.5.0",
+    "mocha": "^10.8.2",
+    "proxyquire": "^2.1.3",
+    "sinon": "^15.2.0",
+    "winston": "^3.17.0"
+  },
+  "dependencies": {
+    "uuid": "^11.1.0"
+  }
+}

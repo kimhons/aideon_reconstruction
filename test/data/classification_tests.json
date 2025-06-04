@@ -1,0 +1,55 @@
+{
+  "name": "classification",
+  "description": "Test data for classification tasks",
+  "tests": [
+    {
+      "id": "sentiment_1",
+      "prompt": "Classify the sentiment of this text: \"I love this product, it works great!\"",
+      "expected_contains": [
+        "positive",
+        "Positive"
+      ],
+      "max_tokens": 50
+    },
+    {
+      "id": "sentiment_2",
+      "prompt": "Classify the sentiment of this text: \"This is the worst experience I have ever had.\"",
+      "expected_contains": [
+        "negative",
+        "Negative"
+      ],
+      "max_tokens": 50
+    },
+    {
+      "id": "sentiment_3",
+      "prompt": "Classify the sentiment of this text: \"The product is okay, but could be better.\"",
+      "expected_contains": [
+        "neutral",
+        "Neutral",
+        "mixed",
+        "Mixed"
+      ],
+      "max_tokens": 50
+    },
+    {
+      "id": "topic_1",
+      "prompt": "Classify the topic of this text: \"The new vaccine has shown promising results in clinical trials.\"",
+      "expected_contains": [
+        "medical",
+        "health",
+        "science"
+      ],
+      "max_tokens": 50
+    },
+    {
+      "id": "topic_2",
+      "prompt": "Classify the topic of this text: \"The stock market reached a new high today as investors reacted to positive economic data.\"",
+      "expected_contains": [
+        "finance",
+        "economy",
+        "business"
+      ],
+      "max_tokens": 50
+    }
+  ]
+}

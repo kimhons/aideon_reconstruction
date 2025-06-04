@@ -1,0 +1,82 @@
+[
+  {
+    "name": "memory.rss",
+    "value": 54161408,
+    "timestamp": 20051.833083,
+    "tags": {
+      "type": "memory"
+    }
+  },
+  {
+    "name": "memory.heapTotal",
+    "value": 7352320,
+    "timestamp": 20051.835555,
+    "tags": {
+      "type": "memory"
+    }
+  },
+  {
+    "name": "memory.heapUsed",
+    "value": 5152792,
+    "timestamp": 20051.836472,
+    "tags": {
+      "type": "memory"
+    }
+  },
+  {
+    "name": "memory.external",
+    "value": 1593044,
+    "timestamp": 20051.837364,
+    "tags": {
+      "type": "memory"
+    }
+  },
+  {
+    "name": "memory.arrayBuffers",
+    "value": 10515,
+    "timestamp": 20051.838188,
+    "tags": {
+      "type": "memory"
+    }
+  },
+  {
+    "name": "cpu.system",
+    "value": 39774,
+    "timestamp": 20055.252431,
+    "tags": {
+      "type": "cpu"
+    }
+  },
+  {
+    "name": "cpu.user",
+    "value": 117193,
+    "timestamp": 20055.253637,
+    "tags": {
+      "type": "cpu"
+    }
+  },
+  {
+    "name": "cpu.load.1m",
+    "value": 0,
+    "timestamp": 20055.254415,
+    "tags": {
+      "type": "cpu"
+    }
+  },
+  {
+    "name": "cpu.load.5m",
+    "value": 0,
+    "timestamp": 20055.255174,
+    "tags": {
+      "type": "cpu"
+    }
+  },
+  {
+    "name": "cpu.load.15m",
+    "value": 0,
+    "timestamp": 20055.255912,
+    "tags": {
+      "type": "cpu"
+    }
+  }
+]

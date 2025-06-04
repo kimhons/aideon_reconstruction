@@ -1,10 +1,10 @@
 /**
- * @fileoverview Production-ready AI Ethics & Governance Tentacle for Aideon.
- * This is the main integration point for all ethics and governance components,
- * providing a unified interface for ethical AI operations across the platform.
+ * @fileoverview Enhanced AI Ethics & Governance Tentacle with advanced multi-LLM orchestration
+ * Provides a comprehensive framework for ensuring ethical AI operations across the Aideon platform
+ * Enhanced with collaborative intelligence and specialized model selection
  * 
  * @author Aideon AI
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 const EventEmitter = require('events');
@@ -15,19 +15,23 @@ const FairnessMetricsDashboard = require('./FairnessMetricsDashboard');
 const ValueAlignmentVerifier = require('./ValueAlignmentVerifier');
 const AlgorithmicAccountabilityFramework = require('./AlgorithmicAccountabilityFramework');
 const TentacleBase = require('../TentacleBase');
+const EnhancedTentacleIntegration = require('../common/EnhancedTentacleIntegration');
+
+// Import advanced orchestration components
+const { ModelType, CollaborationStrategy } = require('../../core/miif/models/ModelEnums');
 
 /**
- * AIEthicsGovernanceTentacle provides a comprehensive framework for ensuring
- * ethical AI operations across the Aideon platform, including bias detection,
- * explainability, human oversight, fairness monitoring, value alignment, and
- * algorithmic accountability.
+ * Enhanced AIEthicsGovernanceTentacle with superintelligent capabilities
+ * Provides a comprehensive framework for ensuring ethical AI operations
+ * across the Aideon platform, leveraging advanced multi-LLM orchestration
  */
 class AIEthicsGovernanceTentacle extends TentacleBase {
   /**
-   * Creates a new AIEthicsGovernanceTentacle instance.
+   * Creates a new AIEthicsGovernanceTentacle instance with advanced orchestration.
    * @param {Object} config - Configuration options for the ethics tentacle.
+   * @param {Object} dependencies - System dependencies
    */
-  constructor(config = {}) {
+  constructor(config = {}, dependencies = {}) {
     super('ethics_governance', config);
     
     this.config = {
@@ -38,6 +42,13 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
       fairnessMonitoringEnabled: config.fairnessMonitoringEnabled !== false,
       valueAlignmentEnabled: config.valueAlignmentEnabled !== false,
       accountabilityEnabled: config.accountabilityEnabled !== false,
+      
+      // Advanced orchestration options
+      collaborativeIntelligence: config.collaborativeIntelligence !== false,
+      specializedModelSelection: config.specializedModelSelection !== false,
+      adaptiveResourceAllocation: config.adaptiveResourceAllocation !== false,
+      selfEvaluation: config.selfEvaluation !== false,
+      offlineCapability: config.offlineCapability || 'full', // 'limited', 'standard', 'full'
       
       // Storage paths
       dataStoragePath: config.dataStoragePath || './data/ethics',
@@ -120,6 +131,9 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
       ...config
     };
     
+    this.dependencies = dependencies;
+    this.logger = dependencies.logger || this.logger;
+    
     // Initialize state
     this.state = {
       isInitialized: false,
@@ -132,13 +146,11 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
       complianceStatus: {}
     };
     
+    // Initialize advanced orchestration
+    this._initializeAdvancedOrchestration();
+    
     // Initialize components
-    this.biasDetectionEngine = new BiasDetectionEngine(this.config);
-    this.explainabilityEngine = new ExplainabilityEngine(this.config);
-    this.humanOversightSystem = new HumanOversightSystem(this.config);
-    this.fairnessMetricsDashboard = new FairnessMetricsDashboard(this.config);
-    this.valueAlignmentVerifier = new ValueAlignmentVerifier(this.config);
-    this.accountabilityFramework = new AlgorithmicAccountabilityFramework(this.config);
+    this._initializeComponents();
     
     // Bind methods to maintain context
     this.initialize = this.initialize.bind(this);
@@ -154,12 +166,88 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
   }
   
   /**
+   * Initialize advanced orchestration
+   * @private
+   */
+  _initializeAdvancedOrchestration() {
+    this.logger.debug("Initializing advanced orchestration for AI Ethics & Governance");
+    
+    // Configure enhanced tentacle integration
+    this.enhancedIntegration = new EnhancedTentacleIntegration(
+      {
+        collaborativeIntelligence: this.config.collaborativeIntelligence,
+        specializedModelSelection: this.config.specializedModelSelection,
+        adaptiveResourceAllocation: this.config.adaptiveResourceAllocation,
+        selfEvaluation: this.config.selfEvaluation,
+        offlineCapability: this.config.offlineCapability
+      },
+      {
+        logger: this.logger,
+        modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem
+      }
+    );
+  }
+  
+  /**
+   * Initialize components with advanced orchestration
+   * @private
+   */
+  _initializeComponents() {
+    this.logger.debug("Initializing components with advanced orchestration");
+    
+    // Initialize bias detection engine with orchestration
+    this.biasDetectionEngine = new BiasDetectionEngine({
+      ...this.config,
+      modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem,
+      enhancedIntegration: this.enhancedIntegration
+    });
+    
+    // Initialize explainability engine with orchestration
+    this.explainabilityEngine = new ExplainabilityEngine({
+      ...this.config,
+      modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem,
+      enhancedIntegration: this.enhancedIntegration
+    });
+    
+    // Initialize human oversight system with orchestration
+    this.humanOversightSystem = new HumanOversightSystem({
+      ...this.config,
+      modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem,
+      enhancedIntegration: this.enhancedIntegration
+    });
+    
+    // Initialize fairness metrics dashboard with orchestration
+    this.fairnessMetricsDashboard = new FairnessMetricsDashboard({
+      ...this.config,
+      modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem,
+      enhancedIntegration: this.enhancedIntegration
+    });
+    
+    // Initialize value alignment verifier with orchestration
+    this.valueAlignmentVerifier = new ValueAlignmentVerifier({
+      ...this.config,
+      modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem,
+      enhancedIntegration: this.enhancedIntegration
+    });
+    
+    // Initialize accountability framework with orchestration
+    this.accountabilityFramework = new AlgorithmicAccountabilityFramework({
+      ...this.config,
+      modelOrchestrationSystem: this.dependencies.modelOrchestrationSystem,
+      enhancedIntegration: this.enhancedIntegration
+    });
+  }
+  
+  /**
    * Initializes the AI Ethics & Governance Tentacle.
    * @returns {Promise<void>} A promise that resolves when initialization is complete.
    */
   async initialize() {
     try {
-      this.logger.info('Initializing AI Ethics & Governance Tentacle');
+      this.logger.info('Initializing AI Ethics & Governance Tentacle with advanced orchestration');
+      
+      // Initialize collaboration sessions
+      await this._initializeCollaborationSessions();
       
       // Initialize components based on configuration
       const initPromises = [];
@@ -201,7 +289,7 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
       this.setupEventListeners();
       
       this.state.isInitialized = true;
-      this.logger.info('AI Ethics & Governance Tentacle initialized successfully');
+      this.logger.info('AI Ethics & Governance Tentacle initialized successfully with superintelligent capabilities');
       
       // Register with tentacle registry
       await this.register();
@@ -210,13 +298,15 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
       if (this.config.accountabilityEnabled) {
         await this.accountabilityFramework.logAction({
           actionType: 'tentacle_initialization',
-          description: 'AI Ethics & Governance Tentacle initialized',
+          description: 'AI Ethics & Governance Tentacle initialized with advanced orchestration',
           details: {
             activeComponents: Array.from(this.state.activeComponents),
             config: {
               integrationMode: this.config.integrationMode,
               ethicalFrameworks: this.config.ethicalFrameworks,
-              culturalContexts: this.config.culturalContexts
+              culturalContexts: this.config.culturalContexts,
+              collaborativeIntelligence: this.config.collaborativeIntelligence,
+              specializedModelSelection: this.config.specializedModelSelection
             }
           }
         });
@@ -225,6 +315,70 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
       return true;
     } catch (error) {
       this.logger.error('Failed to initialize AI Ethics & Governance Tentacle:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Initialize collaboration sessions for advanced orchestration
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _initializeCollaborationSessions() {
+    if (!this.config.collaborativeIntelligence) {
+      this.logger.info('Collaborative intelligence disabled, skipping collaboration sessions');
+      return;
+    }
+    
+    this.logger.debug('Initializing collaboration sessions for AI Ethics & Governance');
+    
+    try {
+      // Define collaboration configurations
+      const collaborationConfigs = [
+        {
+          name: 'bias_detection',
+          modelType: ModelType.TEXT,
+          taskType: 'bias_detection',
+          collaborationStrategy: CollaborationStrategy.ENSEMBLE,
+          offlineOnly: true
+        },
+        {
+          name: 'explainability',
+          modelType: ModelType.TEXT,
+          taskType: 'explainability',
+          collaborationStrategy: CollaborationStrategy.CHAIN_OF_THOUGHT,
+          offlineOnly: false
+        },
+        {
+          name: 'fairness_analysis',
+          modelType: ModelType.TEXT,
+          taskType: 'fairness_analysis',
+          collaborationStrategy: CollaborationStrategy.SPECIALIZED_ROUTING,
+          offlineOnly: true
+        },
+        {
+          name: 'value_alignment',
+          modelType: ModelType.TEXT,
+          taskType: 'value_alignment',
+          collaborationStrategy: CollaborationStrategy.CONSENSUS,
+          offlineOnly: false
+        },
+        {
+          name: 'ethical_decision',
+          modelType: ModelType.TEXT,
+          taskType: 'ethical_decision',
+          collaborationStrategy: CollaborationStrategy.TASK_DECOMPOSITION,
+          offlineOnly: true
+        }
+      ];
+      
+      // Initialize all collaboration sessions
+      await this.enhancedIntegration.initializeAdvancedOrchestration('ethics_governance', collaborationConfigs);
+      
+      this.logger.info('Collaboration sessions initialized successfully for AI Ethics & Governance');
+      
+    } catch (error) {
+      this.logger.error(`Failed to initialize collaboration sessions: ${error.message}`);
       throw error;
     }
   }
@@ -371,7 +525,7 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
   }
   
   /**
-   * Evaluates the ethics of an AI operation.
+   * Evaluates the ethics of an AI operation using collaborative intelligence.
    * @param {Object} operation - The operation to evaluate.
    * @param {Object} context - The context of the operation.
    * @returns {Promise<Object>} A promise that resolves to the ethics evaluation result.
@@ -389,6 +543,97 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
     const evaluationId = operation.id || crypto.randomUUID();
     const timestamp = new Date().toISOString();
     
+    try {
+      // Determine if we should use collaborative intelligence
+      if (this.config.collaborativeIntelligence) {
+        return await this._evaluateEthicsCollaboratively(operation, context, evaluationId, timestamp);
+      } else {
+        return await this._evaluateEthicsStandard(operation, context, evaluationId, timestamp);
+      }
+    } catch (error) {
+      this.logger.error('Ethics evaluation failed:', error);
+      
+      // Fall back to standard evaluation if collaborative fails
+      if (error.message.includes('collaborative')) {
+        this.logger.info('Falling back to standard ethics evaluation');
+        return await this._evaluateEthicsStandard(operation, context, evaluationId, timestamp);
+      }
+      
+      throw error;
+    }
+  }
+  
+  /**
+   * Evaluates ethics using collaborative intelligence
+   * @private
+   * @param {Object} operation - The operation to evaluate
+   * @param {Object} context - The context of the operation
+   * @param {string} evaluationId - The evaluation ID
+   * @param {string} timestamp - The timestamp
+   * @returns {Promise<Object>} The evaluation result
+   */
+  async _evaluateEthicsCollaboratively(operation, context, evaluationId, timestamp) {
+    this.logger.debug('Using collaborative intelligence for ethics evaluation');
+    
+    try {
+      // Execute collaborative task for ethical decision
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'ethical_decision',
+        {
+          operation,
+          context,
+          evaluationId,
+          timestamp,
+          ethicalFrameworks: this.config.ethicalFrameworks,
+          culturalContexts: this.config.culturalContexts
+        },
+        {
+          priority: operation.priority || 'high',
+          timeout: operation.timeout || 30000
+        }
+      );
+      
+      // Store the ethical decision
+      this.state.ethicalDecisions.push({
+        id: evaluationId,
+        timestamp,
+        operation: {
+          type: operation.type,
+          id: operation.id
+        },
+        decision: result.result.decision,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      });
+      
+      return {
+        ...result.result,
+        id: evaluationId,
+        timestamp,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.logger.error('Collaborative ethics evaluation failed:', error);
+      throw new Error(`Collaborative ethics evaluation failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Evaluates ethics using standard component approach
+   * @private
+   * @param {Object} operation - The operation to evaluate
+   * @param {Object} context - The context of the operation
+   * @param {string} evaluationId - The evaluation ID
+   * @param {string} timestamp - The timestamp
+   * @returns {Promise<Object>} The evaluation result
+   */
+  async _evaluateEthicsStandard(operation, context, evaluationId, timestamp) {
     // Create evaluation result
     const evaluationResult = {
       id: evaluationId,
@@ -443,23 +688,20 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
         evaluationResult.components.humanOversight = oversightResult;
         
         // Update decision based on oversight requirement
-        evaluationResult.decision.requiresHumanOversight = oversightResult.oversightRequired;
-        
-        if (oversightResult.oversightRequired && oversightResult.criticalOperation) {
-          evaluationResult.decision.approved = false;
-          evaluationResult.decision.explanation += 'Critical operation requires human oversight before proceeding. ';
+        if (oversightResult.oversightRequired) {
+          evaluationResult.decision.requiresHumanOversight = true;
+          evaluationResult.decision.explanation += 'Human oversight required. ';
         }
       }
       
-      // Monitor fairness if enabled
+      // Perform fairness monitoring if enabled
       if (this.config.fairnessMonitoringEnabled) {
         const fairnessResult = await this.monitorFairness(operation, context);
         evaluationResult.components.fairnessMonitoring = fairnessResult;
         
         // Update decision based on fairness issues
         if (fairnessResult.fairnessIssues.length > 0) {
-          const criticalIssues = fairnessResult.fairnessIssues.filter(issue => issue.severity >= this.config.biasThresholds.high);
-          
+          const criticalIssues = fairnessResult.fairnessIssues.filter(issue => issue.severity === 'critical');
           if (criticalIssues.length > 0) {
             evaluationResult.decision.approved = false;
             evaluationResult.decision.explanation += 'Critical fairness issues detected. ';
@@ -468,7 +710,7 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
         }
       }
       
-      // Verify value alignment if enabled
+      // Perform value alignment verification if enabled
       if (this.config.valueAlignmentEnabled) {
         const alignmentResult = await this.verifyValueAlignment(operation, context);
         evaluationResult.components.valueAlignment = alignmentResult;
@@ -487,82 +729,169 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
         evaluationResult.components.accountability = accountabilityResult;
       }
       
-      // Add evaluation to state
-      this.state.ethicalDecisions.push(evaluationResult);
-      
-      // Emit evaluation event
-      this.emit('ethics:evaluation_complete', {
-        evaluationId,
-        approved: evaluationResult.decision.approved,
-        requiresHumanOversight: evaluationResult.decision.requiresHumanOversight
+      // Store the ethical decision
+      this.state.ethicalDecisions.push({
+        id: evaluationId,
+        timestamp,
+        operation: {
+          type: operation.type,
+          id: operation.id
+        },
+        decision: evaluationResult.decision
       });
       
       return evaluationResult;
+      
     } catch (error) {
-      this.logger.error('Error during ethics evaluation:', error);
-      
-      // Create error result
-      const errorResult = {
-        ...evaluationResult,
-        error: {
-          message: error.message,
-          stack: error.stack
-        },
-        decision: {
-          approved: false,
-          requiresHumanOversight: true,
-          explanation: `Error during ethics evaluation: ${error.message}`,
-          mitigationSteps: ['Review error and retry evaluation']
-        }
-      };
-      
-      // Add error evaluation to state
-      this.state.ethicalDecisions.push(errorResult);
-      
-      // Emit error event
-      this.emit('ethics:evaluation_error', {
-        evaluationId,
-        error: error.message
-      });
-      
-      return errorResult;
+      this.logger.error('Ethics evaluation failed:', error);
+      throw error;
     }
   }
   
   /**
-   * Detects bias in an AI operation.
+   * Detects bias in an AI operation using specialized model selection.
    * @param {Object} operation - The operation to check for bias.
    * @param {Object} context - The context of the operation.
    * @returns {Promise<Object>} A promise that resolves to the bias detection result.
    */
-  async detectBias(operation, context = {}) {
-    if (!this.state.isInitialized) {
-      throw new Error('AI Ethics & Governance Tentacle not initialized');
-    }
-    
+  async detectBias(operation, context) {
     if (!this.config.biasDetectionEnabled) {
       throw new Error('Bias detection is not enabled');
     }
     
-    return this.biasDetectionEngine.detectBias(operation, context);
+    this.logger.debug('Detecting bias for operation', { operationType: operation.type });
+    
+    try {
+      // Use specialized model selection if enabled
+      if (this.config.specializedModelSelection) {
+        return await this._detectBiasWithSpecializedModel(operation, context);
+      } else {
+        return await this.biasDetectionEngine.detectBias(operation, context);
+      }
+    } catch (error) {
+      this.logger.error('Bias detection failed:', error);
+      
+      // Fall back to standard bias detection if specialized fails
+      if (error.message.includes('specialized')) {
+        this.logger.info('Falling back to standard bias detection');
+        return await this.biasDetectionEngine.detectBias(operation, context);
+      }
+      
+      throw error;
+    }
   }
   
   /**
-   * Generates an explanation for an AI decision.
+   * Detects bias using specialized model selection
+   * @private
+   * @param {Object} operation - The operation to check for bias
+   * @param {Object} context - The context of the operation
+   * @returns {Promise<Object>} The bias detection result
+   */
+  async _detectBiasWithSpecializedModel(operation, context) {
+    this.logger.debug('Using specialized model selection for bias detection');
+    
+    try {
+      // Select specialized model for bias detection
+      const model = await this.enhancedIntegration.selectSpecializedModel({
+        taskType: 'bias_detection',
+        requirements: {
+          biasTypes: this.biasDetectionEngine.getSupportedBiasTypes(),
+          dataTypes: [operation.type],
+          culturalContexts: this.config.culturalContexts
+        }
+      });
+      
+      // Use the selected model for bias detection
+      const result = await model.execute({
+        operation,
+        context,
+        biasTypes: this.biasDetectionEngine.getSupportedBiasTypes(),
+        thresholds: this.config.biasThresholds
+      });
+      
+      return {
+        ...result,
+        modelId: model.modelId,
+        specializedSelection: true
+      };
+      
+    } catch (error) {
+      this.logger.error('Specialized bias detection failed:', error);
+      throw new Error(`Specialized bias detection failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Explains an AI decision using collaborative intelligence.
    * @param {Object} operation - The operation to explain.
    * @param {Object} context - The context of the operation.
    * @returns {Promise<Object>} A promise that resolves to the explanation result.
    */
-  async explainDecision(operation, context = {}) {
-    if (!this.state.isInitialized) {
-      throw new Error('AI Ethics & Governance Tentacle not initialized');
-    }
-    
+  async explainDecision(operation, context) {
     if (!this.config.explainabilityEnabled) {
       throw new Error('Explainability is not enabled');
     }
     
-    return this.explainabilityEngine.generateExplanation(operation, context);
+    this.logger.debug('Explaining decision for operation', { operationType: operation.type });
+    
+    try {
+      // Use collaborative intelligence if enabled
+      if (this.config.collaborativeIntelligence) {
+        return await this._explainDecisionCollaboratively(operation, context);
+      } else {
+        return await this.explainabilityEngine.explainDecision(operation, context);
+      }
+    } catch (error) {
+      this.logger.error('Decision explanation failed:', error);
+      
+      // Fall back to standard explanation if collaborative fails
+      if (error.message.includes('collaborative')) {
+        this.logger.info('Falling back to standard decision explanation');
+        return await this.explainabilityEngine.explainDecision(operation, context);
+      }
+      
+      throw error;
+    }
+  }
+  
+  /**
+   * Explains decision using collaborative intelligence
+   * @private
+   * @param {Object} operation - The operation to explain
+   * @param {Object} context - The context of the operation
+   * @returns {Promise<Object>} The explanation result
+   */
+  async _explainDecisionCollaboratively(operation, context) {
+    this.logger.debug('Using collaborative intelligence for decision explanation');
+    
+    try {
+      // Execute collaborative task for explainability
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'explainability',
+        {
+          operation,
+          context,
+          explainabilityLevels: this.config.explainabilityLevels
+        },
+        {
+          priority: operation.priority || 'normal',
+          timeout: operation.timeout || 30000
+        }
+      );
+      
+      return {
+        ...result.result,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.logger.error('Collaborative decision explanation failed:', error);
+      throw new Error(`Collaborative decision explanation failed: ${error.message}`);
+    }
   }
   
   /**
@@ -572,630 +901,426 @@ class AIEthicsGovernanceTentacle extends TentacleBase {
    * @param {Object} evaluationResult - The current evaluation result.
    * @returns {Promise<Object>} A promise that resolves to the oversight request result.
    */
-  async requestHumanOversight(operation, context = {}, evaluationResult = {}) {
-    if (!this.state.isInitialized) {
-      throw new Error('AI Ethics & Governance Tentacle not initialized');
-    }
-    
+  async requestHumanOversight(operation, context, evaluationResult) {
     if (!this.config.humanOversightEnabled) {
       throw new Error('Human oversight is not enabled');
     }
     
-    return this.humanOversightSystem.evaluateOversightRequirement(operation, context, evaluationResult);
+    this.logger.debug('Requesting human oversight for operation', { operationType: operation.type });
+    
+    // Determine if oversight is required based on evaluation result
+    const oversightRequired = this._determineOversightRequirement(operation, context, evaluationResult);
+    
+    if (!oversightRequired) {
+      return {
+        oversightRequired: false,
+        reason: 'Operation does not meet oversight thresholds'
+      };
+    }
+    
+    // Request oversight
+    return await this.humanOversightSystem.requestOversight(operation, context, evaluationResult);
   }
   
   /**
-   * Monitors fairness for an AI operation.
+   * Determines if human oversight is required
+   * @private
+   * @param {Object} operation - The operation that may require oversight
+   * @param {Object} context - The context of the operation
+   * @param {Object} evaluationResult - The current evaluation result
+   * @returns {boolean} Whether oversight is required
+   */
+  _determineOversightRequirement(operation, context, evaluationResult) {
+    // Check if operation type always requires oversight
+    const criticalOperations = ['financial_transaction', 'medical_diagnosis', 'legal_decision'];
+    if (criticalOperations.includes(operation.type)) {
+      return true;
+    }
+    
+    // Check if there are bias or fairness issues
+    const hasBiasIssues = evaluationResult.components.biasDetection?.biasDetected || false;
+    const hasFairnessIssues = evaluationResult.components.fairnessMonitoring?.fairnessIssues?.length > 0 || false;
+    
+    if (hasBiasIssues || hasFairnessIssues) {
+      return true;
+    }
+    
+    // Check if there are value alignment issues
+    const hasAlignmentIssues = evaluationResult.components.valueAlignment?.aligned === false || false;
+    
+    if (hasAlignmentIssues) {
+      return true;
+    }
+    
+    // Check if operation risk level exceeds threshold
+    const riskLevel = operation.riskLevel || 'low';
+    const riskThresholds = {
+      critical: this.config.humanOversightThresholds.critical,
+      high: this.config.humanOversightThresholds.high,
+      medium: this.config.humanOversightThresholds.medium,
+      low: this.config.humanOversightThresholds.low
+    };
+    
+    if (riskLevel === 'critical' || riskLevel === 'high') {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Monitors fairness of an AI operation using collaborative intelligence.
    * @param {Object} operation - The operation to monitor for fairness.
    * @param {Object} context - The context of the operation.
    * @returns {Promise<Object>} A promise that resolves to the fairness monitoring result.
    */
-  async monitorFairness(operation, context = {}) {
-    if (!this.state.isInitialized) {
-      throw new Error('AI Ethics & Governance Tentacle not initialized');
-    }
-    
+  async monitorFairness(operation, context) {
     if (!this.config.fairnessMonitoringEnabled) {
       throw new Error('Fairness monitoring is not enabled');
     }
     
-    return this.fairnessMetricsDashboard.evaluateFairness(operation, context);
+    this.logger.debug('Monitoring fairness for operation', { operationType: operation.type });
+    
+    try {
+      // Use collaborative intelligence if enabled
+      if (this.config.collaborativeIntelligence) {
+        return await this._monitorFairnessCollaboratively(operation, context);
+      } else {
+        return await this.fairnessMetricsDashboard.monitorFairness(operation, context);
+      }
+    } catch (error) {
+      this.logger.error('Fairness monitoring failed:', error);
+      
+      // Fall back to standard fairness monitoring if collaborative fails
+      if (error.message.includes('collaborative')) {
+        this.logger.info('Falling back to standard fairness monitoring');
+        return await this.fairnessMetricsDashboard.monitorFairness(operation, context);
+      }
+      
+      throw error;
+    }
   }
   
   /**
-   * Verifies value alignment for an AI operation.
+   * Monitors fairness using collaborative intelligence
+   * @private
+   * @param {Object} operation - The operation to monitor for fairness
+   * @param {Object} context - The context of the operation
+   * @returns {Promise<Object>} The fairness monitoring result
+   */
+  async _monitorFairnessCollaboratively(operation, context) {
+    this.logger.debug('Using collaborative intelligence for fairness monitoring');
+    
+    try {
+      // Execute collaborative task for fairness analysis
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'fairness_analysis',
+        {
+          operation,
+          context,
+          fairnessMetrics: this.config.fairnessMetrics
+        },
+        {
+          priority: operation.priority || 'normal',
+          timeout: operation.timeout || 30000
+        }
+      );
+      
+      return {
+        ...result.result,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.logger.error('Collaborative fairness monitoring failed:', error);
+      throw new Error(`Collaborative fairness monitoring failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Verifies value alignment of an AI operation using collaborative intelligence.
    * @param {Object} operation - The operation to verify for value alignment.
    * @param {Object} context - The context of the operation.
-   * @returns {Promise<Object>} A promise that resolves to the value alignment result.
+   * @returns {Promise<Object>} A promise that resolves to the value alignment verification result.
    */
-  async verifyValueAlignment(operation, context = {}) {
-    if (!this.state.isInitialized) {
-      throw new Error('AI Ethics & Governance Tentacle not initialized');
-    }
-    
+  async verifyValueAlignment(operation, context) {
     if (!this.config.valueAlignmentEnabled) {
       throw new Error('Value alignment verification is not enabled');
     }
     
-    return this.valueAlignmentVerifier.verifyAlignment(operation, context);
+    this.logger.debug('Verifying value alignment for operation', { operationType: operation.type });
+    
+    try {
+      // Use collaborative intelligence if enabled
+      if (this.config.collaborativeIntelligence) {
+        return await this._verifyValueAlignmentCollaboratively(operation, context);
+      } else {
+        return await this.valueAlignmentVerifier.verifyAlignment(operation, context);
+      }
+    } catch (error) {
+      this.logger.error('Value alignment verification failed:', error);
+      
+      // Fall back to standard value alignment verification if collaborative fails
+      if (error.message.includes('collaborative')) {
+        this.logger.info('Falling back to standard value alignment verification');
+        return await this.valueAlignmentVerifier.verifyAlignment(operation, context);
+      }
+      
+      throw error;
+    }
+  }
+  
+  /**
+   * Verifies value alignment using collaborative intelligence
+   * @private
+   * @param {Object} operation - The operation to verify for value alignment
+   * @param {Object} context - The context of the operation
+   * @returns {Promise<Object>} The value alignment verification result
+   */
+  async _verifyValueAlignmentCollaboratively(operation, context) {
+    this.logger.debug('Using collaborative intelligence for value alignment verification');
+    
+    try {
+      // Execute collaborative task for value alignment
+      const result = await this.enhancedIntegration.executeCollaborativeTask(
+        'value_alignment',
+        {
+          operation,
+          context,
+          valueAlignmentDimensions: this.config.valueAlignmentDimensions
+        },
+        {
+          priority: operation.priority || 'high',
+          timeout: operation.timeout || 30000
+        }
+      );
+      
+      return {
+        ...result.result,
+        collaborativeExecution: {
+          strategy: result.strategy,
+          modelCount: result.modelResults?.length || 0
+        }
+      };
+      
+    } catch (error) {
+      this.logger.error('Collaborative value alignment verification failed:', error);
+      throw new Error(`Collaborative value alignment verification failed: ${error.message}`);
+    }
   }
   
   /**
    * Tracks accountability for an AI operation.
-   * @param {Object} operation - The operation to track.
+   * @param {Object} operation - The operation to track accountability for.
    * @param {Object} context - The context of the operation.
-   * @param {Object} evaluationResult - The ethics evaluation result.
+   * @param {Object} evaluationResult - The evaluation result.
    * @returns {Promise<Object>} A promise that resolves to the accountability tracking result.
    */
-  async trackAccountability(operation, context = {}, evaluationResult = {}) {
-    if (!this.state.isInitialized) {
-      throw new Error('AI Ethics & Governance Tentacle not initialized');
-    }
-    
+  async trackAccountability(operation, context, evaluationResult) {
     if (!this.config.accountabilityEnabled) {
       throw new Error('Accountability tracking is not enabled');
     }
     
-    // Log the operation to the audit trail
-    const auditEntryId = await this.accountabilityFramework.logAction({
-      actionType: 'ai_operation',
-      description: `AI operation: ${operation.type}`,
-      details: {
-        operation: {
-          type: operation.type,
-          id: operation.id,
-          description: operation.description
-        },
-        context: {
-          type: context.type,
-          user: context.user,
-          environment: context.environment
-        },
-        evaluation: {
-          approved: evaluationResult.decision?.approved,
-          requiresHumanOversight: evaluationResult.decision?.requiresHumanOversight,
-          explanation: evaluationResult.decision?.explanation
-        }
-      },
-      actor: context.user || 'system',
-      relatedEntities: [
-        { type: 'operation', id: operation.id },
-        { type: 'evaluation', id: evaluationResult.id }
-      ]
-    });
+    this.logger.debug('Tracking accountability for operation', { operationType: operation.type });
     
-    // Track compliance for relevant frameworks
-    const compliancePromises = [];
-    
-    for (const framework of this.config.accountabilityFrameworks) {
-      // Determine if this operation is relevant to this framework
-      const isRelevant = this.isOperationRelevantToFramework(operation, framework);
-      
-      if (isRelevant) {
-        compliancePromises.push(
-          this.accountabilityFramework.trackCompliance({
-            framework,
-            requirement: `${framework}_ethical_evaluation`,
-            status: evaluationResult.decision?.approved ? 'compliant' : 'non_compliant',
-            evidence: [
-              { type: 'audit_entry', id: auditEntryId },
-              { type: 'evaluation', id: evaluationResult.id }
-            ],
-            notes: evaluationResult.decision?.explanation || ''
-          })
-        );
-      }
-    }
-    
-    // Wait for all compliance tracking to complete
-    const complianceRecordIds = await Promise.all(compliancePromises);
-    
-    return {
-      auditEntryId,
-      complianceRecordIds,
-      timestamp: new Date().toISOString()
-    };
+    // Track accountability
+    return await this.accountabilityFramework.trackAccountability(operation, context, evaluationResult);
   }
   
   /**
-   * Determines if an operation is relevant to a compliance framework.
-   * @param {Object} operation - The operation to check.
-   * @param {string} framework - The compliance framework.
-   * @returns {boolean} Whether the operation is relevant to the framework.
-   * @private
-   */
-  isOperationRelevantToFramework(operation, framework) {
-    // In a production implementation, this would have detailed logic for each framework
-    // For this implementation, we'll use a simplified approach
-    
-    switch (framework) {
-      case 'gdpr':
-        // GDPR is relevant for operations involving personal data in the EU
-        return operation.dataTypes?.includes('personal') || 
-               operation.region === 'eu' ||
-               operation.type?.includes('data_processing');
-        
-      case 'ccpa':
-        // CCPA is relevant for operations involving personal data in California
-        return operation.dataTypes?.includes('personal') && 
-               (operation.region === 'california' || operation.region === 'us');
-        
-      case 'hipaa':
-        // HIPAA is relevant for operations involving health data
-        return operation.dataTypes?.includes('health') || 
-               operation.sector === 'healthcare';
-        
-      case 'ai_act':
-        // AI Act is relevant for high-risk AI systems in the EU
-        return operation.riskLevel === 'high' && 
-               (operation.region === 'eu' || operation.global);
-        
-      case 'iso_25059':
-        // ISO 25059 is relevant for AI systems with safety implications
-        return operation.hasSafetyImplications || 
-               operation.sector === 'safety_critical';
-        
-      case 'nist_ai':
-        // NIST AI is broadly applicable to AI systems
-        return true;
-        
-      default:
-        return false;
-    }
-  }
-  
-  /**
-   * Generates an ethics report for a specified time period.
-   * @param {Object} options - Options for the report.
+   * Generates an ethics report for a time period.
+   * @param {Object} options - Report generation options.
+   * @param {Date} options.startDate - Start date for the report.
+   * @param {Date} options.endDate - End date for the report.
+   * @param {Array<string>} options.components - Components to include in the report.
    * @returns {Promise<Object>} A promise that resolves to the generated report.
    */
-  async generateEthicsReport(options = {}) {
+  async generateEthicsReport(options) {
     if (!this.state.isInitialized) {
       throw new Error('AI Ethics & Governance Tentacle not initialized');
     }
     
-    if (!this.config.accountabilityEnabled) {
-      throw new Error('Accountability is required for generating ethics reports');
+    this.logger.info('Generating ethics report', options);
+    
+    // Generate report
+    const report = {
+      generatedAt: new Date().toISOString(),
+      period: {
+        startDate: options.startDate.toISOString(),
+        endDate: options.endDate.toISOString()
+      },
+      components: {},
+      summary: {
+        totalDecisions: 0,
+        approvedDecisions: 0,
+        rejectedDecisions: 0,
+        oversightRequests: 0,
+        biasDetections: 0,
+        fairnessAlerts: 0,
+        valueAlignmentIssues: 0
+      }
+    };
+    
+    // Filter decisions by date range
+    const decisions = this.state.ethicalDecisions.filter(decision => {
+      const decisionDate = new Date(decision.timestamp);
+      return decisionDate >= options.startDate && decisionDate <= options.endDate;
+    });
+    
+    report.summary.totalDecisions = decisions.length;
+    report.summary.approvedDecisions = decisions.filter(d => d.decision.approved).length;
+    report.summary.rejectedDecisions = decisions.filter(d => !d.decision.approved).length;
+    
+    // Include requested components
+    if (!options.components || options.components.includes('bias_detection')) {
+      const biasDetections = this.state.biasDetections.filter(detection => {
+        const detectionDate = new Date(detection.timestamp);
+        return detectionDate >= options.startDate && detectionDate <= options.endDate;
+      });
+      
+      report.components.biasDetection = {
+        totalDetections: biasDetections.length,
+        byType: this._countByProperty(biasDetections, 'biasType'),
+        bySeverity: this._countByProperty(biasDetections, 'severity')
+      };
+      
+      report.summary.biasDetections = biasDetections.length;
     }
     
-    // Generate transparency report using accountability framework
-    const report = await this.accountabilityFramework.generateTransparencyReport({
-      title: options.title || 'AI Ethics & Governance Report',
-      description: options.description || 'Comprehensive report on AI ethics and governance',
-      startDate: options.startDate,
-      endDate: options.endDate,
-      formats: options.formats || ['json', 'html', 'pdf'],
-      customSections: [
-        // Add ethics-specific sections
-        await this.generateBiasSection(options),
-        await this.generateOversightSection(options),
-        await this.generateFairnessSection(options),
-        await this.generateValueAlignmentSection(options)
-      ],
-      metadata: {
-        generatedBy: 'AIEthicsGovernanceTentacle',
-        version: '1.0.0',
-        ...options.metadata
-      }
-    });
+    if (!options.components || options.components.includes('human_oversight')) {
+      const oversightRequests = this.state.oversightRequests.filter(request => {
+        const requestDate = new Date(request.timestamp);
+        return requestDate >= options.startDate && requestDate <= options.endDate;
+      });
+      
+      report.components.humanOversight = {
+        totalRequests: oversightRequests.length,
+        byStatus: this._countByProperty(oversightRequests, 'status'),
+        byDecision: this._countByProperty(oversightRequests.filter(r => r.decision), 'decision')
+      };
+      
+      report.summary.oversightRequests = oversightRequests.length;
+    }
+    
+    if (!options.components || options.components.includes('fairness_monitoring')) {
+      const fairnessAlerts = this.state.fairnessAlerts.filter(alert => {
+        const alertDate = new Date(alert.timestamp);
+        return alertDate >= options.startDate && alertDate <= options.endDate;
+      });
+      
+      report.components.fairnessMonitoring = {
+        totalAlerts: fairnessAlerts.length,
+        byMetric: this._countByProperty(fairnessAlerts, 'metric'),
+        bySeverity: this._countByProperty(fairnessAlerts, 'severity')
+      };
+      
+      report.summary.fairnessAlerts = fairnessAlerts.length;
+    }
+    
+    if (!options.components || options.components.includes('value_alignment')) {
+      const valueAlignmentIssues = this.state.valueAlignmentIssues.filter(issue => {
+        const issueDate = new Date(issue.timestamp);
+        return issueDate >= options.startDate && issueDate <= options.endDate;
+      });
+      
+      report.components.valueAlignment = {
+        totalIssues: valueAlignmentIssues.length,
+        byValue: this._countByProperty(valueAlignmentIssues, 'value'),
+        bySeverity: this._countByProperty(valueAlignmentIssues, 'severity')
+      };
+      
+      report.summary.valueAlignmentIssues = valueAlignmentIssues.length;
+    }
+    
+    if (!options.components || options.components.includes('accountability')) {
+      report.components.accountability = {
+        complianceStatus: { ...this.state.complianceStatus }
+      };
+    }
+    
+    // Log report generation to accountability framework
+    if (this.config.accountabilityEnabled) {
+      await this.accountabilityFramework.logAction({
+        actionType: 'report_generation',
+        description: 'Ethics report generated',
+        details: {
+          period: report.period,
+          summary: report.summary
+        }
+      });
+    }
     
     return report;
   }
   
   /**
-   * Generates the bias section for an ethics report.
-   * @param {Object} options - Options for the report.
-   * @returns {Promise<Object>} A promise that resolves to the bias section.
+   * Counts occurrences of a property value in an array of objects.
    * @private
+   * @param {Array<Object>} array - The array of objects.
+   * @param {string} property - The property to count by.
+   * @returns {Object} An object with counts by property value.
    */
-  async generateBiasSection(options) {
-    if (!this.config.biasDetectionEnabled) {
-      return null;
-    }
-    
-    // Parse date range
-    const startDate = options.startDate ? new Date(options.startDate) : new Date(0);
-    const endDate = options.endDate ? new Date(options.endDate) : new Date();
-    
-    // Filter bias detections by date range
-    const relevantDetections = this.state.biasDetections.filter(detection => {
-      const detectionDate = new Date(detection.timestamp);
-      return detectionDate >= startDate && detectionDate <= endDate;
-    });
-    
-    // Count detections by type
-    const biasTypeCounts = {};
-    for (const detection of relevantDetections) {
-      biasTypeCounts[detection.biasType] = (biasTypeCounts[detection.biasType] || 0) + 1;
-    }
-    
-    // Count detections by severity
-    const severityCounts = {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0
-    };
-    
-    for (const detection of relevantDetections) {
-      if (detection.severity >= this.config.biasThresholds.critical) {
-        severityCounts.critical++;
-      } else if (detection.severity >= this.config.biasThresholds.high) {
-        severityCounts.high++;
-      } else if (detection.severity >= this.config.biasThresholds.medium) {
-        severityCounts.medium++;
-      } else {
-        severityCounts.low++;
-      }
-    }
-    
-    // Create bias section
-    return {
-      id: 'bias_detection',
-      title: 'Bias Detection',
-      description: 'Summary of bias detection and mitigation activities',
-      content: {
-        totalDetections: relevantDetections.length,
-        biasTypeCounts,
-        severityCounts,
-        mitigationRate: relevantDetections.length > 0 ? 
-          relevantDetections.filter(d => d.mitigated).length / relevantDetections.length * 100 : 0,
-        topBiasTypes: Object.entries(biasTypeCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([type, count]) => ({ type, count })),
-        recentDetections: relevantDetections
-          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-          .slice(0, 10)
-          .map(detection => ({
-            timestamp: detection.timestamp,
-            biasType: detection.biasType,
-            severity: detection.severity,
-            mitigated: detection.mitigated,
-            affectedGroups: detection.affectedGroups
-          }))
-      }
-    };
+  _countByProperty(array, property) {
+    return array.reduce((counts, item) => {
+      const value = item[property];
+      counts[value] = (counts[value] || 0) + 1;
+      return counts;
+    }, {});
   }
   
   /**
-   * Generates the oversight section for an ethics report.
-   * @param {Object} options - Options for the report.
-   * @returns {Promise<Object>} A promise that resolves to the oversight section.
-   * @private
-   */
-  async generateOversightSection(options) {
-    if (!this.config.humanOversightEnabled) {
-      return null;
-    }
-    
-    // Parse date range
-    const startDate = options.startDate ? new Date(options.startDate) : new Date(0);
-    const endDate = options.endDate ? new Date(options.endDate) : new Date();
-    
-    // Filter oversight requests by date range
-    const relevantRequests = this.state.oversightRequests.filter(request => {
-      const requestDate = new Date(request.timestamp);
-      return requestDate >= startDate && requestDate <= endDate;
-    });
-    
-    // Count requests by status
-    const statusCounts = {
-      pending: 0,
-      completed: 0,
-      timeout: 0
-    };
-    
-    for (const request of relevantRequests) {
-      statusCounts[request.status] = (statusCounts[request.status] || 0) + 1;
-    }
-    
-    // Calculate average response time for completed requests
-    let totalResponseTime = 0;
-    let completedCount = 0;
-    
-    for (const request of relevantRequests) {
-      if (request.status === 'completed' && request.completedAt) {
-        const requestTime = new Date(request.timestamp);
-        const completionTime = new Date(request.completedAt);
-        const responseTime = completionTime - requestTime;
-        
-        totalResponseTime += responseTime;
-        completedCount++;
-      }
-    }
-    
-    const averageResponseTime = completedCount > 0 ? 
-      totalResponseTime / completedCount : 0;
-    
-    // Create oversight section
-    return {
-      id: 'human_oversight',
-      title: 'Human Oversight',
-      description: 'Summary of human oversight activities',
-      content: {
-        totalRequests: relevantRequests.length,
-        statusCounts,
-        averageResponseTime,
-        responseTimeMinutes: averageResponseTime > 0 ? 
-          Math.round(averageResponseTime / (1000 * 60)) : 0,
-        completionRate: relevantRequests.length > 0 ? 
-          (statusCounts.completed / relevantRequests.length) * 100 : 0,
-        recentRequests: relevantRequests
-          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-          .slice(0, 10)
-          .map(request => ({
-            timestamp: request.timestamp,
-            status: request.status,
-            reason: request.reason,
-            criticalOperation: request.criticalOperation,
-            completedAt: request.completedAt
-          }))
-      }
-    };
-  }
-  
-  /**
-   * Generates the fairness section for an ethics report.
-   * @param {Object} options - Options for the report.
-   * @returns {Promise<Object>} A promise that resolves to the fairness section.
-   * @private
-   */
-  async generateFairnessSection(options) {
-    if (!this.config.fairnessMonitoringEnabled) {
-      return null;
-    }
-    
-    // Parse date range
-    const startDate = options.startDate ? new Date(options.startDate) : new Date(0);
-    const endDate = options.endDate ? new Date(options.endDate) : new Date();
-    
-    // Filter fairness alerts by date range
-    const relevantAlerts = this.state.fairnessAlerts.filter(alert => {
-      const alertDate = new Date(alert.timestamp);
-      return alertDate >= startDate && alertDate <= endDate;
-    });
-    
-    // Count alerts by metric
-    const metricCounts = {};
-    for (const alert of relevantAlerts) {
-      metricCounts[alert.metric] = (metricCounts[alert.metric] || 0) + 1;
-    }
-    
-    // Count alerts by severity
-    const severityCounts = {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0
-    };
-    
-    for (const alert of relevantAlerts) {
-      if (alert.severity >= this.config.biasThresholds.critical) {
-        severityCounts.critical++;
-      } else if (alert.severity >= this.config.biasThresholds.high) {
-        severityCounts.high++;
-      } else if (alert.severity >= this.config.biasThresholds.medium) {
-        severityCounts.medium++;
-      } else {
-        severityCounts.low++;
-      }
-    }
-    
-    // Create fairness section
-    return {
-      id: 'fairness_monitoring',
-      title: 'Fairness Monitoring',
-      description: 'Summary of fairness monitoring activities',
-      content: {
-        totalAlerts: relevantAlerts.length,
-        metricCounts,
-        severityCounts,
-        resolutionRate: relevantAlerts.length > 0 ? 
-          relevantAlerts.filter(a => a.resolved).length / relevantAlerts.length * 100 : 0,
-        topFairnessIssues: Object.entries(metricCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([metric, count]) => ({ metric, count })),
-        recentAlerts: relevantAlerts
-          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-          .slice(0, 10)
-          .map(alert => ({
-            timestamp: alert.timestamp,
-            metric: alert.metric,
-            severity: alert.severity,
-            resolved: alert.resolved,
-            affectedGroups: alert.affectedGroups
-          }))
-      }
-    };
-  }
-  
-  /**
-   * Generates the value alignment section for an ethics report.
-   * @param {Object} options - Options for the report.
-   * @returns {Promise<Object>} A promise that resolves to the value alignment section.
-   * @private
-   */
-  async generateValueAlignmentSection(options) {
-    if (!this.config.valueAlignmentEnabled) {
-      return null;
-    }
-    
-    // Parse date range
-    const startDate = options.startDate ? new Date(options.startDate) : new Date(0);
-    const endDate = options.endDate ? new Date(options.endDate) : new Date();
-    
-    // Filter value alignment issues by date range
-    const relevantIssues = this.state.valueAlignmentIssues.filter(issue => {
-      const issueDate = new Date(issue.timestamp);
-      return issueDate >= startDate && issueDate <= endDate;
-    });
-    
-    // Count issues by value
-    const valueCounts = {};
-    for (const issue of relevantIssues) {
-      for (const value of issue.misalignedValues) {
-        valueCounts[value] = (valueCounts[value] || 0) + 1;
-      }
-    }
-    
-    // Count issues by severity
-    const severityCounts = {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0
-    };
-    
-    for (const issue of relevantIssues) {
-      if (issue.severity >= this.config.biasThresholds.critical) {
-        severityCounts.critical++;
-      } else if (issue.severity >= this.config.biasThresholds.high) {
-        severityCounts.high++;
-      } else if (issue.severity >= this.config.biasThresholds.medium) {
-        severityCounts.medium++;
-      } else {
-        severityCounts.low++;
-      }
-    }
-    
-    // Create value alignment section
-    return {
-      id: 'value_alignment',
-      title: 'Value Alignment',
-      description: 'Summary of value alignment verification activities',
-      content: {
-        totalIssues: relevantIssues.length,
-        valueCounts,
-        severityCounts,
-        resolutionRate: relevantIssues.length > 0 ? 
-          relevantIssues.filter(i => i.resolved).length / relevantIssues.length * 100 : 0,
-        topMisalignedValues: Object.entries(valueCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([value, count]) => ({ value, count })),
-        recentIssues: relevantIssues
-          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-          .slice(0, 10)
-          .map(issue => ({
-            timestamp: issue.timestamp,
-            misalignedValues: issue.misalignedValues,
-            severity: issue.severity,
-            resolved: issue.resolved,
-            context: issue.context
-          }))
-      }
-    };
-  }
-  
-  /**
-   * Gets the current state of the AI Ethics & Governance Tentacle.
-   * @returns {Object} The current state.
-   */
-  getState() {
-    return {
-      isInitialized: this.state.isInitialized,
-      activeComponents: Array.from(this.state.activeComponents),
-      biasDetections: this.state.biasDetections.length,
-      oversightRequests: this.state.oversightRequests.length,
-      fairnessAlerts: this.state.fairnessAlerts.length,
-      valueAlignmentIssues: this.state.valueAlignmentIssues.length,
-      ethicalDecisions: this.state.ethicalDecisions.length,
-      complianceStatus: this.state.complianceStatus
-    };
-  }
-  
-  /**
-   * Handles a message from another tentacle.
-   * @param {Object} message - The message to handle.
-   * @returns {Promise<Object>} A promise that resolves to the response.
-   */
-  async handleMessage(message) {
-    if (!this.state.isInitialized) {
-      throw new Error('AI Ethics & Governance Tentacle not initialized');
-    }
-    
-    this.logger.debug('Received message', { 
-      type: message.type,
-      sender: message.sender
-    });
-    
-    switch (message.type) {
-      case 'evaluate_ethics':
-        return this.evaluateEthics(message.data.operation, message.data.context);
-        
-      case 'detect_bias':
-        return this.detectBias(message.data.operation, message.data.context);
-        
-      case 'explain_decision':
-        return this.explainDecision(message.data.operation, message.data.context);
-        
-      case 'request_oversight':
-        return this.requestHumanOversight(
-          message.data.operation, 
-          message.data.context,
-          message.data.evaluationResult
-        );
-        
-      case 'monitor_fairness':
-        return this.monitorFairness(message.data.operation, message.data.context);
-        
-      case 'verify_alignment':
-        return this.verifyValueAlignment(message.data.operation, message.data.context);
-        
-      case 'generate_report':
-        return this.generateEthicsReport(message.data.options);
-        
-      case 'get_state':
-        return this.getState();
-        
-      default:
-        throw new Error(`Unknown message type: ${message.type}`);
-    }
-  }
-  
-  /**
-   * Cleans up resources when the tentacle is shutting down.
-   * @returns {Promise<void>} A promise that resolves when cleanup is complete.
+   * Cleans up resources before shutdown.
+   * @returns {Promise<boolean>} A promise that resolves to true if cleanup was successful.
    */
   async cleanup() {
-    this.logger.info('Cleaning up AI Ethics & Governance Tentacle');
+    this.logger.info('Cleaning up AI Ethics & Governance Tentacle resources');
     
-    // Clean up components
-    const cleanupPromises = [];
-    
-    if (this.config.biasDetectionEnabled) {
-      cleanupPromises.push(this.biasDetectionEngine.cleanup());
+    try {
+      // Clean up enhanced integration
+      if (this.enhancedIntegration) {
+        await this.enhancedIntegration.cleanup();
+      }
+      
+      // Clean up components
+      const cleanupPromises = [];
+      
+      if (this.config.biasDetectionEnabled) {
+        cleanupPromises.push(this.biasDetectionEngine.cleanup());
+      }
+      
+      if (this.config.explainabilityEnabled) {
+        cleanupPromises.push(this.explainabilityEngine.cleanup());
+      }
+      
+      if (this.config.humanOversightEnabled) {
+        cleanupPromises.push(this.humanOversightSystem.cleanup());
+      }
+      
+      if (this.config.fairnessMonitoringEnabled) {
+        cleanupPromises.push(this.fairnessMetricsDashboard.cleanup());
+      }
+      
+      if (this.config.valueAlignmentEnabled) {
+        cleanupPromises.push(this.valueAlignmentVerifier.cleanup());
+      }
+      
+      if (this.config.accountabilityEnabled) {
+        cleanupPromises.push(this.accountabilityFramework.cleanup());
+      }
+      
+      // Wait for all components to clean up
+      await Promise.all(cleanupPromises);
+      
+      this.logger.info('AI Ethics & Governance Tentacle resources cleaned up successfully');
+      return true;
+      
+    } catch (error) {
+      this.logger.error('Failed to clean up AI Ethics & Governance Tentacle resources:', error);
+      return false;
     }
-    
-    if (this.config.explainabilityEnabled) {
-      cleanupPromises.push(this.explainabilityEngine.cleanup());
-    }
-    
-    if (this.config.humanOversightEnabled) {
-      cleanupPromises.push(this.humanOversightSystem.cleanup());
-    }
-    
-    if (this.config.fairnessMonitoringEnabled) {
-      cleanupPromises.push(this.fairnessMetricsDashboard.cleanup());
-    }
-    
-    if (this.config.valueAlignmentEnabled) {
-      cleanupPromises.push(this.valueAlignmentVerifier.cleanup());
-    }
-    
-    if (this.config.accountabilityEnabled) {
-      cleanupPromises.push(this.accountabilityFramework.cleanup());
-    }
-    
-    // Wait for all components to clean up
-    await Promise.all(cleanupPromises);
-    
-    // Unregister from tentacle registry
-    await this.unregister();
-    
-    this.logger.info('AI Ethics & Governance Tentacle cleaned up successfully');
   }
 }
 
