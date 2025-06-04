@@ -184,7 +184,7 @@ describe('Autonomous Error Recovery System - Unit Tests', () => {
     });
     
     it('should maintain event history', () => {
-      eventBus.setHistoryEnabled(true);
+      eventBus.setHistoryTracking(true);
       
       eventBus.emit('test-event', { value: 'test' });
       eventBus.emit('test-event', { value: 'updated' });
