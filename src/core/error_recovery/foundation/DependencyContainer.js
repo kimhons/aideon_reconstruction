@@ -15,6 +15,7 @@ class DependencyContainer {
     this.initializers = new Map();
     this.logger = console;
     this.resolutionStacks = new Map(); // Track resolution stacks per call chain
+    this.resolutionInProgress = new Set(); // Global set to track all dependencies currently being resolved
   }
 
   /**
@@ -81,6 +82,12 @@ class DependencyContainer {
       return this.singletons.get(name);
     }
 
+    // Check global resolution set first - this catches circular dependencies across different call chains
+    if (this.resolutionInProgress.has(name)) {
+      const stackInfo = Array.from(this.resolutionInProgress).join(' -> ') + ' -> ' + name;
+      throw new Error(`Circular dependency detected (global): ${stackInfo}`);
+    }
+
     // Initialize resolution stack for this call chain if not exists
     if (!this.resolutionStacks.has(callerId)) {
       this.resolutionStacks.set(callerId, new Set());
@@ -88,7 +95,7 @@ class DependencyContainer {
     
     const resolutionStack = this.resolutionStacks.get(callerId);
 
-    // Check for circular dependencies
+    // Check for circular dependencies in this specific call chain
     if (resolutionStack.has(name)) {
       const stackArray = Array.from(resolutionStack);
       stackArray.push(name); // Add current dependency to show the complete cycle
@@ -96,11 +103,12 @@ class DependencyContainer {
       // Clear the resolution stack to prevent memory leaks
       this.resolutionStacks.delete(callerId);
       
-      throw new Error(`Circular dependency detected: ${stackArray.join(' -> ')}`);
+      throw new Error(`Circular dependency detected (local): ${stackArray.join(' -> ')}`);
     }
 
-    // Add to resolution stack
+    // Add to both local and global resolution tracking
     resolutionStack.add(name);
+    this.resolutionInProgress.add(name);
     
     // Generate a unique ID for this resolution chain
     const resolutionId = `${callerId}_${name}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -126,8 +134,9 @@ class DependencyContainer {
       this.logger.error(`Failed to resolve dependency '${name}': ${error.message}`);
       throw error; // Preserve original error for better debugging
     } finally {
-      // Remove from resolution stack regardless of success or failure
+      // Remove from both local and global resolution tracking
       resolutionStack.delete(name);
+      this.resolutionInProgress.delete(name);
       
       // Clean up empty resolution stacks
       if (resolutionStack.size === 0) {
@@ -149,6 +158,9 @@ class DependencyContainer {
 
     this.logger.info(`Initializing ${dependencies.length} dependencies...`);
 
+    // Reset global resolution tracking before initialization
+    this.resolutionInProgress.clear();
+
     for (const name of dependencies) {
       await this.initializeDependency(name, initialized, new Set());
     }
@@ -169,20 +181,30 @@ class DependencyContainer {
    */
   async initializeDependency(name, initialized, visiting) {
     if (initialized.has(name)) return;
-    if (visiting.has(name)) {
-      throw new Error(`Circular dependency detected: ${Array.from(visiting).join(' -> ')} -> ${name}`);
+    
+    // Check both local and global circular dependencies
+    if (visiting.has(name) || this.resolutionInProgress.has(name)) {
+      const visitingArray = Array.from(visiting);
+      visitingArray.push(name);
+      throw new Error(`Circular dependency detected during initialization: ${visitingArray.join(' -> ')}`);
     }
 
     visiting.add(name);
+    this.resolutionInProgress.add(name);
+    
     this.logger.debug(`Initializing dependency: ${name}`);
 
-    // Resolve and initialize with a unique initialization chain ID
-    const initId = `init_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    await this.resolve(name, initId);
-
-    visiting.delete(name);
-    initialized.add(name);
-    this.logger.debug(`Successfully initialized dependency: ${name}`);
+    try {
+      // Resolve and initialize with a unique initialization chain ID
+      const initId = `init_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      await this.resolve(name, initId);
+      
+      initialized.add(name);
+      this.logger.debug(`Successfully initialized dependency: ${name}`);
+    } finally {
+      visiting.delete(name);
+      this.resolutionInProgress.delete(name);
+    }
   }
 
   /**
@@ -207,6 +229,7 @@ class DependencyContainer {
     
     this.singletons.clear();
     this.resolutionStacks.clear();
+    this.resolutionInProgress.clear();
     this.logger.info('All singletons disposed');
   }
 

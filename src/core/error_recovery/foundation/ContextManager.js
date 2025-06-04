@@ -19,6 +19,7 @@ class ContextManager {
     this.contexts = new Map();
     this.logger = options.logger || console;
     this.eventBus = options.eventBus;
+    this.includeMetadata = options.includeMetadata !== false; // Default to true
   }
   
   /**
@@ -31,13 +32,21 @@ class ContextManager {
   createContext(initialData = {}, source = 'system') {
     const contextId = uuidv4();
     
+    // Store the initial data in history
+    const initialHistory = {
+      timestamp: Date.now(),
+      source,
+      data: { ...initialData },
+      operation: 'create'
+    };
+    
     const context = {
       _meta: {
         id: contextId,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         source,
-        updateHistory: []
+        updateHistory: [initialHistory]
       },
       ...initialData
     };
@@ -65,7 +74,15 @@ class ContextManager {
       throw new Error(`Context not found: ${contextId}`);
     }
     
-    return this.contexts.get(contextId);
+    const context = this.contexts.get(contextId);
+    
+    // Return a copy without metadata if includeMetadata is false
+    if (!this.includeMetadata) {
+      const { _meta, ...contextWithoutMeta } = context;
+      return contextWithoutMeta;
+    }
+    
+    return context;
   }
   
   /**
@@ -92,19 +109,25 @@ class ContextManager {
       }
     });
     
-    // Update metadata
-    context._meta.updatedAt = Date.now();
-    context._meta.updateHistory.push({
+    // Create a snapshot of the updated data for history
+    const { _meta, ...contextDataWithoutMeta } = context;
+    const updateHistory = {
       timestamp: Date.now(),
       source,
-      fields: Object.keys(data).filter(k => k !== '_meta'),
+      data: { ...contextDataWithoutMeta },
+      operation: 'update',
+      updatedFields: Object.keys(data).filter(k => k !== '_meta'),
       previousValues: Object.entries(previousState)
         .filter(([key]) => key !== '_meta' && data[key] !== undefined)
         .reduce((acc, [key, value]) => {
           acc[key] = value;
           return acc;
         }, {})
-    });
+    };
+    
+    // Update metadata
+    context._meta.updatedAt = Date.now();
+    context._meta.updateHistory.push(updateHistory);
     
     if (this.eventBus) {
       this.eventBus.emit('context:updated', { 
@@ -115,6 +138,12 @@ class ContextManager {
     }
     
     this.logger.debug(`Updated context ${contextId} from source ${source}, fields: ${Object.keys(data).filter(k => k !== '_meta').join(', ')}`);
+    
+    // Return a copy without metadata if includeMetadata is false
+    if (!this.includeMetadata) {
+      const { _meta, ...contextWithoutMeta } = context;
+      return contextWithoutMeta;
+    }
     
     return context;
   }
@@ -255,6 +284,17 @@ class ContextManager {
     }
     
     this.eventBus = eventBus;
+    return this;
+  }
+  
+  /**
+   * Sets whether to include metadata in returned contexts
+   * 
+   * @param {boolean} include - Whether to include metadata
+   * @returns {ContextManager} - This ContextManager instance for chaining
+   */
+  setIncludeMetadata(include) {
+    this.includeMetadata = include;
     return this;
   }
 }
