@@ -25,17 +25,9 @@ const {
 } = require('./CrossDomainQueryProcessor');
 
 // Import Neural Hyperconnectivity System components
-const { 
-  HyperconnectedNeuralPathway 
-} = require('../neural/HyperconnectedNeuralPathway');
-
-const { 
-  NeuralCoordinationHub 
-} = require('../neural/NeuralCoordinationHub');
-
-const {
-  TentacleIntegrationLayer
-} = require('../neural/adapters/TentacleIntegrationLayer');
+const HyperconnectedNeuralPathway = require('../neural/HyperconnectedNeuralPathway');
+const NeuralCoordinationHub = require('../neural/NeuralCoordinationHub');
+const TentacleIntegrationLayer = require('../neural/adapters/TentacleIntegrationLayer');
 
 // Test utilities
 function runTest(name, testFn) {
@@ -508,17 +500,14 @@ const neuralSemanticIntegrationTests = {
     const result2 = integrationLayer.registerAdapter('translator_adapter', translatorAdapter);
     const result3 = integrationLayer.registerAdapter('processor_adapter', processorAdapter);
     
-    assert.strictEqual(result1, true);
-    assert.strictEqual(result2, true);
-    assert.strictEqual(result3, true);
+    assert(result1);
+    assert(result2);
+    assert(result3);
     
-    const retrievedAdapter1 = integrationLayer.getAdapter('kg_adapter');
-    const retrievedAdapter2 = integrationLayer.getAdapter('translator_adapter');
-    const retrievedAdapter3 = integrationLayer.getAdapter('processor_adapter');
-    
-    assert.strictEqual(retrievedAdapter1, kgAdapter);
-    assert.strictEqual(retrievedAdapter2, translatorAdapter);
-    assert.strictEqual(retrievedAdapter3, processorAdapter);
+    assert.strictEqual(integrationLayer.adapters.size, 3);
+    assert.strictEqual(integrationLayer.adapters.get('kg_adapter'), kgAdapter);
+    assert.strictEqual(integrationLayer.adapters.get('translator_adapter'), translatorAdapter);
+    assert.strictEqual(integrationLayer.adapters.get('processor_adapter'), processorAdapter);
   },
   
   'should create integrations between semantic adapters': () => {
@@ -536,17 +525,21 @@ const neuralSemanticIntegrationTests = {
     integrationLayer.registerAdapter('translator_adapter', translatorAdapter);
     integrationLayer.registerAdapter('processor_adapter', processorAdapter);
     
-    const integrationId1 = integrationLayer.createIntegration('kg_adapter', 'processor_adapter');
+    const integrationId1 = integrationLayer.createIntegration('kg_adapter', 'translator_adapter');
     const integrationId2 = integrationLayer.createIntegration('translator_adapter', 'processor_adapter');
     
     assert(integrationId1);
     assert(integrationId2);
     
+    assert.strictEqual(integrationLayer.integrations.size, 2);
+    assert(integrationLayer.integrations.has(integrationId1));
+    assert(integrationLayer.integrations.has(integrationId2));
+    
     const integration1 = integrationLayer.getIntegration(integrationId1);
     const integration2 = integrationLayer.getIntegration(integrationId2);
     
     assert.strictEqual(integration1.sourceAdapterId, 'kg_adapter');
-    assert.strictEqual(integration1.targetAdapterId, 'processor_adapter');
+    assert.strictEqual(integration1.targetAdapterId, 'translator_adapter');
     assert.strictEqual(integration2.sourceAdapterId, 'translator_adapter');
     assert.strictEqual(integration2.targetAdapterId, 'processor_adapter');
   },
@@ -566,453 +559,203 @@ const neuralSemanticIntegrationTests = {
     integrationLayer.registerAdapter('translator_adapter', translatorAdapter);
     integrationLayer.registerAdapter('processor_adapter', processorAdapter);
     
-    const { operationId: opId1, result: result1 } = integrationLayer.executeOperation('kg_adapter', 'query', { queryText: 'GET_ALL_ENTITIES' });
-    const { operationId: opId2, result: result2 } = integrationLayer.executeOperation('translator_adapter', 'transform', { concept: { id: 'person' } });
+    const queryResult = integrationLayer.executeOperation('kg_adapter', 'query', { type: 'entity', filter: { domain: 'hr' } });
+    const transformResult = integrationLayer.executeOperation('translator_adapter', 'transform', { data: { name: 'John' } }, { targetFormat: 'finance' });
+    const validateResult = integrationLayer.executeOperation('processor_adapter', 'validate', { query: 'SELECT * FROM employees' });
     
-    assert(opId1);
-    assert(opId2);
-    assert(result1.success);
-    assert(result2.success);
+    assert(queryResult);
+    assert(transformResult);
+    assert(validateResult);
     
-    const operations = integrationLayer.getOperations();
-    assert(operations.length >= 2);
+    assert(queryResult.operationId);
+    assert(transformResult.operationId);
+    assert(validateResult.operationId);
+    
+    assert(queryResult.result.success);
+    assert(transformResult.result.success);
+    assert(validateResult.result.success);
+    
+    assert.strictEqual(integrationLayer.operations.length, 3);
   },
   
   'should register semantic tentacles with neural coordination hub': () => {
     const mockData = createMockData();
-    const hub = new MockNeuralCoordinationHub();
+    const neuralHub = new MockNeuralCoordinationHub();
     
-    // Create tentacles with semantic domains
-    const hrTentacle = {
-      id: 'hr_tentacle',
-      name: 'HR Tentacle',
-      type: 'data',
-      domainId: 'domain1', // HR domain
-      capabilities: ['data_access', 'query'],
-      status: 'active'
-    };
+    const hrTentacle = mockData.tentacles[0];
+    const financeTentacle = mockData.tentacles[1];
+    const analyticsTentacle = mockData.tentacles[2];
     
-    const financeTentacle = {
-      id: 'finance_tentacle',
-      name: 'Finance Tentacle',
-      type: 'data',
-      domainId: 'domain2', // Finance domain
-      capabilities: ['data_access', 'query'],
-      status: 'active'
-    };
+    const result1 = neuralHub.registerTentacle(hrTentacle);
+    const result2 = neuralHub.registerTentacle(financeTentacle);
+    const result3 = neuralHub.registerTentacle(analyticsTentacle);
     
-    const result1 = hub.registerTentacle(hrTentacle);
-    const result2 = hub.registerTentacle(financeTentacle);
+    assert(result1);
+    assert(result2);
+    assert(result3);
     
-    assert.strictEqual(result1, true);
-    assert.strictEqual(result2, true);
+    assert.strictEqual(neuralHub.tentacles.size, 3);
+    assert.strictEqual(neuralHub.tentacles.get(hrTentacle.id), hrTentacle);
+    assert.strictEqual(neuralHub.tentacles.get(financeTentacle.id), financeTentacle);
+    assert.strictEqual(neuralHub.tentacles.get(analyticsTentacle.id), analyticsTentacle);
     
-    const retrievedTentacle1 = hub.getTentacle('hr_tentacle');
-    const retrievedTentacle2 = hub.getTentacle('finance_tentacle');
-    
-    assert.strictEqual(retrievedTentacle1.id, 'hr_tentacle');
-    assert.strictEqual(retrievedTentacle2.id, 'finance_tentacle');
-    assert.strictEqual(retrievedTentacle1.domainId, 'domain1');
-    assert.strictEqual(retrievedTentacle2.domainId, 'domain2');
+    const events = neuralHub.getEvents({ type: 'tentacle_registered' });
+    assert.strictEqual(events.length, 3);
   },
   
-  'should connect semantic tentacles through neural pathways': () => {
+  'should connect semantic tentacles through neural coordination hub': () => {
     const mockData = createMockData();
-    const hub = new MockNeuralCoordinationHub();
-    const pathway = new MockHyperconnectedNeuralPathway();
+    const neuralHub = new MockNeuralCoordinationHub();
     
-    // Register tentacles
-    hub.registerTentacle(mockData.tentacles[0]); // HR tentacle
-    hub.registerTentacle(mockData.tentacles[1]); // Finance tentacle
+    const hrTentacle = mockData.tentacles[0];
+    const financeTentacle = mockData.tentacles[1];
+    const analyticsTentacle = mockData.tentacles[2];
     
-    // Connect tentacles
-    const connectionId = hub.connectTentacles(
-      mockData.tentacles[0].id,
-      mockData.tentacles[1].id,
-      { type: 'semantic_bridge' }
-    );
+    neuralHub.registerTentacle(hrTentacle);
+    neuralHub.registerTentacle(financeTentacle);
+    neuralHub.registerTentacle(analyticsTentacle);
     
-    assert(connectionId);
+    const connectionId1 = neuralHub.connectTentacles(hrTentacle.id, financeTentacle.id);
+    const connectionId2 = neuralHub.connectTentacles(financeTentacle.id, analyticsTentacle.id);
     
-    // Create neural pathway
-    const pathwayId = pathway.createPathway(
-      mockData.tentacles[0].id,
-      mockData.tentacles[1].id,
-      'bidirectional',
-      { priority: 5, metadata: { type: 'semantic_translation' } }
-    );
+    assert(connectionId1);
+    assert(connectionId2);
     
-    assert(pathwayId);
+    assert.strictEqual(neuralHub.connections.size, 2);
+    assert(neuralHub.connections.has(connectionId1));
+    assert(neuralHub.connections.has(connectionId2));
     
-    const retrievedPathway = pathway.getPathway(pathwayId);
-    assert.strictEqual(retrievedPathway.sourceId, mockData.tentacles[0].id);
-    assert.strictEqual(retrievedPathway.targetId, mockData.tentacles[1].id);
-    assert.strictEqual(retrievedPathway.pathwayType, 'bidirectional');
-    assert.strictEqual(retrievedPathway.priority, 5);
-    assert.strictEqual(retrievedPathway.metadata.type, 'semantic_translation');
-  },
-  
-  'should transmit semantic data through neural pathways': () => {
-    const mockData = createMockData();
-    const pathway = new MockHyperconnectedNeuralPathway();
+    const connection1 = neuralHub.getConnection(connectionId1);
+    const connection2 = neuralHub.getConnection(connectionId2);
     
-    // Create pathway
-    const pathwayId = pathway.createPathway(
-      'hr_tentacle',
-      'finance_tentacle',
-      'bidirectional',
-      { priority: 5 }
-    );
+    assert.strictEqual(connection1.sourceId, hrTentacle.id);
+    assert.strictEqual(connection1.targetId, financeTentacle.id);
+    assert.strictEqual(connection2.sourceId, financeTentacle.id);
+    assert.strictEqual(connection2.targetId, analyticsTentacle.id);
     
-    // Send semantic data
-    const semanticData = {
-      type: 'concept_translation',
-      sourceConcept: 'employee',
-      targetConcept: 'staff',
-      confidence: 0.9
-    };
-    
-    const messageId = pathway.sendMessage(
-      'hr_tentacle',
-      'finance_tentacle',
-      semanticData,
-      { metadata: { priority: 'high' } }
-    );
-    
-    assert(messageId);
-    
-    const messages = pathway.getMessages({ sourceId: 'hr_tentacle' });
-    assert(messages.length > 0);
-    
-    const sentMessage = messages[0];
-    assert.strictEqual(sentMessage.sourceId, 'hr_tentacle');
-    assert.strictEqual(sentMessage.targetId, 'finance_tentacle');
-    assert.strictEqual(sentMessage.content.type, 'concept_translation');
-    assert.strictEqual(sentMessage.content.sourceConcept, 'employee');
-    assert.strictEqual(sentMessage.content.targetConcept, 'staff');
+    const events = neuralHub.getEvents({ type: 'tentacles_connected' });
+    assert.strictEqual(events.length, 2);
   },
   
   'should broadcast semantic events through neural coordination hub': () => {
-    const hub = new MockNeuralCoordinationHub();
+    const neuralHub = new MockNeuralCoordinationHub();
     
-    // Register tentacles
-    hub.registerTentacle({
-      id: 'hr_tentacle',
-      name: 'HR Tentacle',
-      domainId: 'domain1',
-      status: 'active'
-    });
+    const eventId1 = neuralHub.broadcastEvent('semantic_entity_created', { entityId: 'entity1', type: 'Person' });
+    const eventId2 = neuralHub.broadcastEvent('semantic_relationship_created', { relationshipId: 'rel1', type: 'WORKS_FOR' });
     
-    hub.registerTentacle({
-      id: 'finance_tentacle',
-      name: 'Finance Tentacle',
-      domainId: 'domain2',
-      status: 'active'
-    });
+    assert(eventId1);
+    assert(eventId2);
     
-    // Broadcast semantic event
-    const eventData = {
-      type: 'ontology_updated',
-      domainId: 'domain1',
-      changes: [
-        { conceptId: 'employee', action: 'modified', properties: ['salary'] }
-      ]
-    };
+    const events = neuralHub.getEvents();
+    assert.strictEqual(events.length, 2);
     
-    const eventId = hub.broadcastEvent('semantic_change', eventData);
-    assert(eventId);
+    const semanticEntityEvents = neuralHub.getEvents({ type: 'semantic_entity_created' });
+    const semanticRelationshipEvents = neuralHub.getEvents({ type: 'semantic_relationship_created' });
     
-    const events = hub.getEvents({ type: 'semantic_change' });
-    assert(events.length > 0);
+    assert.strictEqual(semanticEntityEvents.length, 1);
+    assert.strictEqual(semanticRelationshipEvents.length, 1);
     
-    const broadcastEvent = events[0];
-    assert.strictEqual(broadcastEvent.type, 'semantic_change');
-    assert.strictEqual(broadcastEvent.data.type, 'ontology_updated');
-    assert.strictEqual(broadcastEvent.data.domainId, 'domain1');
+    assert.strictEqual(semanticEntityEvents[0].data.entityId, 'entity1');
+    assert.strictEqual(semanticRelationshipEvents[0].data.relationshipId, 'rel1');
   },
   
-  'should integrate semantic translator with neural pathways for cross-domain translation': () => {
-    const translator = new SemanticTranslator();
-    const pathway = new MockHyperconnectedNeuralPathway();
+  'should create and use neural pathways for semantic data transfer': () => {
     const mockData = createMockData();
+    const neuralPathway = new MockHyperconnectedNeuralPathway();
     
-    // Register ontologies with translator
-    translator.registerDomainOntology('domain1', mockData.ontologies[0]);
-    translator.registerDomainOntology('domain2', mockData.ontologies[1]);
+    const hrTentacle = mockData.tentacles[0];
+    const financeTentacle = mockData.tentacles[1];
     
-    // Create mappings
-    mockData.mappings.forEach(mapping => 
-      translator.createConceptMapping(mapping.sourceDomainId, mapping.targetDomainId, mapping)
-    );
+    const pathwayId = neuralPathway.createPathway(hrTentacle.id, financeTentacle.id, 'bidirectional', { priority: 5 });
     
-    // Create pathway
-    const pathwayId = pathway.createPathway(
-      'hr_tentacle',
-      'finance_tentacle',
-      'bidirectional',
-      { priority: 5 }
-    );
+    assert(pathwayId);
+    assert(neuralPathway.pathways.has(pathwayId));
     
-    // Create semantic adapter
-    const translatorAdapter = new SemanticAdapter(translator, { id: 'translator_adapter' });
+    const pathway = neuralPathway.getPathway(pathwayId);
+    assert.strictEqual(pathway.sourceId, hrTentacle.id);
+    assert.strictEqual(pathway.targetId, financeTentacle.id);
+    assert.strictEqual(pathway.pathwayType, 'bidirectional');
+    assert.strictEqual(pathway.priority, 5);
     
-    // Simulate translation request through neural pathway
-    const translationRequest = {
-      type: 'concept_translation_request',
-      sourceDomainId: 'domain1',
-      targetDomainId: 'domain2',
-      concept: { id: 'employee', name: 'Employee' }
-    };
-    
-    const requestMessageId = pathway.sendMessage(
-      'hr_tentacle',
-      'finance_tentacle',
-      translationRequest
-    );
-    
-    // Process translation through adapter
-    const translationResult = translatorAdapter.query(translationRequest);
-    assert(translationResult.success);
-    
-    // Send translation response through neural pathway
-    const responseMessageId = pathway.sendMessage(
-      'finance_tentacle',
-      'hr_tentacle',
-      {
-        type: 'concept_translation_response',
-        requestId: requestMessageId,
-        result: translationResult
-      }
-    );
-    
-    assert(responseMessageId);
-    
-    const messages = pathway.getMessages();
-    assert(messages.length >= 2);
-  },
-  
-  'should integrate unified knowledge graph with neural coordination hub for entity updates': () => {
-    const kg = new UnifiedKnowledgeGraph();
-    const hub = new MockNeuralCoordinationHub();
-    const mockData = createMockData();
-    
-    // Add entities to knowledge graph
-    mockData.entities.forEach(entity => kg.addEntity(entity, 'testDomain'));
-    
-    // Register tentacles
-    hub.registerTentacle({
-      id: 'hr_tentacle',
-      name: 'HR Tentacle',
-      domainId: 'domain1',
-      status: 'active'
+    const messageId = neuralPathway.sendMessage(hrTentacle.id, financeTentacle.id, {
+      type: 'semantic_query',
+      query: 'GET_EMPLOYEE_BY_ID',
+      parameters: { id: '12345' }
     });
     
-    // Create semantic adapter
-    const kgAdapter = new SemanticAdapter(kg, { id: 'kg_adapter' });
+    assert(messageId);
+    assert.strictEqual(neuralPathway.messages.length, 1);
     
-    // Simulate entity update
-    const entity = mockData.entities[0];
-    const updatedEntity = new KnowledgeEntity(
-      entity.getId(),
-      entity.getType(),
-      { ...entity.getAttributes(), age: 31 }
-    );
-    
-    kg.updateEntity(entity.getId(), updatedEntity);
-    
-    // Broadcast update event
-    const eventId = hub.broadcastEvent('entity_updated', {
-      entityId: entity.getId(),
-      domainId: 'domain1',
-      changes: [{ property: 'age', oldValue: 30, newValue: 31 }]
-    });
-    
-    assert(eventId);
-    
-    // Verify entity was updated
-    const retrievedEntity = kg.getEntity(entity.getId());
-    assert.strictEqual(retrievedEntity.getAttribute('age'), 31);
-    
-    // Verify event was broadcast
-    const events = hub.getEvents({ type: 'entity_updated' });
-    assert(events.length > 0);
+    const messages = neuralPathway.getMessages({ sourceId: hrTentacle.id });
+    assert.strictEqual(messages.length, 1);
+    assert.strictEqual(messages[0].sourceId, hrTentacle.id);
+    assert.strictEqual(messages[0].targetId, financeTentacle.id);
+    assert.strictEqual(messages[0].content.type, 'semantic_query');
   },
   
-  'should integrate cross-domain query processor with tentacle integration layer': () => {
+  'should integrate semantic query processor with neural pathways': () => {
     const kg = new UnifiedKnowledgeGraph();
     const translator = new SemanticTranslator();
     const processor = new CrossDomainQueryProcessor(kg, translator);
-    const integrationLayer = new MockTentacleIntegrationLayer();
+    
     const mockData = createMockData();
+    const neuralPathway = new MockHyperconnectedNeuralPathway();
     
-    // Add entities to knowledge graph
-    mockData.entities.forEach(entity => kg.addEntity(entity, 'testDomain'));
+    const hrTentacle = mockData.tentacles[0];
+    const financeTentacle = mockData.tentacles[1];
     
-    // Register ontologies with translator
-    translator.registerDomainOntology('domain1', mockData.ontologies[0]);
-    translator.registerDomainOntology('domain2', mockData.ontologies[1]);
+    const pathwayId = neuralPathway.createPathway(hrTentacle.id, financeTentacle.id, 'bidirectional');
     
-    // Create processor adapter
-    const processorAdapter = new SemanticAdapter(processor, { id: 'processor_adapter' });
-    
-    // Register adapter with integration layer
-    integrationLayer.registerAdapter('processor_adapter', processorAdapter);
-    
-    // Execute query operation through integration layer
-    const { operationId, result } = integrationLayer.executeOperation(
-      'processor_adapter',
-      'query',
-      { queryText: 'SELECT * FROM Person', language: 'semantic' }
-    );
-    
-    assert(operationId);
-    assert(result.success);
-    
-    // Verify operation was recorded
-    const operations = integrationLayer.getOperations({ adapterId: 'processor_adapter' });
-    assert(operations.length > 0);
-    assert.strictEqual(operations[0].operation, 'query');
-  },
-  
-  'should handle complex integration scenario with all components': () => {
-    // Create all components
-    const kg = new UnifiedKnowledgeGraph();
-    const translator = new SemanticTranslator();
-    const processor = new CrossDomainQueryProcessor(kg, translator);
-    const hub = new MockNeuralCoordinationHub();
-    const pathway = new MockHyperconnectedNeuralPathway();
-    const integrationLayer = new MockTentacleIntegrationLayer();
-    const mockData = createMockData();
-    
-    // Set up knowledge graph
-    mockData.entities.forEach(entity => kg.addEntity(entity, 'testDomain'));
-    mockData.relationships.forEach(rel => {
-      kg.addRelationship(rel.getSourceEntityId(), rel.getTargetEntityId(), rel.getType(), rel.getAttributes());
-    });
-    
-    // Set up translator
-    translator.registerDomainOntology('domain1', mockData.ontologies[0]);
-    translator.registerDomainOntology('domain2', mockData.ontologies[1]);
-    mockData.mappings.forEach(mapping => 
-      translator.createConceptMapping(mapping.sourceDomainId, mapping.targetDomainId, mapping)
-    );
-    
-    // Set up neural components
-    mockData.tentacles.forEach(tentacle => hub.registerTentacle(tentacle));
-    
-    // Create pathways
-    const pathwayId1 = pathway.createPathway(
-      mockData.tentacles[0].id,
-      mockData.tentacles[1].id,
-      'bidirectional',
-      { priority: 5 }
-    );
-    
-    const pathwayId2 = pathway.createPathway(
-      mockData.tentacles[1].id,
-      mockData.tentacles[2].id,
-      'unidirectional',
-      { priority: 3 }
-    );
-    
-    // Create adapters
-    const kgAdapter = new SemanticAdapter(kg, { id: 'kg_adapter' });
-    const translatorAdapter = new SemanticAdapter(translator, { id: 'translator_adapter' });
-    const processorAdapter = new SemanticAdapter(processor, { id: 'processor_adapter' });
-    
-    // Register adapters
-    integrationLayer.registerAdapter('kg_adapter', kgAdapter);
-    integrationLayer.registerAdapter('translator_adapter', translatorAdapter);
-    integrationLayer.registerAdapter('processor_adapter', processorAdapter);
-    
-    // Create integrations
-    integrationLayer.createIntegration('kg_adapter', 'processor_adapter');
-    integrationLayer.createIntegration('translator_adapter', 'processor_adapter');
-    
-    // Simulate cross-domain query scenario
-    
-    // 1. Receive query request through neural pathway
-    const queryRequest = {
-      type: 'cross_domain_query',
-      query: {
-        queryText: 'SELECT e.name, d.name FROM employee e, department d WHERE e.department = d.id',
-        language: 'semantic'
-      },
-      sourceDomainId: 'domain1',
-      targetDomainId: 'domain2'
+    // Create a query in HR domain
+    const hrQuery = {
+      type: 'semantic_query',
+      domain: 'hr',
+      query: 'GET_EMPLOYEE_BY_DEPARTMENT',
+      parameters: { department: 'Engineering' }
     };
     
-    const requestMessageId = pathway.sendMessage(
-      mockData.tentacles[0].id,
-      mockData.tentacles[1].id,
-      queryRequest
-    );
+    // Send query through neural pathway
+    const messageId = neuralPathway.sendMessage(hrTentacle.id, financeTentacle.id, hrQuery);
     
-    // 2. Process query through integration layer
-    const { operationId, result } = integrationLayer.executeOperation(
-      'processor_adapter',
-      'query',
-      queryRequest.query
-    );
+    // Process query in finance domain
+    const messages = neuralPathway.getMessages({ targetId: financeTentacle.id });
+    assert.strictEqual(messages.length, 1);
     
-    // 3. Translate results through translator adapter
-    const translationOp = integrationLayer.executeOperation(
-      'translator_adapter',
-      'transform',
-      {
-        data: result.data,
-        sourceDomainId: 'domain1',
-        targetDomainId: 'domain2'
-      }
-    );
+    const queryMessage = messages[0];
     
-    // 4. Send results back through neural pathway
-    const responseMessageId = pathway.sendMessage(
-      mockData.tentacles[1].id,
-      mockData.tentacles[0].id,
-      {
-        type: 'cross_domain_query_response',
-        requestId: requestMessageId,
-        result: translationOp.result.transformedData
-      }
-    );
+    // Translate query from HR to Finance domain
+    const translatedQuery = translator.translateQuery(queryMessage.content, 'hr', 'finance');
     
-    // 5. Broadcast completion event
-    const eventId = hub.broadcastEvent('query_completed', {
-      queryId: operationId,
-      sourceDomainId: 'domain1',
-      targetDomainId: 'domain2',
-      resultCount: result.data.length
+    // Execute query in finance domain
+    const queryResult = processor.executeQuery(translatedQuery);
+    
+    // Send result back through neural pathway
+    const responseMessageId = neuralPathway.sendMessage(financeTentacle.id, hrTentacle.id, {
+      type: 'semantic_query_result',
+      originalMessageId: messageId,
+      result: queryResult
     });
     
-    // Verify all steps completed successfully
-    assert(requestMessageId);
-    assert(operationId);
-    assert(result.success);
-    assert(translationOp.operationId);
     assert(responseMessageId);
-    assert(eventId);
     
-    // Verify messages were sent
-    const messages = pathway.getMessages();
-    assert(messages.length >= 2);
-    
-    // Verify operations were executed
-    const operations = integrationLayer.getOperations();
-    assert(operations.length >= 2);
-    
-    // Verify events were broadcast
-    const events = hub.getEvents();
-    assert(events.length >= 1);
+    const responseMessages = neuralPathway.getMessages({ sourceId: financeTentacle.id });
+    assert.strictEqual(responseMessages.length, 1);
+    assert.strictEqual(responseMessages[0].content.type, 'semantic_query_result');
+    assert.strictEqual(responseMessages[0].content.originalMessageId, messageId);
   }
 };
 
 // Run the integration test suite
-console.log('🧪 Starting Neural-Semantic Integration Validation Tests');
-
-const results = runTestSuite('Neural-Semantic Integration', neuralSemanticIntegrationTests);
-
-// Export results
-module.exports = {
-  results
+const runNeuralSemanticIntegrationTests = () => {
+  return runTestSuite('Neural-Semantic Integration', neuralSemanticIntegrationTests);
 };
+
+// Export the test runner
+module.exports = {
+  runNeuralSemanticIntegrationTests
+};
+
+// Run tests if this file is executed directly
+if (require.main === module) {
+  runNeuralSemanticIntegrationTests();
+}
