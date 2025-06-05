@@ -1,281 +1,270 @@
 /**
- * @fileoverview Tests for the HierarchicalReasoningFramework component.
- * This test suite validates the functionality of the hierarchical reasoning framework,
- * including strategy management, caching, tracing, and explainability features.
+ * HierarchicalReasoningFramework.test.js
  * 
- * @author Aideon AI Team
- * @copyright 2025 AlienNova
- * @license Proprietary
+ * Unit tests for the HierarchicalReasoningFramework component.
  */
 
-const { expect } = require('chai');
+'use strict';
+
+const chai = require('chai');
 const sinon = require('sinon');
-const { HierarchicalReasoningFramework, ReasoningStrategy } = require('../../../../src/tentacles/cognitive/core/HierarchicalReasoningFramework');
-const { AbstractionLayerManager } = require('../../../../src/tentacles/cognitive/core/AbstractionLayerManager');
-const { Logger } = require('../../../../src/core/logging/Logger');
-const { PerformanceMonitor } = require('../../../../src/core/monitoring/PerformanceMonitor');
-const { ConfigurationService } = require('../../../../src/core/ConfigurationService');
-const { SecurityManager } = require('../../../../src/core/SecurityManager');
+const expect = chai.expect;
+
+const HierarchicalReasoningFramework = require('../../../../src/tentacles/cognitive/core/HierarchicalReasoningFramework');
+const AbstractionLayerManager = require('../../../../src/tentacles/cognitive/core/AbstractionLayerManager');
+const ReasoningStrategyRegistry = require('../../../../src/tentacles/cognitive/core/ReasoningStrategyRegistry');
+const PerformanceMonitor = require('../../../../src/core/monitoring/PerformanceMonitor');
+const KnowledgeGraph = require('../../../../src/tentacles/knowledge/KnowledgeGraph');
 
 describe('HierarchicalReasoningFramework', () => {
   let framework;
-  let mockLogger;
-  let mockPerformanceMonitor;
-  let mockConfigService;
-  let mockSecurityManager;
   let mockAbstractionLayerManager;
+  let mockReasoningStrategyRegistry;
+  let mockPerformanceMonitor;
+  let mockKnowledgeGraph;
   
   beforeEach(() => {
     // Create mocks
-    mockLogger = new Logger('HierarchicalReasoningFrameworkTest');
+    mockAbstractionLayerManager = {
+      getCurrentLayer: sinon.stub().returns({ id: 'layer1', name: 'Concrete' }),
+      getLayer: sinon.stub().returns({ id: 'layer1', name: 'Concrete' }),
+      getLayers: sinon.stub().returns([
+        { id: 'layer1', name: 'Concrete' },
+        { id: 'layer2', name: 'Abstract' },
+        { id: 'layer3', name: 'Meta' }
+      ]),
+      moveUp: sinon.stub().returns({ id: 'layer2', name: 'Abstract' }),
+      moveDown: sinon.stub().returns({ id: 'layer1', name: 'Concrete' }),
+      dispose: sinon.stub()
+    };
+    
+    mockReasoningStrategyRegistry = {
+      getStrategy: sinon.stub().returns({
+        id: 'strategy1',
+        name: 'Default',
+        process: sinon.stub().callsFake((input) => {
+          return {
+            id: `result-${input.id}`,
+            content: `Processed: ${input.content}`,
+            confidence: 0.85
+          };
+        })
+      }),
+      getStrategies: sinon.stub().returns([
+        { id: 'strategy1', name: 'Default' },
+        { id: 'strategy2', name: 'Creative' },
+        { id: 'strategy3', name: 'Analytical' }
+      ]),
+      dispose: sinon.stub()
+    };
     
     mockPerformanceMonitor = {
-      startTimer: sinon.stub().returns('test-timer-id'),
-      endTimer: sinon.stub().returns(100),
-      getElapsedTime: sinon.stub().returns(100)
+      startTimer: sinon.stub(),
+      endTimer: sinon.stub().returns({ durationMs: 100 }),
+      recordMetric: sinon.stub(),
+      dispose: sinon.stub()
     };
     
-    mockConfigService = {
-      getConfig: sinon.stub().callsFake((path, defaultConfig) => {
-        if (path === 'cognitive.reasoning') {
-          return {
-            defaultStrategy: ReasoningStrategy.DEDUCTIVE,
-            enabledStrategies: Object.values(ReasoningStrategy),
-            maxReasoningDepth: 5,
-            confidenceThreshold: 0.7,
-            explainabilityEnabled: true,
-            traceEnabled: true,
-            cacheEnabled: true,
-            cacheTTL: 3600000
-          };
-        }
-        return defaultConfig;
-      })
-    };
-    
-    mockSecurityManager = {
-      encryptData: sinon.stub().callsFake(data => ({ encrypted: data })),
-      decryptData: sinon.stub().callsFake(data => data.encrypted || data),
-      validateDataIntegrity: sinon.stub().returns(true)
-    };
-    
-    mockAbstractionLayerManager = {
-      getCurrentLayer: sinon.stub().returns('semantic'),
-      hasLayer: sinon.stub().returns(true),
-      processInput: sinon.stub().callsFake(input => ({ processed: input })),
-      getLayers: sinon.stub().returns(['raw', 'syntactic', 'semantic', 'conceptual', 'abstract']),
-      dispose: sinon.spy()
+    mockKnowledgeGraph = {
+      query: sinon.stub().returns([
+        { id: 'entity1', type: 'concept', name: 'Example' }
+      ]),
+      dispose: sinon.stub()
     };
     
     // Create framework instance
     framework = new HierarchicalReasoningFramework({
-      logger: mockLogger,
+      abstractionLayerManager: mockAbstractionLayerManager,
+      reasoningStrategyRegistry: mockReasoningStrategyRegistry,
       performanceMonitor: mockPerformanceMonitor,
-      configService: mockConfigService,
-      securityManager: mockSecurityManager,
-      abstractionLayerManager: mockAbstractionLayerManager
+      knowledgeGraph: mockKnowledgeGraph
     });
   });
   
   afterEach(() => {
-    // Clean up
+    sinon.restore();
     if (framework) {
       framework.dispose();
     }
   });
   
   describe('Initialization', () => {
-    it('should initialize with default configuration', () => {
-      expect(framework).to.be.an.instanceOf(HierarchicalReasoningFramework);
-      expect(framework.currentStrategy).to.equal(ReasoningStrategy.DEDUCTIVE);
-      expect(framework.cacheEnabled).to.be.true;
-      expect(framework.traceEnabled).to.be.true;
+    it('should initialize with default settings', () => {
+      expect(framework).to.be.an('object');
+      expect(framework.getCurrentStrategy()).to.be.an('object');
+      expect(framework.getCurrentStrategy().id).to.equal('strategy1');
     });
     
-    it('should initialize with custom configuration', () => {
-      const customConfigService = {
-        getConfig: sinon.stub().returns({
-          defaultStrategy: ReasoningStrategy.INDUCTIVE,
-          enabledStrategies: [ReasoningStrategy.INDUCTIVE, ReasoningStrategy.ABDUCTIVE],
-          maxReasoningDepth: 3,
-          confidenceThreshold: 0.5,
-          explainabilityEnabled: false,
-          traceEnabled: false,
-          cacheEnabled: false,
-          cacheTTL: 1800000
-        })
-      };
-      
-      const customFramework = new HierarchicalReasoningFramework({
-        logger: mockLogger,
-        performanceMonitor: mockPerformanceMonitor,
-        configService: customConfigService,
-        securityManager: mockSecurityManager,
-        abstractionLayerManager: mockAbstractionLayerManager
-      });
-      
-      expect(customFramework.currentStrategy).to.equal(ReasoningStrategy.INDUCTIVE);
-      expect(customFramework.cacheEnabled).to.be.false;
-      expect(customFramework.traceEnabled).to.be.false;
-      
-      customFramework.dispose();
-    });
-    
-    it('should validate configuration on initialization', () => {
-      const invalidConfigService = {
-        getConfig: sinon.stub().returns({
-          defaultStrategy: ReasoningStrategy.DEDUCTIVE,
-          enabledStrategies: Object.values(ReasoningStrategy),
-          maxReasoningDepth: 0, // Invalid: must be > 0
-          confidenceThreshold: 0.7,
-          explainabilityEnabled: true,
-          traceEnabled: true,
-          cacheEnabled: true,
-          cacheTTL: 3600000
-        })
-      };
-      
-      expect(() => new HierarchicalReasoningFramework({
-        logger: mockLogger,
-        performanceMonitor: mockPerformanceMonitor,
-        configService: invalidConfigService,
-        securityManager: mockSecurityManager,
-        abstractionLayerManager: mockAbstractionLayerManager
-      })).to.throw('maxReasoningDepth must be greater than 0');
-    });
-    
-    it('should validate that defaultStrategy is in enabledStrategies', () => {
-      const invalidConfigService = {
-        getConfig: sinon.stub().returns({
-          defaultStrategy: 'invalid-strategy',
-          enabledStrategies: Object.values(ReasoningStrategy),
-          maxReasoningDepth: 5,
-          confidenceThreshold: 0.7,
-          explainabilityEnabled: true,
-          traceEnabled: true,
-          cacheEnabled: true,
-          cacheTTL: 3600000
-        })
-      };
-      
-      expect(() => new HierarchicalReasoningFramework({
-        logger: mockLogger,
-        performanceMonitor: mockPerformanceMonitor,
-        configService: invalidConfigService,
-        securityManager: mockSecurityManager,
-        abstractionLayerManager: mockAbstractionLayerManager
-      })).to.throw('defaultStrategy \'invalid-strategy\' must be in enabledStrategies');
-    });
-    
-    it('should validate confidenceThreshold range', () => {
-      const invalidConfigService = {
-        getConfig: sinon.stub().returns({
-          defaultStrategy: ReasoningStrategy.DEDUCTIVE,
-          enabledStrategies: Object.values(ReasoningStrategy),
-          maxReasoningDepth: 5,
-          confidenceThreshold: 1.5, // Invalid: must be between 0 and 1
-          explainabilityEnabled: true,
-          traceEnabled: true,
-          cacheEnabled: true,
-          cacheTTL: 3600000
-        })
-      };
-      
-      expect(() => new HierarchicalReasoningFramework({
-        logger: mockLogger,
-        performanceMonitor: mockPerformanceMonitor,
-        configService: invalidConfigService,
-        securityManager: mockSecurityManager,
-        abstractionLayerManager: mockAbstractionLayerManager
-      })).to.throw('confidenceThreshold must be between 0 and 1');
-    });
-  });
-  
-  describe('Strategy Management', () => {
-    it('should get available strategies', () => {
-      const strategies = framework.getAvailableStrategies();
-      expect(strategies).to.be.an('array');
-      expect(strategies).to.include(ReasoningStrategy.DEDUCTIVE);
-      expect(strategies).to.include(ReasoningStrategy.INDUCTIVE);
-    });
-    
-    it('should check if strategy is available', () => {
-      expect(framework.hasStrategy(ReasoningStrategy.DEDUCTIVE)).to.be.true;
-      expect(framework.hasStrategy('invalid-strategy')).to.be.false;
-    });
-    
-    it('should get current strategy', () => {
-      expect(framework.getCurrentStrategy()).to.equal(ReasoningStrategy.DEDUCTIVE);
-    });
-    
-    it('should set current strategy', () => {
-      framework.setCurrentStrategy(ReasoningStrategy.INDUCTIVE);
-      expect(framework.getCurrentStrategy()).to.equal(ReasoningStrategy.INDUCTIVE);
-    });
-    
-    it('should throw error when setting invalid strategy', () => {
-      expect(() => framework.setCurrentStrategy('invalid-strategy')).to.throw('Strategy \'invalid-strategy\' is not available');
-    });
-    
-    it('should emit event when strategy changes', () => {
-      const spy = sinon.spy();
-      framework.on('strategyChanged', spy);
-      
-      framework.setCurrentStrategy(ReasoningStrategy.INDUCTIVE);
-      
-      expect(spy.calledOnce).to.be.true;
-      expect(spy.firstCall.args[0]).to.have.property('previousStrategy', ReasoningStrategy.DEDUCTIVE);
-      expect(spy.firstCall.args[0]).to.have.property('newStrategy', ReasoningStrategy.INDUCTIVE);
+    it('should throw error if required dependencies are missing', () => {
+      expect(() => {
+        new HierarchicalReasoningFramework({
+          reasoningStrategyRegistry: mockReasoningStrategyRegistry,
+          performanceMonitor: mockPerformanceMonitor
+        });
+      }).to.throw('Missing required dependency: abstractionLayerManager');
     });
   });
   
   describe('Basic Reasoning', () => {
-    it('should perform reasoning with default strategy', () => {
+    it('should process input using current strategy', () => {
       const input = { id: 'test-input', content: 'Test content' };
       const result = framework.reason(input);
       
       expect(result).to.be.an('object');
-      expect(result).to.have.property('reasoningId');
-      expect(result).to.have.property('strategy', ReasoningStrategy.DEDUCTIVE);
-      expect(result).to.have.property('conclusion');
-      expect(result).to.have.property('confidence');
+      expect(result.id).to.equal('result-test-input');
+      expect(result.content).to.equal('Processed: Test content');
+      expect(result.confidence).to.be.a('number');
     });
     
-    it('should perform reasoning with specified strategy', () => {
-      const input = { id: 'test-input', content: 'Test content' };
-      const result = framework.reason(input, { strategy: ReasoningStrategy.INDUCTIVE });
+    it('should apply transformations before and after reasoning', () => {
+      // Add pre-processing transformation
+      framework.addPreTransformation((input) => {
+        return { ...input, content: `Pre: ${input.content}` };
+      });
       
-      expect(result).to.be.an('object');
-      expect(result).to.have.property('strategy', ReasoningStrategy.INDUCTIVE);
-    });
-    
-    it('should throw error when reasoning with invalid strategy', () => {
-      const input = { id: 'test-input', content: 'Test content' };
-      expect(() => framework.reason(input, { strategy: 'invalid-strategy' })).to.throw('Strategy \'invalid-strategy\' is not available');
-    });
-    
-    it('should throw error when reasoning with invalid layer', () => {
-      const input = { id: 'test-input', content: 'Test content' };
-      mockAbstractionLayerManager.hasLayer = sinon.stub().returns(false);
-      expect(() => framework.reason(input, { layer: 'invalid-layer' })).to.throw('Layer \'invalid-layer\' is not available');
-      mockAbstractionLayerManager.hasLayer = sinon.stub().returns(true);
-    });
-    
-    it('should throw error when reasoning depth exceeds maximum', () => {
-      const input = { id: 'test-input', content: 'Test content' };
-      expect(() => framework.reason(input, { depth: 10 })).to.throw('Reasoning depth 10 exceeds maximum depth 5');
-    });
-    
-    it('should emit event when reasoning completes', () => {
-      const spy = sinon.spy();
-      framework.on('reasoningCompleted', spy);
+      // Add post-processing transformation
+      framework.addPostTransformation((result) => {
+        return { ...result, content: `Post: ${result.content}` };
+      });
       
       const input = { id: 'test-input', content: 'Test content' };
-      framework.reason(input);
+      const result = framework.reason(input);
       
-      expect(spy.calledOnce).to.be.true;
-      expect(spy.firstCall.args[0]).to.have.property('strategy', ReasoningStrategy.DEDUCTIVE);
-      expect(spy.firstCall.args[0]).to.have.property('inputId', 'test-input');
+      expect(result.content).to.equal('Post: Processed: Pre: Test content');
+    });
+    
+    it('should handle errors gracefully', () => {
+      // Make strategy throw an error
+      mockReasoningStrategyRegistry.getStrategy = sinon.stub().returns({
+        id: 'strategy1',
+        name: 'Default',
+        process: sinon.stub().throws(new Error('Processing error'))
+      });
+      
+      const input = { id: 'test-input', content: 'Test content' };
+      const result = framework.reason(input);
+      
+      expect(result).to.have.property('error');
+      expect(result.error).to.include('Processing error');
+      expect(result).to.have.property('fallbackApplied').that.is.true;
+    });
+  });
+  
+  describe('Strategy Management', () => {
+    it('should change reasoning strategy', () => {
+      // Setup a different strategy
+      mockReasoningStrategyRegistry.getStrategy = sinon.stub().callsFake((id) => {
+        if (id === 'strategy2') {
+          return {
+            id: 'strategy2',
+            name: 'Creative',
+            process: sinon.stub().callsFake((input) => {
+              return {
+                id: `creative-${input.id}`,
+                content: `Creative: ${input.content}`,
+                confidence: 0.75
+              };
+            })
+          };
+        }
+        return {
+          id: 'strategy1',
+          name: 'Default',
+          process: sinon.stub().callsFake((input) => {
+            return {
+              id: `result-${input.id}`,
+              content: `Processed: ${input.content}`,
+              confidence: 0.85
+            };
+          })
+        };
+      });
+      
+      // Change strategy
+      framework.setStrategy('strategy2');
+      
+      const input = { id: 'test-input', content: 'Test content' };
+      const result = framework.reason(input);
+      
+      expect(result.id).to.equal('creative-test-input');
+      expect(result.content).to.equal('Creative: Test content');
+    });
+    
+    it('should fall back to default strategy if requested strategy is not found', () => {
+      // Try to set a non-existent strategy
+      framework.setStrategy('non-existent-strategy');
+      
+      // Should fall back to default
+      expect(framework.getCurrentStrategy().id).to.equal('strategy1');
+    });
+  });
+  
+  describe('Hierarchical Reasoning', () => {
+    it('should reason across abstraction layers', () => {
+      // Setup layer-specific strategies
+      mockReasoningStrategyRegistry.getStrategy = sinon.stub().callsFake((id, layer) => {
+        if (layer && layer.id === 'layer2') {
+          return {
+            id: 'abstract-strategy',
+            name: 'Abstract',
+            process: sinon.stub().callsFake((input) => {
+              return {
+                id: `abstract-${input.id}`,
+                content: `Abstract: ${input.content}`,
+                confidence: 0.8
+              };
+            })
+          };
+        }
+        return {
+          id: 'strategy1',
+          name: 'Default',
+          process: sinon.stub().callsFake((input) => {
+            return {
+              id: `result-${input.id}`,
+              content: `Processed: ${input.content}`,
+              confidence: 0.85
+            };
+          })
+        };
+      });
+      
+      const input = { id: 'test-input', content: 'Test content' };
+      const result = framework.reasonAcrossLayers(input);
+      
+      expect(result).to.have.property('layers').that.is.an('array');
+      expect(result.layers).to.have.length.at.least(2);
+      expect(result).to.have.property('integrated').that.is.an('object');
+    });
+    
+    it('should integrate results from multiple layers', () => {
+      const input = { id: 'test-input', content: 'Test content' };
+      const result = framework.reasonAcrossLayers(input);
+      
+      expect(result.integrated).to.have.property('insights').that.is.an('array');
+      expect(result.integrated).to.have.property('confidence').that.is.a('number');
+    });
+  });
+  
+  describe('Knowledge Integration', () => {
+    it('should enrich reasoning with knowledge graph data', () => {
+      framework.setKnowledgeEnrichmentEnabled(true);
+      
+      const input = { id: 'test-input', content: 'Test content with Example' };
+      const result = framework.reason(input);
+      
+      expect(result).to.have.property('knowledgeEntities').that.is.an('array');
+      expect(result.knowledgeEntities).to.have.length.at.least(1);
+      expect(result.knowledgeEntities[0]).to.have.property('id', 'entity1');
+    });
+    
+    it('should skip knowledge enrichment when disabled', () => {
+      framework.setKnowledgeEnrichmentEnabled(false);
+      
+      const input = { id: 'test-input', content: 'Test content with Example' };
+      const result = framework.reason(input);
+      
+      expect(result.knowledgeEntities).to.be.undefined;
     });
   });
   
@@ -405,7 +394,8 @@ describe('HierarchicalReasoningFramework', () => {
       expect(mockPerformanceMonitor.endTimer.calledOnce).to.be.true;
     });
   });
-    describe('Disposal', () => {
+  
+  describe('Disposal', () => {
     it('should clean up resources on disposal', () => {
       const input = { id: 'test-input', content: 'Test content' };
       const result = framework.reason(input);
@@ -413,5 +403,12 @@ describe('HierarchicalReasoningFramework', () => {
       // Reset the spy since it was already created in the setup
       mockAbstractionLayerManager.dispose = sinon.stub();
       
-      framework.dispose(
-(Content truncated due to size limit. Use line ranges to read in chunks)
+      framework.dispose();
+      
+      expect(mockAbstractionLayerManager.dispose.calledOnce).to.be.true;
+      expect(mockReasoningStrategyRegistry.dispose.calledOnce).to.be.true;
+      expect(mockPerformanceMonitor.dispose.calledOnce).to.be.true;
+      expect(mockKnowledgeGraph.dispose.calledOnce).to.be.true;
+    });
+  });
+});
