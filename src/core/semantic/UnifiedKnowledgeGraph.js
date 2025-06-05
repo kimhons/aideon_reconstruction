@@ -411,17 +411,7 @@ class UnifiedKnowledgeGraph {
   }
 }
 
-module.exports = {
-  UnifiedKnowledgeGraph,
-  KnowledgeEntity,
-  SemanticRelationship,
-  // Export error types as well
-  DuplicateEntityError,
-  EntityNotFoundError,
-  RelationshipNotFoundError,
-  ValidationError,
-  AccessDeniedError,
-  DependencyError,
-  QuerySyntaxError,
-  QueryExecutionError
-};
+// Export the classes for use in other modules
+module.exports = UnifiedKnowledgeGraph;
+module.exports.KnowledgeEntity = KnowledgeEntity;
+module.exports.SemanticRelationship = SemanticRelationship;
