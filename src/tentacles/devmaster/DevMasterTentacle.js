@@ -9,6 +9,7 @@
 const { EventEmitter } = require('../../core/events/EventEmitter');
 const { Logger } = require('../../core/logging/Logger');
 const { TentacleBase } = require('../../core/tentacles/TentacleBase');
+const { AccessControlService } = require('../../core/security/AccessControlService');
 const { CodeBrainManager } = require('./code_brain/CodeBrainManager');
 const { VisualMindManager } = require('./visual_mind/VisualMindManager');
 const { DeployHandManager } = require('./deploy_hand/DeployHandManager');
@@ -36,12 +37,8 @@ class DevMasterTentacle extends TentacleBase {
     this.logger = new Logger('DevMasterTentacle');
     this.events = new EventEmitter();
     
-    // Access control
-    this.adminOnly = true;
-    this.inviteEnabled = true;
-    this.inviteCodes = new Map();
-    
-    // Initialize sub-components
+    // Initialize component references (actual initialization happens in initialize())
+    this.accessControl = null;
     this.codeBrain = null;
     this.visualMind = null;
     this.deployHand = null;
@@ -57,22 +54,23 @@ class DevMasterTentacle extends TentacleBase {
    * @returns {Promise<void>}
    */
   async initialize() {
+    if (this.initialized) {
+      this.logger.warn('DevMaster Tentacle is already initialized');
+      return;
+    }
+    
     this.logger.info('Initializing DevMaster Tentacle');
     
     try {
       // Get configuration namespace
       const config = this.aideon.config.getNamespace('tentacles.devmaster');
       
-      // Initialize access control
+      // Initialize components in sequence with proper dependency management
       await this._initializeAccessControl(config);
-      
-      // Initialize sub-components
       await this._initializeSubComponents(config);
       
-      // Register API endpoints
+      // Register API endpoints and metrics after components are initialized
       this._registerApiEndpoints();
-      
-      // Register with metrics system
       this._registerWithMetrics();
       
       this.logger.info('DevMaster Tentacle initialized successfully');
@@ -95,24 +93,8 @@ class DevMasterTentacle extends TentacleBase {
    * @returns {Promise<boolean>} - Whether the user has access
    */
   async hasAccess(userId) {
-    // Check if user is admin
-    const isAdmin = await this.aideon.auth.isAdmin(userId);
-    if (isAdmin) {
-      return true;
-    }
-    
-    // Check if user has a valid invite code
-    const userInviteCode = await this.aideon.auth.getUserAttribute(userId, 'devmasterInviteCode');
-    if (userInviteCode && this.inviteCodes.has(userInviteCode)) {
-      const invite = this.inviteCodes.get(userInviteCode);
-      
-      // Check if invite is still valid
-      if (invite.expiresAt > Date.now()) {
-        return true;
-      }
-    }
-    
-    return false;
+    this._ensureInitialized();
+    return this.accessControl.hasAccess(userId);
   }
 
   /**
@@ -122,38 +104,8 @@ class DevMasterTentacle extends TentacleBase {
    * @returns {Promise<Object>} - Generated invite code
    */
   async generateInviteCode(adminId, options = {}) {
-    // Verify admin status
-    const isAdmin = await this.aideon.auth.isAdmin(adminId);
-    if (!isAdmin) {
-      throw new Error('Only admin users can generate invite codes');
-    }
-    
-    // Generate a unique code
-    const code = `DM-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 10)}`.toUpperCase();
-    
-    // Set expiration (default: 7 days)
-    const expiresIn = options.expiresIn || 7 * 24 * 60 * 60 * 1000;
-    const expiresAt = Date.now() + expiresIn;
-    
-    // Store the invite code
-    this.inviteCodes.set(code, {
-      code,
-      createdBy: adminId,
-      createdAt: Date.now(),
-      expiresAt,
-      maxUses: options.maxUses || 1,
-      uses: 0,
-      metadata: options.metadata || {}
-    });
-    
-    // Save to persistent storage
-    await this._saveInviteCodes();
-    
-    return {
-      code,
-      expiresAt,
-      maxUses: options.maxUses || 1
-    };
+    this._ensureInitialized();
+    return this.accessControl.generateInviteCode(adminId, options);
   }
 
   /**
@@ -163,40 +115,8 @@ class DevMasterTentacle extends TentacleBase {
    * @returns {Promise<boolean>} - Whether redemption was successful
    */
   async redeemInviteCode(userId, code) {
-    // Check if code exists
-    if (!this.inviteCodes.has(code)) {
-      return false;
-    }
-    
-    const invite = this.inviteCodes.get(code);
-    
-    // Check if code is expired
-    if (invite.expiresAt <= Date.now()) {
-      return false;
-    }
-    
-    // Check if code has reached max uses
-    if (invite.maxUses !== -1 && invite.uses >= invite.maxUses) {
-      return false;
-    }
-    
-    // Increment usage count
-    invite.uses += 1;
-    
-    // Save to persistent storage
-    await this._saveInviteCodes();
-    
-    // Set user attribute
-    await this.aideon.auth.setUserAttribute(userId, 'devmasterInviteCode', code);
-    
-    // Emit event
-    this.events.emit('invite:redeemed', {
-      userId,
-      code,
-      timestamp: Date.now()
-    });
-    
-    return true;
+    this._ensureInitialized();
+    return this.accessControl.redeemInviteCode(userId, code);
   }
 
   /**
@@ -314,11 +234,15 @@ class DevMasterTentacle extends TentacleBase {
       name: this.name,
       version: this.version,
       initialized: this.initialized,
-      adminOnly: this.adminOnly,
-      inviteEnabled: this.inviteEnabled,
-      activeInvites: this.inviteCodes.size,
       components: {}
     };
+    
+    // Add access control status
+    if (this.accessControl) {
+      status.adminOnly = this.accessControl.adminOnly;
+      status.inviteEnabled = this.accessControl.inviteEnabled;
+      status.activeInvites = this.accessControl.getActiveInviteCount();
+    }
     
     // Add component statuses if initialized
     if (this.initialized) {
@@ -351,31 +275,43 @@ class DevMasterTentacle extends TentacleBase {
    * @returns {Promise<void>}
    */
   async shutdown() {
+    if (!this.initialized) {
+      this.logger.warn('DevMaster Tentacle is not initialized, nothing to shut down');
+      return;
+    }
+    
     this.logger.info('Shutting down DevMaster Tentacle');
     
     try {
-      // Shutdown sub-components
-      if (this.codeBrain) {
-        await this.codeBrain.shutdown();
-      }
+      // Shutdown sub-components in reverse initialization order
+      const shutdownPromises = [];
       
-      if (this.visualMind) {
-        await this.visualMind.shutdown();
-      }
-      
-      if (this.deployHand) {
-        await this.deployHand.shutdown();
+      if (this.lifecycleManager) {
+        shutdownPromises.push(this.lifecycleManager.shutdown());
       }
       
       if (this.collabInterface) {
-        await this.collabInterface.shutdown();
+        shutdownPromises.push(this.collabInterface.shutdown());
       }
       
-      if (this.lifecycleManager) {
-        await this.lifecycleManager.shutdown();
+      if (this.deployHand) {
+        shutdownPromises.push(this.deployHand.shutdown());
       }
       
+      if (this.visualMind) {
+        shutdownPromises.push(this.visualMind.shutdown());
+      }
+      
+      if (this.codeBrain) {
+        shutdownPromises.push(this.codeBrain.shutdown());
+      }
+      
+      // Wait for all components to shut down
+      await Promise.all(shutdownPromises);
+      
+      // Clean up resources
       this.initialized = false;
+      
       this.logger.info('DevMaster Tentacle shutdown complete');
       
       // Emit shutdown event
@@ -385,6 +321,7 @@ class DevMasterTentacle extends TentacleBase {
       });
     } catch (error) {
       this.logger.error('Error during DevMaster Tentacle shutdown', error);
+      throw error;
     }
   }
 
@@ -397,18 +334,19 @@ class DevMasterTentacle extends TentacleBase {
   async _initializeAccessControl(config) {
     this.logger.info('Initializing access control');
     
-    // Get access control configuration
-    this.adminOnly = config.get('adminOnly', true);
-    this.inviteEnabled = config.get('inviteEnabled', true);
+    // Create access control service
+    this.accessControl = new AccessControlService({
+      tentacleId: this.id,
+      config: config.getNamespace('accessControl'),
+      auth: this.aideon.auth,
+      logger: new Logger('DevMaster:AccessControl'),
+      events: this.events
+    });
     
-    // Load saved invite codes
-    const savedInviteCodes = config.get('inviteCodes', []);
+    // Initialize access control
+    await this.accessControl.initialize();
     
-    for (const invite of savedInviteCodes) {
-      this.inviteCodes.set(invite.code, invite);
-    }
-    
-    this.logger.info(`Loaded ${this.inviteCodes.size} invite codes`);
+    this.logger.info('Access control initialized successfully');
   }
 
   /**
@@ -420,39 +358,41 @@ class DevMasterTentacle extends TentacleBase {
   async _initializeSubComponents(config) {
     this.logger.info('Initializing sub-components');
     
-    // Initialize Code Brain
+    // Create component instances
     this.codeBrain = new CodeBrainManager({
       tentacle: this,
       config: config.getNamespace('codeBrain'),
       events: this.events
     });
-    await this.codeBrain.initialize();
     
-    // Initialize Visual Mind
     this.visualMind = new VisualMindManager({
       tentacle: this,
       config: config.getNamespace('visualMind'),
       events: this.events
     });
-    await this.visualMind.initialize();
     
-    // Initialize Deploy Hand
     this.deployHand = new DeployHandManager({
       tentacle: this,
       config: config.getNamespace('deployHand'),
       events: this.events
     });
-    await this.deployHand.initialize();
     
-    // Initialize Collab Interface
     this.collabInterface = new CollabInterfaceManager({
       tentacle: this,
       config: config.getNamespace('collabInterface'),
       events: this.events
     });
-    await this.collabInterface.initialize();
     
-    // Initialize Lifecycle Manager
+    // Initialize components in parallel for efficiency
+    await Promise.all([
+      this.codeBrain.initialize(),
+      this.visualMind.initialize(),
+      this.deployHand.initialize(),
+      this.collabInterface.initialize()
+    ]);
+    
+    // Initialize lifecycle manager after other components
+    // since it depends on them
     this.lifecycleManager = new LifecycleManager({
       tentacle: this,
       config: config.getNamespace('lifecycleManager'),
@@ -464,7 +404,10 @@ class DevMasterTentacle extends TentacleBase {
         collabInterface: this.collabInterface
       }
     });
+    
     await this.lifecycleManager.initialize();
+    
+    this.logger.info('All sub-components initialized successfully');
   }
 
   /**
@@ -486,6 +429,8 @@ class DevMasterTentacle extends TentacleBase {
     this.deployHand.registerApiEndpoints();
     this.collabInterface.registerApiEndpoints();
     this.lifecycleManager.registerApiEndpoints();
+    
+    this.logger.info('API endpoints registered successfully');
   }
 
   /**
@@ -524,6 +469,8 @@ class DevMasterTentacle extends TentacleBase {
         }
       ]
     });
+    
+    this.logger.info('Metrics registration complete');
   }
 
   /**
@@ -539,26 +486,15 @@ class DevMasterTentacle extends TentacleBase {
     // Invite events
     this.events.on('invite:generated', this._onInviteGenerated.bind(this));
     this.events.on('invite:redeemed', this._onInviteRedeemed.bind(this));
-  }
-
-  /**
-   * Save invite codes to persistent storage
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _saveInviteCodes() {
-    try {
-      const config = this.aideon.config.getNamespace('tentacles.devmaster');
-      await config.set('inviteCodes', Array.from(this.inviteCodes.values()));
-    } catch (error) {
-      this.logger.error('Failed to save invite codes', error);
-      throw error;
-    }
+    
+    // System events
+    this.events.on('system:shutdown', this.shutdown.bind(this));
   }
 
   /**
    * Ensure the tentacle is initialized
    * @private
+   * @throws {Error} If tentacle is not initialized
    */
   _ensureInitialized() {
     if (!this.initialized) {
@@ -601,6 +537,7 @@ class DevMasterTentacle extends TentacleBase {
         data: status
       };
     } catch (error) {
+      this.logger.error('Error handling status request', error);
       return {
         status: 'error',
         message: error.message
@@ -621,20 +558,12 @@ class DevMasterTentacle extends TentacleBase {
       // Generate invite code
       const invite = await this.generateInviteCode(userId, options);
       
-      // Emit event
-      this.events.emit('invite:generated', {
-        adminId: userId,
-        code: invite.code,
-        expiresAt: invite.expiresAt,
-        maxUses: invite.maxUses,
-        timestamp: Date.now()
-      });
-      
       return {
         status: 'success',
         data: invite
       };
     } catch (error) {
+      this.logger.error('Error handling generate invite request', error);
       return {
         status: 'error',
         message: error.message
@@ -660,6 +589,7 @@ class DevMasterTentacle extends TentacleBase {
         message: success ? 'Invite code redeemed successfully' : 'Invalid or expired invite code'
       };
     } catch (error) {
+      this.logger.error('Error handling redeem invite request', error);
       return {
         status: 'error',
         message: error.message
@@ -685,6 +615,7 @@ class DevMasterTentacle extends TentacleBase {
         data: result
       };
     } catch (error) {
+      this.logger.error('Error handling execute task request', error);
       return {
         status: 'error',
         message: error.message
