@@ -1,47 +1,56 @@
 /**
- * Jest configuration for Aideon Tentacle Marketplace tests
+ * @fileoverview Jest configuration for Aideon AI Desktop Agent
+ * 
+ * This file contains Jest configuration for running tests for the Aideon AI Desktop Agent,
+ * including test environment, coverage settings, and module mocking.
  */
 
 module.exports = {
   // Test environment
-  testEnvironment: 'jsdom',
+  testEnvironment: 'node',
   
-  // Test files pattern
+  // Test match patterns
   testMatch: [
-    '**/analytics/**/*.test.js',
-    '**/analytics/**/*.spec.js',
-    '**/analytics/**/*.e2e.test.js',
-    '**/ui/**/*.test.js',
-    '**/ui/**/*.spec.js',
-    '**/ui/**/*.e2e.test.js'
+    '**/__tests__/**/*.js',
+    '**/?(*.)+(spec|test).js'
   ],
   
-  // Module name mapper for resolving paths
+  // Test setup files
+  setupFilesAfterEnv: [
+    '<rootDir>/test/tentacles/decision_intelligence/setup.jest.js'
+  ],
+  
+  // Module name mapper for core modules
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+    '^../../../../core/logging/Logger$': '<rootDir>/src/core/logging/Logger.js',
+    '^../../../../core/events/EventEmitter$': '<rootDir>/src/core/events/EventEmitter.js',
+    '^../../../core/logging/Logger$': '<rootDir>/src/core/logging/Logger.js',
+    '^../../../core/events/EventEmitter$': '<rootDir>/src/core/events/EventEmitter.js',
+    '^../../core/logging/Logger$': '<rootDir>/src/core/logging/Logger.js',
+    '^../../core/events/EventEmitter$': '<rootDir>/src/core/events/EventEmitter.js'
   },
   
-  // Setup files
-  setupFiles: ['<rootDir>/test/marketplace/setup.js'],
-  
-  // Coverage configuration
+  // Coverage settings
+  collectCoverage: true,
+  coverageDirectory: '<rootDir>/coverage',
   collectCoverageFrom: [
-    'src/marketplace/analytics/**/*.js',
-    'src/marketplace/ui/**/*.js',
-    '!src/marketplace/analytics/**/index.js',
-    '!src/marketplace/ui/**/index.js'
+    'src/**/*.js',
+    '!src/vendor/**',
+    '!**/node_modules/**'
   ],
   
-  // Transform files with babel-jest
-  transform: {
-    '^.+\\.js$': 'babel-jest'
-  },
-  
-  // Ignore transformations for node_modules
-  transformIgnorePatterns: [
-    '/node_modules/'
-  ],
+  // Timeout settings
+  testTimeout: 10000,
   
   // Verbose output
-  verbose: true
+  verbose: true,
+  
+  // Disable automatic mocks
+  automock: false,
+  
+  // Clear mocks between tests
+  clearMocks: true,
+  
+  // Reset modules between tests
+  resetModules: true
 };

@@ -1,159 +1,199 @@
 /**
- * @fileoverview Logger utility for Aideon components
+ * @fileoverview Logger utility for standardized logging across the Aideon system.
  * 
- * This module provides a standardized logging interface for all Aideon components.
+ * This module provides a consistent logging interface with support for different
+ * log levels, contextual information, and integration with monitoring systems.
  */
 
 /**
- * Logger class for standardized logging across Aideon components
+ * Logger class for standardized logging
  */
 class Logger {
   /**
    * Creates a new Logger instance
-   * @param {string} componentName The name of the component using this logger
+   * @param {string} context The context or component name for this logger
    * @param {Object} options Configuration options
    */
-  constructor(componentName, options = {}) {
-    this.componentName = componentName;
+  constructor(context, options = {}) {
+    this.context = context;
     this.options = {
-      logLevel: options.logLevel || 'info',
-      includeTimestamp: options.includeTimestamp !== undefined ? options.includeTimestamp : true,
+      minLevel: options.minLevel || 'info',
+      includeTimestamp: options.includeTimestamp !== false,
+      includeContext: options.includeContext !== false,
       ...options
     };
     
-    // Log levels and their numeric values (higher = more verbose)
-    this.logLevels = {
-      error: 0,
-      warn: 1,
+    // Log levels and their numeric values (higher = more severe)
+    this.levels = {
+      trace: 0,
+      debug: 1,
       info: 2,
-      debug: 3,
-      trace: 4
+      warn: 3,
+      error: 4,
+      fatal: 5
     };
     
     // Bind methods to ensure correct 'this' context
     this.log = this.log.bind(this);
-    this.error = this.error.bind(this);
-    this.warn = this.warn.bind(this);
-    this.info = this.info.bind(this);
-    this.debug = this.debug.bind(this);
     this.trace = this.trace.bind(this);
+    this.debug = this.debug.bind(this);
+    this.info = this.info.bind(this);
+    this.warn = this.warn.bind(this);
+    this.error = this.error.bind(this);
+    this.fatal = this.fatal.bind(this);
   }
   
   /**
    * Logs a message at the specified level
-   * @param {string} level The log level
-   * @param {string} message The message to log
-   * @param {*} data Additional data to log
+   * @param {string} level Log level
+   * @param {string} message Log message
+   * @param {Object|Error} [data] Additional data or error object
    */
   log(level, message, data) {
-    // Check if this level should be logged
-    if (!this._shouldLog(level)) {
+    // Check if this log level should be processed
+    if (this.levels[level] < this.levels[this.options.minLevel]) {
       return;
     }
     
-    // Format the log message
-    const formattedMessage = this._formatMessage(level, message);
+    // Create log entry
+    const entry = {
+      level,
+      message
+    };
     
-    // Log to console
+    // Add timestamp if enabled
+    if (this.options.includeTimestamp) {
+      entry.timestamp = new Date().toISOString();
+    }
+    
+    // Add context if enabled
+    if (this.options.includeContext && this.context) {
+      entry.context = this.context;
+    }
+    
+    // Add data if provided
+    if (data !== undefined) {
+      if (data instanceof Error) {
+        // Format error objects
+        entry.error = {
+          name: data.name,
+          message: data.message,
+          stack: data.stack
+        };
+        
+        // Add additional properties from the error
+        for (const key in data) {
+          if (Object.prototype.hasOwnProperty.call(data, key) && 
+              !['name', 'message', 'stack'].includes(key)) {
+            entry.error[key] = data[key];
+          }
+        }
+      } else {
+        // Add data as-is
+        entry.data = data;
+      }
+    }
+    
+    // Output log entry
+    this._output(entry);
+  }
+  
+  /**
+   * Outputs a log entry
+   * @private
+   * @param {Object} entry Log entry
+   */
+  _output(entry) {
+    // Default implementation uses console
+    // This can be overridden in derived classes to use other logging systems
+    const { level } = entry;
+    
+    // Format the log message
+    let formattedMessage = '';
+    
+    if (entry.timestamp) {
+      formattedMessage += `[${entry.timestamp}] `;
+    }
+    
+    if (entry.context) {
+      formattedMessage += `[${entry.context}] `;
+    }
+    
+    formattedMessage += `${entry.message}`;
+    
+    // Output to console based on level
     switch (level) {
-      case 'error':
-        console.error(formattedMessage, data || '');
-        break;
-      case 'warn':
-        console.warn(formattedMessage, data || '');
+      case 'trace':
+      case 'debug':
+        console.debug(formattedMessage, entry.data || entry.error || '');
         break;
       case 'info':
-        console.info(formattedMessage, data || '');
+        console.info(formattedMessage, entry.data || entry.error || '');
         break;
-      case 'debug':
-      case 'trace':
+      case 'warn':
+        console.warn(formattedMessage, entry.data || entry.error || '');
+        break;
+      case 'error':
+      case 'fatal':
+        console.error(formattedMessage, entry.data || entry.error || '');
+        break;
       default:
-        console.log(formattedMessage, data || '');
-        break;
+        console.log(formattedMessage, entry.data || entry.error || '');
     }
   }
   
   /**
-   * Logs an error message
-   * @param {string} message The message to log
-   * @param {*} data Additional data to log
-   */
-  error(message, data) {
-    this.log('error', message, data);
-  }
-  
-  /**
-   * Logs a warning message
-   * @param {string} message The message to log
-   * @param {*} data Additional data to log
-   */
-  warn(message, data) {
-    this.log('warn', message, data);
-  }
-  
-  /**
-   * Logs an info message
-   * @param {string} message The message to log
-   * @param {*} data Additional data to log
-   */
-  info(message, data) {
-    this.log('info', message, data);
-  }
-  
-  /**
-   * Logs a debug message
-   * @param {string} message The message to log
-   * @param {*} data Additional data to log
-   */
-  debug(message, data) {
-    this.log('debug', message, data);
-  }
-  
-  /**
-   * Logs a trace message
-   * @param {string} message The message to log
-   * @param {*} data Additional data to log
+   * Logs a message at TRACE level
+   * @param {string} message Log message
+   * @param {Object} [data] Additional data
    */
   trace(message, data) {
     this.log('trace', message, data);
   }
   
   /**
-   * Checks if a message at the given level should be logged
-   * @private
-   * @param {string} level The log level to check
-   * @returns {boolean} Whether the message should be logged
+   * Logs a message at DEBUG level
+   * @param {string} message Log message
+   * @param {Object} [data] Additional data
    */
-  _shouldLog(level) {
-    const configuredLevel = this.options.logLevel;
-    return this.logLevels[level] <= this.logLevels[configuredLevel];
+  debug(message, data) {
+    this.log('debug', message, data);
   }
   
   /**
-   * Formats a log message
-   * @private
-   * @param {string} level The log level
-   * @param {string} message The message to format
-   * @returns {string} The formatted message
+   * Logs a message at INFO level
+   * @param {string} message Log message
+   * @param {Object} [data] Additional data
    */
-  _formatMessage(level, message) {
-    let formattedMessage = '';
-    
-    // Add timestamp if configured
-    if (this.options.includeTimestamp) {
-      formattedMessage += `[${new Date().toISOString()}] `;
-    }
-    
-    // Add log level
-    formattedMessage += `[${level.toUpperCase()}] `;
-    
-    // Add component name
-    formattedMessage += `[${this.componentName}] `;
-    
-    // Add message
-    formattedMessage += message;
-    
-    return formattedMessage;
+  info(message, data) {
+    this.log('info', message, data);
+  }
+  
+  /**
+   * Logs a message at WARN level
+   * @param {string} message Log message
+   * @param {Object} [data] Additional data
+   */
+  warn(message, data) {
+    this.log('warn', message, data);
+  }
+  
+  /**
+   * Logs a message at ERROR level
+   * @param {string} message Log message
+   * @param {Error|Object} [error] Error object or additional data
+   */
+  error(message, error) {
+    this.log('error', message, error);
+  }
+  
+  /**
+   * Logs a message at FATAL level
+   * @param {string} message Log message
+   * @param {Error|Object} [error] Error object or additional data
+   */
+  fatal(message, error) {
+    this.log('fatal', message, error);
   }
 }
 

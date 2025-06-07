@@ -1,0 +1,41 @@
+{
+  "name": "aideon-reconstruction",
+  "version": "1.0.0",
+  "description": "Aideon AI Desktop Agent",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --require test/tentacles/contextual_intelligence/setup.js 'test/**/*.test.js'",
+    "test:analytics": "jest --config jest.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kimhons/aideon_reconstruction.git"
+  },
+  "keywords": [
+    "aideon",
+    "ai",
+    "desktop",
+    "agent"
+  ],
+  "author": "Aideon AI Team",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/kimhons/aideon_reconstruction/issues"
+  },
+  "homepage": "https://github.com/kimhons/aideon_reconstruction#readme",
+  "devDependencies": {
+    "@babel/core": "^7.27.4",
+    "@babel/plugin-transform-class-properties": "^7.27.1",
+    "@babel/plugin-transform-private-methods": "^7.27.1",
+    "@babel/plugin-transform-runtime": "^7.27.4",
+    "@babel/preset-env": "^7.27.2",
+    "babel-jest": "^29.7.0",
+    "chai": "^4.3.7",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.0.0-beta.3",
+    "mocha": "^10.2.0",
+    "proxyquire": "^2.1.3",
+    "sinon": "^15.0.3",
+    "sinon-chai": "^3.7.0"
+  }
+}

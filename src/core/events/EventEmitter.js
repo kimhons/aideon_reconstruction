@@ -1,18 +1,19 @@
 /**
- * @fileoverview EventEmitter utility for Aideon components
+ * @fileoverview EventEmitter utility for event-driven architecture across the Aideon system.
  * 
- * This module provides a standardized event handling interface for all Aideon components.
+ * This module provides a consistent event handling interface with support for
+ * event subscription, emission, and management.
  */
 
 /**
- * EventEmitter class for standardized event handling across Aideon components
+ * EventEmitter class for standardized event handling
  */
 class EventEmitter {
   /**
    * Creates a new EventEmitter instance
    */
   constructor() {
-    this.events = {};
+    this.events = new Map();
     
     // Bind methods to ensure correct 'this' context
     this.on = this.on.bind(this);
@@ -24,16 +25,16 @@ class EventEmitter {
   
   /**
    * Registers an event listener
-   * @param {string} event The event name
-   * @param {Function} listener The event listener function
+   * @param {string} event Event name
+   * @param {Function} listener Event listener function
    * @returns {EventEmitter} This instance for chaining
    */
   on(event, listener) {
-    if (!this.events[event]) {
-      this.events[event] = [];
+    if (!this.events.has(event)) {
+      this.events.set(event, []);
     }
     
-    this.events[event].push({
+    this.events.get(event).push({
       listener,
       once: false
     });
@@ -43,16 +44,16 @@ class EventEmitter {
   
   /**
    * Registers a one-time event listener
-   * @param {string} event The event name
-   * @param {Function} listener The event listener function
+   * @param {string} event Event name
+   * @param {Function} listener Event listener function
    * @returns {EventEmitter} This instance for chaining
    */
   once(event, listener) {
-    if (!this.events[event]) {
-      this.events[event] = [];
+    if (!this.events.has(event)) {
+      this.events.set(event, []);
     }
     
-    this.events[event].push({
+    this.events.get(event).push({
       listener,
       once: true
     });
@@ -62,58 +63,71 @@ class EventEmitter {
   
   /**
    * Removes an event listener
-   * @param {string} event The event name
-   * @param {Function} listener The event listener function to remove
+   * @param {string} event Event name
+   * @param {Function} listener Event listener function
    * @returns {EventEmitter} This instance for chaining
    */
   off(event, listener) {
-    if (!this.events[event]) {
+    if (!this.events.has(event)) {
       return this;
     }
     
-    this.events[event] = this.events[event].filter(item => item.listener !== listener);
+    const listeners = this.events.get(event);
+    const filteredListeners = listeners.filter(item => item.listener !== listener);
+    
+    if (filteredListeners.length > 0) {
+      this.events.set(event, filteredListeners);
+    } else {
+      this.events.delete(event);
+    }
     
     return this;
   }
   
   /**
    * Emits an event
-   * @param {string} event The event name
-   * @param {...*} args Arguments to pass to the listeners
-   * @returns {boolean} Whether any listeners were called
+   * @param {string} event Event name
+   * @param {...any} args Arguments to pass to listeners
+   * @returns {boolean} True if the event had listeners, false otherwise
    */
   emit(event, ...args) {
-    if (!this.events[event]) {
+    if (!this.events.has(event)) {
       return false;
     }
     
-    const listeners = [...this.events[event]];
+    const listeners = this.events.get(event);
+    const remainingListeners = [];
     
-    // Remove one-time listeners
-    this.events[event] = this.events[event].filter(item => !item.once);
-    
-    // Call listeners
-    listeners.forEach(item => {
-      try {
-        item.listener(...args);
-      } catch (error) {
-        console.error(`Error in event listener for ${event}:`, error);
+    // Call all listeners
+    for (const item of listeners) {
+      item.listener(...args);
+      
+      // Keep non-once listeners
+      if (!item.once) {
+        remainingListeners.push(item);
       }
-    });
+    }
+    
+    // Update listeners list
+    if (remainingListeners.length > 0) {
+      this.events.set(event, remainingListeners);
+    } else {
+      this.events.delete(event);
+    }
     
     return true;
   }
   
   /**
-   * Removes all listeners for an event
-   * @param {string} [event] The event name (if omitted, removes all listeners for all events)
+   * Removes all listeners for an event or all events
+   * @param {string} [event] Event name (if omitted, removes all listeners for all events)
    * @returns {EventEmitter} This instance for chaining
    */
   removeAllListeners(event) {
     if (event) {
-      this.events[event] = [];
+      this.events.delete(event);
     } else {
-      this.events = {};
+      this.events.clear();
     }
     
     return this;
@@ -121,19 +135,23 @@ class EventEmitter {
   
   /**
    * Gets the number of listeners for an event
-   * @param {string} event The event name
-   * @returns {number} The number of listeners
+   * @param {string} event Event name
+   * @returns {number} Number of listeners
    */
   listenerCount(event) {
-    return this.events[event] ? this.events[event].length : 0;
+    if (!this.events.has(event)) {
+      return 0;
+    }
+    
+    return this.events.get(event).length;
   }
   
   /**
-   * Gets the event names with registered listeners
-   * @returns {string[]} The event names
+   * Gets all event names with registered listeners
+   * @returns {Array<string>} Array of event names
    */
   eventNames() {
-    return Object.keys(this.events);
+    return Array.from(this.events.keys());
   }
 }
 
