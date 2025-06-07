@@ -1,138 +1,139 @@
 /**
- * @fileoverview Event Emitter - Core event system for Aideon
+ * @fileoverview EventEmitter utility for Aideon components
  * 
- * This module provides a simple event emitter implementation for the Aideon system.
+ * This module provides a standardized event handling interface for all Aideon components.
  */
 
 /**
- * EventEmitter class - Manages event subscriptions and emissions
+ * EventEmitter class for standardized event handling across Aideon components
  */
 class EventEmitter {
   /**
-   * Create a new EventEmitter instance
+   * Creates a new EventEmitter instance
    */
   constructor() {
-    this.events = new Map();
+    this.events = {};
+    
+    // Bind methods to ensure correct 'this' context
+    this.on = this.on.bind(this);
+    this.once = this.once.bind(this);
+    this.off = this.off.bind(this);
+    this.emit = this.emit.bind(this);
+    this.removeAllListeners = this.removeAllListeners.bind(this);
   }
-
+  
   /**
-   * Register an event listener
-   * @param {string} event - Event name
-   * @param {Function} listener - Event listener function
-   * @returns {EventEmitter} - This instance for chaining
+   * Registers an event listener
+   * @param {string} event The event name
+   * @param {Function} listener The event listener function
+   * @returns {EventEmitter} This instance for chaining
    */
   on(event, listener) {
-    if (!this.events.has(event)) {
-      this.events.set(event, []);
+    if (!this.events[event]) {
+      this.events[event] = [];
     }
     
-    this.events.get(event).push(listener);
+    this.events[event].push({
+      listener,
+      once: false
+    });
+    
     return this;
   }
-
+  
   /**
-   * Register a one-time event listener
-   * @param {string} event - Event name
-   * @param {Function} listener - Event listener function
-   * @returns {EventEmitter} - This instance for chaining
+   * Registers a one-time event listener
+   * @param {string} event The event name
+   * @param {Function} listener The event listener function
+   * @returns {EventEmitter} This instance for chaining
    */
   once(event, listener) {
-    const onceWrapper = (...args) => {
-      this.off(event, onceWrapper);
-      listener.apply(this, args);
-    };
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
     
-    return this.on(event, onceWrapper);
+    this.events[event].push({
+      listener,
+      once: true
+    });
+    
+    return this;
   }
-
+  
   /**
-   * Remove an event listener
-   * @param {string} event - Event name
-   * @param {Function} listener - Event listener function to remove
-   * @returns {EventEmitter} - This instance for chaining
+   * Removes an event listener
+   * @param {string} event The event name
+   * @param {Function} listener The event listener function to remove
+   * @returns {EventEmitter} This instance for chaining
    */
   off(event, listener) {
-    if (!this.events.has(event)) {
+    if (!this.events[event]) {
       return this;
     }
     
-    const listeners = this.events.get(event);
-    const index = listeners.indexOf(listener);
-    
-    if (index !== -1) {
-      listeners.splice(index, 1);
-      
-      if (listeners.length === 0) {
-        this.events.delete(event);
-      }
-    }
+    this.events[event] = this.events[event].filter(item => item.listener !== listener);
     
     return this;
   }
-
+  
   /**
-   * Remove all listeners for an event
-   * @param {string} [event] - Event name (if omitted, removes all listeners for all events)
-   * @returns {EventEmitter} - This instance for chaining
-   */
-  removeAllListeners(event) {
-    if (event) {
-      this.events.delete(event);
-    } else {
-      this.events.clear();
-    }
-    
-    return this;
-  }
-
-  /**
-   * Emit an event
-   * @param {string} event - Event name
-   * @param {...any} args - Arguments to pass to listeners
-   * @returns {boolean} - Whether the event had listeners
+   * Emits an event
+   * @param {string} event The event name
+   * @param {...*} args Arguments to pass to the listeners
+   * @returns {boolean} Whether any listeners were called
    */
   emit(event, ...args) {
-    if (!this.events.has(event)) {
+    if (!this.events[event]) {
       return false;
     }
     
-    const listeners = this.events.get(event).slice();
+    const listeners = [...this.events[event]];
     
-    for (const listener of listeners) {
+    // Remove one-time listeners
+    this.events[event] = this.events[event].filter(item => !item.once);
+    
+    // Call listeners
+    listeners.forEach(item => {
       try {
-        listener.apply(this, args);
+        item.listener(...args);
       } catch (error) {
         console.error(`Error in event listener for ${event}:`, error);
       }
-    }
+    });
     
     return true;
   }
-
+  
   /**
-   * Get the number of listeners for an event
-   * @param {string} event - Event name
-   * @returns {number} - Number of listeners
+   * Removes all listeners for an event
+   * @param {string} [event] The event name (if omitted, removes all listeners for all events)
+   * @returns {EventEmitter} This instance for chaining
+   */
+  removeAllListeners(event) {
+    if (event) {
+      this.events[event] = [];
+    } else {
+      this.events = {};
+    }
+    
+    return this;
+  }
+  
+  /**
+   * Gets the number of listeners for an event
+   * @param {string} event The event name
+   * @returns {number} The number of listeners
    */
   listenerCount(event) {
-    if (!this.events.has(event)) {
-      return 0;
-    }
-    
-    return this.events.get(event).length;
+    return this.events[event] ? this.events[event].length : 0;
   }
-
+  
   /**
-   * Get all listeners for an event
-   * @param {string} event - Event name
-   * @returns {Function[]} - Array of listener functions
+   * Gets the event names with registered listeners
+   * @returns {string[]} The event names
    */
-  listeners(event) {
-    if (!this.events.has(event)) {
-      return [];
-    }
-    
-    return this.events.get(event).slice();
+  eventNames() {
+    return Object.keys(this.events);
   }
 }
 

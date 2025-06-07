@@ -1,101 +1,159 @@
 /**
- * @fileoverview Core Logger implementation for Aideon
- * This file provides a centralized logging system for the entire application
+ * @fileoverview Logger utility for Aideon components
  * 
- * @author Aideon AI Team
- * @version 1.0.0
+ * This module provides a standardized logging interface for all Aideon components.
  */
 
+/**
+ * Logger class for standardized logging across Aideon components
+ */
 class Logger {
   /**
-   * Create a new Logger instance
-   * @param {string} name - Name of the logger, typically the component name
+   * Creates a new Logger instance
+   * @param {string} componentName The name of the component using this logger
+   * @param {Object} options Configuration options
    */
-  constructor(name) {
-    this.name = name;
-    this.logLevel = process.env.LOG_LEVEL || 'info';
-    this.levels = {
+  constructor(componentName, options = {}) {
+    this.componentName = componentName;
+    this.options = {
+      logLevel: options.logLevel || 'info',
+      includeTimestamp: options.includeTimestamp !== undefined ? options.includeTimestamp : true,
+      ...options
+    };
+    
+    // Log levels and their numeric values (higher = more verbose)
+    this.logLevels = {
       error: 0,
       warn: 1,
       info: 2,
       debug: 3,
       trace: 4
     };
+    
+    // Bind methods to ensure correct 'this' context
+    this.log = this.log.bind(this);
+    this.error = this.error.bind(this);
+    this.warn = this.warn.bind(this);
+    this.info = this.info.bind(this);
+    this.debug = this.debug.bind(this);
+    this.trace = this.trace.bind(this);
   }
-
+  
   /**
-   * Log an error message
-   * @param {string} message - Message to log
-   * @param {Error|Object} [error] - Optional error object or additional data
+   * Logs a message at the specified level
+   * @param {string} level The log level
+   * @param {string} message The message to log
+   * @param {*} data Additional data to log
    */
-  error(message, error) {
-    if (this._shouldLog('error')) {
-      console.error(`[ERROR] [${this.name}] ${message}`, error || '');
+  log(level, message, data) {
+    // Check if this level should be logged
+    if (!this._shouldLog(level)) {
+      return;
+    }
+    
+    // Format the log message
+    const formattedMessage = this._formatMessage(level, message);
+    
+    // Log to console
+    switch (level) {
+      case 'error':
+        console.error(formattedMessage, data || '');
+        break;
+      case 'warn':
+        console.warn(formattedMessage, data || '');
+        break;
+      case 'info':
+        console.info(formattedMessage, data || '');
+        break;
+      case 'debug':
+      case 'trace':
+      default:
+        console.log(formattedMessage, data || '');
+        break;
     }
   }
-
+  
   /**
-   * Log a warning message
-   * @param {string} message - Message to log
-   * @param {Object} [data] - Optional additional data
+   * Logs an error message
+   * @param {string} message The message to log
+   * @param {*} data Additional data to log
+   */
+  error(message, data) {
+    this.log('error', message, data);
+  }
+  
+  /**
+   * Logs a warning message
+   * @param {string} message The message to log
+   * @param {*} data Additional data to log
    */
   warn(message, data) {
-    if (this._shouldLog('warn')) {
-      console.warn(`[WARN] [${this.name}] ${message}`, data || '');
-    }
+    this.log('warn', message, data);
   }
-
+  
   /**
-   * Log an info message
-   * @param {string} message - Message to log
-   * @param {Object} [data] - Optional additional data
+   * Logs an info message
+   * @param {string} message The message to log
+   * @param {*} data Additional data to log
    */
   info(message, data) {
-    if (this._shouldLog('info')) {
-      console.info(`[INFO] [${this.name}] ${message}`, data || '');
-    }
+    this.log('info', message, data);
   }
-
+  
   /**
-   * Log a debug message
-   * @param {string} message - Message to log
-   * @param {Object} [data] - Optional additional data
+   * Logs a debug message
+   * @param {string} message The message to log
+   * @param {*} data Additional data to log
    */
   debug(message, data) {
-    if (this._shouldLog('debug')) {
-      console.debug(`[DEBUG] [${this.name}] ${message}`, data || '');
-    }
+    this.log('debug', message, data);
   }
-
+  
   /**
-   * Log a trace message
-   * @param {string} message - Message to log
-   * @param {Object} [data] - Optional additional data
+   * Logs a trace message
+   * @param {string} message The message to log
+   * @param {*} data Additional data to log
    */
   trace(message, data) {
-    if (this._shouldLog('trace')) {
-      console.trace(`[TRACE] [${this.name}] ${message}`, data || '');
-    }
+    this.log('trace', message, data);
   }
-
+  
   /**
-   * Check if the message should be logged based on the current log level
-   * @param {string} level - Log level to check
-   * @returns {boolean} - Whether the message should be logged
+   * Checks if a message at the given level should be logged
    * @private
+   * @param {string} level The log level to check
+   * @returns {boolean} Whether the message should be logged
    */
   _shouldLog(level) {
-    return this.levels[level] <= this.levels[this.logLevel];
+    const configuredLevel = this.options.logLevel;
+    return this.logLevels[level] <= this.logLevels[configuredLevel];
   }
-
+  
   /**
-   * Set the log level
-   * @param {string} level - New log level (error, warn, info, debug, trace)
+   * Formats a log message
+   * @private
+   * @param {string} level The log level
+   * @param {string} message The message to format
+   * @returns {string} The formatted message
    */
-  setLevel(level) {
-    if (this.levels[level] !== undefined) {
-      this.logLevel = level;
+  _formatMessage(level, message) {
+    let formattedMessage = '';
+    
+    // Add timestamp if configured
+    if (this.options.includeTimestamp) {
+      formattedMessage += `[${new Date().toISOString()}] `;
     }
+    
+    // Add log level
+    formattedMessage += `[${level.toUpperCase()}] `;
+    
+    // Add component name
+    formattedMessage += `[${this.componentName}] `;
+    
+    // Add message
+    formattedMessage += message;
+    
+    return formattedMessage;
   }
 }
 
