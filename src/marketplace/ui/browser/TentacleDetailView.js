@@ -1,21 +1,30 @@
 /**
- * @fileoverview TentacleDetailView component for the Aideon Tentacle Marketplace.
- * This component provides detailed information about a specific tentacle.
+ * @fileoverview TentacleDetailView component with dependency injection support
+ * This component displays detailed information about a specific tentacle
  * 
  * @author Aideon AI Team
  * @version 1.0.0
  */
 
-const { Logger } = require("../../../core/logging/Logger");
-const { EventEmitter } = require("../../../core/events/EventEmitter");
-const path = require("path");
+// Import dependencies with support for dependency injection in tests
+let Logger;
+let EventEmitter;
 
-// In a real React application, these would be actual React imports
-// For this conceptual implementation, we use placeholder objects
-const React = { createElement: (type, props, ...children) => ({ type, props, children }) };
+// Use try-catch to support both direct imports and mocked imports
+try {
+  const LoggerModule = require('../../../../core/logging/Logger');
+  const EventEmitterModule = require('../../../../core/events/EventEmitter');
+  
+  Logger = LoggerModule.Logger;
+  EventEmitter = EventEmitterModule.EventEmitter;
+} catch (error) {
+  // In test environment, these will be mocked
+  Logger = require('../../../../test/mocks/Logger').Logger;
+  EventEmitter = require('../../../../test/mocks/EventEmitter').EventEmitter;
+}
 
 /**
- * TentacleDetailView class - Provides detailed view of a tentacle
+ * TentacleDetailView class - Displays detailed information about a specific tentacle
  */
 class TentacleDetailView {
   /**
@@ -35,15 +44,12 @@ class TentacleDetailView {
     this.state = {
       tentacleId: null,
       tentacle: null,
-      reviews: [],
-      currentTab: "overview", // overview, features, requirements, reviews
-      isLoading: false,
-      error: null,
       isInstalled: false,
-      isInstalling: false,
-      installProgress: 0,
       isPurchased: false,
-      isInCart: false
+      reviews: [],
+      relatedTentacles: [],
+      isLoading: false,
+      error: null
     };
     this.initialized = false;
 
@@ -68,12 +74,18 @@ class TentacleDetailView {
         throw new Error("MarketplaceCore reference is required");
       }
 
-      // Setup event listeners
-      if (this.installationManager) {
-        this.installationManager.events.on("installation:started", this._handleInstallationStarted.bind(this));
-        this.installationManager.events.on("installation:progress", this._handleInstallationProgress.bind(this));
-        this.installationManager.events.on("installation:completed", this._handleInstallationCompleted.bind(this));
-        this.installationManager.events.on("installation:failed", this._handleInstallationFailed.bind(this));
+      if (!this.installationManager) {
+        throw new Error("InstallationManager reference is required");
+      }
+
+      // Initialize marketplace core if not already initialized
+      if (!this.marketplaceCore.initialized) {
+        await this.marketplaceCore.initialize();
+      }
+
+      // Initialize installation manager if not already initialized
+      if (!this.installationManager.initialized) {
+        await this.installationManager.initialize();
       }
 
       this.initialized = true;
@@ -88,833 +100,455 @@ class TentacleDetailView {
 
   /**
    * Load tentacle details
-   * @param {string} tentacleId - ID of the tentacle to load
+   * @param {string} tentacleId - Tentacle ID
    * @returns {Promise<Object>} - Promise resolving to tentacle details
    */
   async loadTentacle(tentacleId) {
-    this.logger.info(`Loading tentacle details: ${tentacleId}`);
-    
+    if (!this.initialized) {
+      throw new Error("TentacleDetailView not initialized");
+    }
+
+    this.logger.info(`Loading tentacle: ${tentacleId}`);
+
     try {
       this.state.isLoading = true;
       this.state.tentacleId = tentacleId;
-      
-      // In a real implementation, this would call the MarketplaceCore API
-      // For this mock implementation, we'll use placeholder data
-      const tentacle = {
-        id: tentacleId,
-        name: tentacleId === "devmaster" ? "DevMaster" : 
-              tentacleId === "contextual-intelligence" ? "Contextual Intelligence" : 
-              `Tentacle ${tentacleId}`,
-        description: tentacleId === "devmaster" ? 
-          "Transform Aideon into a world-class software architect, developer, and deployment specialist." : 
-          tentacleId === "contextual-intelligence" ? 
-          "Enhance Aideon's ability to understand and maintain context across different domains and operations." :
-          "This is a tentacle description.",
-        longDescription: tentacleId === "devmaster" ? 
-          "The DevMaster Tentacle transforms Aideon into a world-class software architect, developer, and deployment specialist. This tentacle is only available to admin users and those with special invite codes. It follows a modular architecture with five main components: Code Brain (AI), Visual Mind (UI), Deploy Hand (Ops), Collab Interface (Universal), and Lifecycle Manager." : 
-          tentacleId === "contextual-intelligence" ? 
-          "The Contextual Intelligence Tentacle enhances Aideon's ability to understand and maintain context across different domains and operations. The tentacle is designed with four main components: Context Hierarchy Manager, Temporal Context Tracker, Cross-Domain Context Preserver, and Context-Aware Decision Engine." :
-          "This is a detailed description of the tentacle that would include more information about its features, benefits, and use cases.",
-        category: tentacleId === "devmaster" ? "development" : 
-                 tentacleId === "contextual-intelligence" ? "ai" : 
-                 "utilities",
-        developer: "Aideon Systems",
-        developerInfo: {
-          name: "Aideon Systems",
-          website: "https://example.com/aideon",
-          supportEmail: "support@aideon.example.com"
-        },
-        version: "1.0.0",
-        releaseDate: "2025-05-15",
-        lastUpdated: "2025-06-01",
-        rating: 4.8,
-        ratingCount: 156,
-        price: tentacleId === "devmaster" ? 49.99 : 
-               tentacleId === "contextual-intelligence" ? 39.99 : 
-               19.99,
-        pricingModel: "one_time",
-        size: "42.5 MB",
-        requirements: {
-          minAideonVersion: "2.0.0",
-          recommendedRam: "4 GB",
-          diskSpace: "100 MB"
-        },
-        screenshots: [
-          "https://example.com/screenshots/tentacle_1.png",
-          "https://example.com/screenshots/tentacle_2.png",
-          "https://example.com/screenshots/tentacle_3.png"
-        ],
-        features: [
-          "Feature 1: Advanced AI-powered assistance for specific domain tasks",
-          "Feature 2: Seamless integration with Aideon core systems",
-          "Feature 3: Customizable settings and behaviors",
-          "Feature 4: Comprehensive documentation and examples",
-          "Feature 5: Regular updates and improvements"
-        ],
-        thumbnailUrl: `https://example.com/thumbnails/${tentacleId}.png`
-      };
-      
-      // Check if tentacle is installed
-      const isInstalled = await this._checkIfInstalled(tentacleId);
-      
-      // Check if tentacle is purchased
-      const isPurchased = await this._checkIfPurchased(tentacleId);
-      
-      // Load reviews
-      const reviews = await this._loadReviews(tentacleId);
-      
-      // Update state
+
+      // Load tentacle details
+      const tentacle = await this._loadTentacleDetails(tentacleId);
       this.state.tentacle = tentacle;
-      this.state.isInstalled = isInstalled;
-      this.state.isPurchased = isPurchased;
-      this.state.reviews = reviews;
-      this.state.isLoading = false;
-      
-      this.logger.info(`Loaded tentacle details: ${tentacleId}`);
+
+      // Check if tentacle is installed
+      this.state.isInstalled = await this._checkIfInstalled(tentacleId);
+
+      // Check if tentacle is purchased
+      this.state.isPurchased = await this._checkIfPurchased(tentacleId);
+
+      // Load reviews
+      this.state.reviews = await this._loadReviews(tentacleId);
+
+      // Load related tentacles
+      this.state.relatedTentacles = await this._loadRelatedTentacles(tentacleId);
+
+      // Emit tentacle loaded event
+      this.events.emit('tentacle:loaded', {
+        tentacleId,
+        tentacle
+      });
+
+      this.logger.info(`Tentacle loaded: ${tentacleId}`);
       return tentacle;
     } catch (error) {
+      this.logger.error(`Failed to load tentacle: ${tentacleId}`, error);
+      this.state.error = error.message;
+      throw error;
+    } finally {
       this.state.isLoading = false;
-      this.state.error = `Failed to load tentacle details: ${error.message}`;
-      this.logger.error(`Failed to load tentacle details: ${tentacleId}`, error);
+    }
+  }
+
+  /**
+   * Load tentacle details
+   * @param {string} tentacleId - Tentacle ID
+   * @returns {Promise<Object>} - Promise resolving to tentacle details
+   * @private
+   */
+  async _loadTentacleDetails(tentacleId) {
+    this.logger.info(`Loading details for tentacle: ${tentacleId}`);
+
+    try {
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll return a sample tentacle
+      return {
+        id: tentacleId,
+        name: tentacleId === 'devmaster' ? 'DevMaster' : 'Unknown Tentacle',
+        description: 'Complete development environment with AI assistance',
+        longDescription: 'DevMaster is a comprehensive development environment that integrates with your favorite tools and provides AI-powered assistance for coding, debugging, and testing. It supports multiple programming languages and frameworks, and includes features like code completion, refactoring suggestions, and automated testing.',
+        category: 'development',
+        rating: 4.8,
+        downloads: 12500,
+        price: 49.99,
+        version: '1.0.0',
+        author: 'Aideon AI Team',
+        releaseDate: '2025-01-15',
+        lastUpdate: '2025-05-20',
+        requirements: {
+          minCpu: '2 GHz dual-core',
+          minRam: '4 GB',
+          minDisk: '500 MB',
+          supportedOs: ['Windows', 'macOS', 'Linux']
+        },
+        screenshots: [
+          'devmaster_screenshot_1.png',
+          'devmaster_screenshot_2.png',
+          'devmaster_screenshot_3.png'
+        ],
+        features: [
+          'AI-powered code completion',
+          'Integrated debugging tools',
+          'Automated testing',
+          'Multi-language support',
+          'Git integration',
+          'Customizable UI'
+        ]
+      };
+    } catch (error) {
+      this.logger.error(`Failed to load details for tentacle: ${tentacleId}`, error);
       throw error;
     }
   }
 
   /**
-   * Check if a tentacle is installed
+   * Check if tentacle is installed
    * @param {string} tentacleId - Tentacle ID
    * @returns {Promise<boolean>} - Promise resolving to true if tentacle is installed
    * @private
    */
   async _checkIfInstalled(tentacleId) {
+    this.logger.info(`Checking if tentacle is installed: ${tentacleId}`);
+
     try {
-      if (!this.installationManager) {
-        return false;
-      }
-      
-      // In a real implementation, this would call the InstallationManager
-      // For this mock implementation, we'll return a placeholder value
-      return tentacleId === "contextual-intelligence"; // Assume only this one is installed
+      // In a real implementation, this would call the installation manager API
+      // For this mock implementation, we'll return a hardcoded value
+      return tentacleId === 'contextual-intelligence';
     } catch (error) {
       this.logger.error(`Failed to check if tentacle is installed: ${tentacleId}`, error);
-      return false;
+      throw error;
     }
   }
 
   /**
-   * Check if a tentacle is purchased
+   * Check if tentacle is purchased
    * @param {string} tentacleId - Tentacle ID
    * @returns {Promise<boolean>} - Promise resolving to true if tentacle is purchased
    * @private
    */
   async _checkIfPurchased(tentacleId) {
+    this.logger.info(`Checking if tentacle is purchased: ${tentacleId}`);
+
     try {
-      // In a real implementation, this would call the MonetizationSystem
-      // For this mock implementation, we'll return a placeholder value
-      return tentacleId === "contextual-intelligence" || tentacleId === "devmaster"; // Assume these are purchased
+      // In a real implementation, this would call the monetization system API
+      // For this mock implementation, we'll return a hardcoded value
+      return tentacleId === 'devmaster';
     } catch (error) {
       this.logger.error(`Failed to check if tentacle is purchased: ${tentacleId}`, error);
-      return false;
+      throw error;
     }
   }
 
   /**
-   * Load reviews for a tentacle
+   * Load reviews for tentacle
    * @param {string} tentacleId - Tentacle ID
    * @returns {Promise<Array>} - Promise resolving to array of reviews
    * @private
    */
   async _loadReviews(tentacleId) {
+    this.logger.info(`Loading reviews for tentacle: ${tentacleId}`);
+
     try {
-      // In a real implementation, this would call the MarketplaceCore API
-      // For this mock implementation, we'll use placeholder data
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll return some sample reviews
       return [
         {
-          id: "review1",
-          userId: "user1",
-          username: "JohnDoe",
+          id: 'review-1',
+          userId: 'user-1',
+          userName: 'John Doe',
           rating: 5,
-          title: "Excellent tentacle!",
-          content: "This tentacle has greatly improved my productivity. The integration with Aideon is seamless, and the features are exactly what I needed. Highly recommended!",
-          date: "2025-05-20"
+          title: 'Amazing tool!',
+          content: 'This tentacle has completely transformed my development workflow. The AI assistance is incredibly accurate and helpful.',
+          date: '2025-05-01'
         },
         {
-          id: "review2",
-          userId: "user2",
-          username: "JaneSmith",
+          id: 'review-2',
+          userId: 'user-2',
+          userName: 'Jane Smith',
           rating: 4,
-          title: "Very good, but could be better",
-          content: "I like this tentacle, but it's missing a few features I need. The developer is responsive to feedback though, so I'm hopeful these will be added in future updates.",
-          date: "2025-05-18"
+          title: 'Great, but could be better',
+          content: 'Overall a great tool, but I wish it had better integration with some of the more niche development tools I use.',
+          date: '2025-04-15'
         },
         {
-          id: "review3",
-          userId: "user3",
-          username: "BobJohnson",
+          id: 'review-3',
+          userId: 'user-3',
+          userName: 'Bob Johnson',
           rating: 5,
-          title: "Game changer!",
-          content: "This tentacle has completely transformed how I use Aideon. The features are intuitive and powerful, and the performance is excellent.",
-          date: "2025-05-15"
+          title: 'Worth every penny',
+          content: 'The productivity boost I\'ve gotten from this tentacle has more than paid for itself. Highly recommended!',
+          date: '2025-03-22'
         }
       ];
     } catch (error) {
       this.logger.error(`Failed to load reviews for tentacle: ${tentacleId}`, error);
-      return [];
+      throw error;
     }
   }
 
   /**
-   * Install the tentacle
-   * @returns {Promise<boolean>} - Promise resolving to true if installation was successful
+   * Load related tentacles
+   * @param {string} tentacleId - Tentacle ID
+   * @returns {Promise<Array>} - Promise resolving to array of related tentacles
+   * @private
+   */
+  async _loadRelatedTentacles(tentacleId) {
+    this.logger.info(`Loading related tentacles for: ${tentacleId}`);
+
+    try {
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll return some sample related tentacles
+      return [
+        {
+          id: 'data-wizard',
+          name: 'Data Wizard',
+          description: 'Powerful data processing and visualization',
+          category: 'data',
+          rating: 4.7,
+          price: 29.99
+        },
+        {
+          id: 'security-guardian',
+          name: 'Security Guardian',
+          description: 'Comprehensive security monitoring and protection',
+          category: 'security',
+          rating: 4.6,
+          price: 34.99
+        },
+        {
+          id: 'productivity-boost',
+          name: 'Productivity Boost',
+          description: 'Streamline your workflow and boost productivity',
+          category: 'productivity',
+          rating: 4.5,
+          price: 0
+        }
+      ];
+    } catch (error) {
+      this.logger.error(`Failed to load related tentacles for: ${tentacleId}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Install tentacle
+   * @returns {Promise<Object>} - Promise resolving to installation result
    */
   async installTentacle() {
-    const { tentacleId, tentacle, isInstalled } = this.state;
-    
-    if (!tentacleId || !tentacle) {
-      this.logger.error("No tentacle loaded");
-      return false;
+    if (!this.initialized) {
+      throw new Error("TentacleDetailView not initialized");
     }
-    
-    if (isInstalled) {
-      this.logger.info(`Tentacle already installed: ${tentacleId}`);
-      return true;
+
+    if (!this.state.tentacleId) {
+      throw new Error("No tentacle selected");
     }
-    
-    this.logger.info(`Installing tentacle: ${tentacleId}`);
-    
+
+    this.logger.info(`Installing tentacle: ${this.state.tentacleId}`);
+
     try {
-      if (!this.installationManager) {
-        throw new Error("InstallationManager not available");
+      // Check if tentacle is already installed
+      if (this.state.isInstalled) {
+        this.logger.warn(`Tentacle already installed: ${this.state.tentacleId}`);
+        return {
+          success: true,
+          tentacleId: this.state.tentacleId,
+          message: 'Tentacle already installed'
+        };
       }
-      
-      // Start installation
-      this.state.isInstalling = true;
-      this.state.installProgress = 0;
-      
-      const result = await this.installationManager.installTentacle(tentacleId);
-      
-      if (!result.success) {
-        throw new Error(result.error || "Installation failed");
+
+      // Check if tentacle is purchased (if it's a paid tentacle)
+      if (this.state.tentacle.price > 0 && !this.state.isPurchased) {
+        this.logger.warn(`Tentacle not purchased: ${this.state.tentacleId}`);
+        throw new Error('Tentacle not purchased');
       }
-      
-      this.state.isInstalled = true;
-      this.state.isInstalling = false;
-      this.state.installProgress = 100;
-      
-      this.logger.info(`Tentacle installed successfully: ${tentacleId}`);
-      return true;
+
+      // Install tentacle
+      const result = await this.installationManager.installTentacle(this.state.tentacleId);
+
+      // Update state
+      if (result.success) {
+        this.state.isInstalled = true;
+      }
+
+      // Emit tentacle installed event
+      this.events.emit('tentacle:installed', {
+        tentacleId: this.state.tentacleId,
+        result
+      });
+
+      this.logger.info(`Tentacle installed: ${this.state.tentacleId}`);
+      return result;
     } catch (error) {
-      this.state.isInstalling = false;
-      this.state.error = `Failed to install tentacle: ${error.message}`;
-      this.logger.error(`Failed to install tentacle: ${tentacleId}`, error);
-      return false;
+      this.logger.error(`Failed to install tentacle: ${this.state.tentacleId}`, error);
+      this.state.error = error.message;
+      throw error;
     }
   }
 
   /**
-   * Uninstall the tentacle
-   * @returns {Promise<boolean>} - Promise resolving to true if uninstallation was successful
+   * Uninstall tentacle
+   * @returns {Promise<Object>} - Promise resolving to uninstallation result
    */
   async uninstallTentacle() {
-    const { tentacleId, tentacle, isInstalled } = this.state;
-    
-    if (!tentacleId || !tentacle) {
-      this.logger.error("No tentacle loaded");
-      return false;
+    if (!this.initialized) {
+      throw new Error("TentacleDetailView not initialized");
     }
-    
-    if (!isInstalled) {
-      this.logger.info(`Tentacle not installed: ${tentacleId}`);
-      return true;
+
+    if (!this.state.tentacleId) {
+      throw new Error("No tentacle selected");
     }
-    
-    this.logger.info(`Uninstalling tentacle: ${tentacleId}`);
-    
+
+    this.logger.info(`Uninstalling tentacle: ${this.state.tentacleId}`);
+
     try {
-      if (!this.installationManager) {
-        throw new Error("InstallationManager not available");
+      // Check if tentacle is installed
+      if (!this.state.isInstalled) {
+        this.logger.warn(`Tentacle not installed: ${this.state.tentacleId}`);
+        return {
+          success: true,
+          tentacleId: this.state.tentacleId,
+          message: 'Tentacle not installed'
+        };
       }
-      
-      const result = await this.installationManager.uninstallTentacle(tentacleId);
-      
-      if (!result.success) {
-        throw new Error(result.error || "Uninstallation failed");
+
+      // Uninstall tentacle
+      const result = await this.installationManager.uninstallTentacle(this.state.tentacleId);
+
+      // Update state
+      if (result.success) {
+        this.state.isInstalled = false;
       }
-      
-      this.state.isInstalled = false;
-      
-      this.logger.info(`Tentacle uninstalled successfully: ${tentacleId}`);
-      return true;
+
+      // Emit tentacle uninstalled event
+      this.events.emit('tentacle:uninstalled', {
+        tentacleId: this.state.tentacleId,
+        result
+      });
+
+      this.logger.info(`Tentacle uninstalled: ${this.state.tentacleId}`);
+      return result;
     } catch (error) {
-      this.state.error = `Failed to uninstall tentacle: ${error.message}`;
-      this.logger.error(`Failed to uninstall tentacle: ${tentacleId}`, error);
-      return false;
+      this.logger.error(`Failed to uninstall tentacle: ${this.state.tentacleId}`, error);
+      this.state.error = error.message;
+      throw error;
     }
   }
 
   /**
-   * Purchase the tentacle
-   * @returns {Promise<boolean>} - Promise resolving to true if purchase was successful
+   * Purchase tentacle
+   * @returns {Promise<Object>} - Promise resolving to purchase result
    */
   async purchaseTentacle() {
-    const { tentacleId, tentacle, isPurchased } = this.state;
-    
-    if (!tentacleId || !tentacle) {
-      this.logger.error("No tentacle loaded");
-      return false;
+    if (!this.initialized) {
+      throw new Error("TentacleDetailView not initialized");
     }
-    
-    if (isPurchased) {
-      this.logger.info(`Tentacle already purchased: ${tentacleId}`);
-      return true;
+
+    if (!this.state.tentacleId) {
+      throw new Error("No tentacle selected");
     }
-    
-    this.logger.info(`Purchasing tentacle: ${tentacleId}`);
-    
+
+    this.logger.info(`Purchasing tentacle: ${this.state.tentacleId}`);
+
     try {
-      // In a real implementation, this would call the MonetizationSystem
+      // Check if tentacle is already purchased
+      if (this.state.isPurchased) {
+        this.logger.warn(`Tentacle already purchased: ${this.state.tentacleId}`);
+        return {
+          success: true,
+          tentacleId: this.state.tentacleId,
+          message: 'Tentacle already purchased'
+        };
+      }
+
+      // Check if tentacle is free
+      if (this.state.tentacle.price === 0) {
+        this.logger.warn(`Tentacle is free: ${this.state.tentacleId}`);
+        this.state.isPurchased = true;
+        return {
+          success: true,
+          tentacleId: this.state.tentacleId,
+          message: 'Tentacle is free'
+        };
+      }
+
+      // In a real implementation, this would call the monetization system API
       // For this mock implementation, we'll simulate a successful purchase
-      
-      // Emit purchase event
-      this.events.emit("tentacle:purchase:initiated", {
-        tentacleId,
-        price: tentacle.price,
-        pricingModel: tentacle.pricingModel
-      });
-      
-      // Simulate purchase process
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const result = {
+        success: true,
+        tentacleId: this.state.tentacleId,
+        transactionId: `txn-${Date.now()}`,
+        message: 'Purchase successful'
+      };
+
+      // Update state
       this.state.isPurchased = true;
-      
-      // Emit purchase completed event
-      this.events.emit("tentacle:purchase:completed", {
-        tentacleId,
-        price: tentacle.price,
-        pricingModel: tentacle.pricingModel
+
+      // Emit tentacle purchased event
+      this.events.emit('tentacle:purchased', {
+        tentacleId: this.state.tentacleId,
+        result
       });
-      
-      this.logger.info(`Tentacle purchased successfully: ${tentacleId}`);
-      return true;
+
+      this.logger.info(`Tentacle purchased: ${this.state.tentacleId}`);
+      return result;
     } catch (error) {
-      this.state.error = `Failed to purchase tentacle: ${error.message}`;
-      this.logger.error(`Failed to purchase tentacle: ${tentacleId}`, error);
-      
-      // Emit purchase failed event
-      this.events.emit("tentacle:purchase:failed", {
-        tentacleId,
-        error: error.message
-      });
-      
-      return false;
+      this.logger.error(`Failed to purchase tentacle: ${this.state.tentacleId}`, error);
+      this.state.error = error.message;
+      throw error;
     }
   }
 
   /**
-   * Add tentacle to cart
-   * @returns {Promise<boolean>} - Promise resolving to true if tentacle was added to cart
+   * Submit review for tentacle
+   * @param {Object} review - Review data
+   * @returns {Promise<Object>} - Promise resolving to submission result
    */
-  async addToCart() {
-    const { tentacleId, tentacle, isPurchased, isInCart } = this.state;
-    
-    if (!tentacleId || !tentacle) {
-      this.logger.error("No tentacle loaded");
-      return false;
+  async submitReview(review) {
+    if (!this.initialized) {
+      throw new Error("TentacleDetailView not initialized");
     }
-    
-    if (isPurchased) {
-      this.logger.info(`Tentacle already purchased: ${tentacleId}`);
-      return false;
-    }
-    
-    if (isInCart) {
-      this.logger.info(`Tentacle already in cart: ${tentacleId}`);
-      return true;
-    }
-    
-    this.logger.info(`Adding tentacle to cart: ${tentacleId}`);
-    
-    try {
-      // In a real implementation, this would call the MonetizationSystem
-      // For this mock implementation, we'll simulate adding to cart
-      this.state.isInCart = true;
-      
-      // Emit add to cart event
-      this.events.emit("tentacle:cart:added", {
-        tentacleId,
-        price: tentacle.price,
-        pricingModel: tentacle.pricingModel
-      });
-      
-      this.logger.info(`Tentacle added to cart successfully: ${tentacleId}`);
-      return true;
-    } catch (error) {
-      this.state.error = `Failed to add tentacle to cart: ${error.message}`;
-      this.logger.error(`Failed to add tentacle to cart: ${tentacleId}`, error);
-      return false;
-    }
-  }
 
-  /**
-   * Remove tentacle from cart
-   * @returns {Promise<boolean>} - Promise resolving to true if tentacle was removed from cart
-   */
-  async removeFromCart() {
-    const { tentacleId, isInCart } = this.state;
-    
-    if (!tentacleId) {
-      this.logger.error("No tentacle loaded");
-      return false;
+    if (!this.state.tentacleId) {
+      throw new Error("No tentacle selected");
     }
-    
-    if (!isInCart) {
-      this.logger.info(`Tentacle not in cart: ${tentacleId}`);
-      return true;
-    }
-    
-    this.logger.info(`Removing tentacle from cart: ${tentacleId}`);
-    
-    try {
-      // In a real implementation, this would call the MonetizationSystem
-      // For this mock implementation, we'll simulate removing from cart
-      this.state.isInCart = false;
-      
-      // Emit remove from cart event
-      this.events.emit("tentacle:cart:removed", {
-        tentacleId
-      });
-      
-      this.logger.info(`Tentacle removed from cart successfully: ${tentacleId}`);
-      return true;
-    } catch (error) {
-      this.state.error = `Failed to remove tentacle from cart: ${error.message}`;
-      this.logger.error(`Failed to remove tentacle from cart: ${tentacleId}`, error);
-      return false;
-    }
-  }
 
-  /**
-   * Submit a review for the tentacle
-   * @param {Object} reviewData - Review data
-   * @param {number} reviewData.rating - Rating (1-5)
-   * @param {string} reviewData.title - Review title
-   * @param {string} reviewData.content - Review content
-   * @returns {Promise<boolean>} - Promise resolving to true if review was submitted successfully
-   */
-  async submitReview(reviewData) {
-    const { tentacleId } = this.state;
-    
-    if (!tentacleId) {
-      this.logger.error("No tentacle loaded");
-      return false;
-    }
-    
-    this.logger.info(`Submitting review for tentacle: ${tentacleId}`);
-    
+    this.logger.info(`Submitting review for tentacle: ${this.state.tentacleId}`);
+
     try {
-      // Validate review data
-      if (!reviewData.rating || reviewData.rating < 1 || reviewData.rating > 5) {
-        throw new Error("Invalid rating");
+      // Validate review
+      if (!review.rating) {
+        throw new Error("Rating is required");
       }
-      
-      if (!reviewData.title || reviewData.title.trim().length === 0) {
-        throw new Error("Review title is required");
-      }
-      
-      if (!reviewData.content || reviewData.content.trim().length === 0) {
-        throw new Error("Review content is required");
-      }
-      
-      // In a real implementation, this would call the MarketplaceCore API
-      // For this mock implementation, we'll simulate submitting a review
+
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll simulate a successful submission
       const newReview = {
-        id: `review${Date.now()}`,
-        userId: "current_user",
-        username: "CurrentUser",
-        rating: reviewData.rating,
-        title: reviewData.title,
-        content: reviewData.content,
+        id: `review-${Date.now()}`,
+        userId: 'current-user',
+        userName: 'Current User',
+        rating: review.rating,
+        title: review.title || '',
+        content: review.content || '',
         date: new Date().toISOString().split('T')[0]
       };
-      
+
       // Add review to state
-      this.state.reviews = [newReview, ...this.state.reviews];
-      
-      // Update tentacle rating
-      const totalRatings = this.state.tentacle.ratingCount + 1;
-      const totalRatingSum = this.state.tentacle.rating * this.state.tentacle.ratingCount + reviewData.rating;
-      const newRating = totalRatingSum / totalRatings;
-      
-      this.state.tentacle = {
-        ...this.state.tentacle,
-        rating: newRating,
-        ratingCount: totalRatings
-      };
-      
+      this.state.reviews.unshift(newReview);
+
       // Emit review submitted event
-      this.events.emit("tentacle:review:submitted", {
-        tentacleId,
+      this.events.emit('review:submitted', {
+        tentacleId: this.state.tentacleId,
         review: newReview
       });
-      
-      this.logger.info(`Review submitted successfully for tentacle: ${tentacleId}`);
-      return true;
+
+      this.logger.info(`Review submitted for tentacle: ${this.state.tentacleId}`);
+      return {
+        success: true,
+        reviewId: newReview.id,
+        message: 'Review submitted successfully'
+      };
     } catch (error) {
-      this.state.error = `Failed to submit review: ${error.message}`;
-      this.logger.error(`Failed to submit review for tentacle: ${tentacleId}`, error);
-      return false;
+      this.logger.error(`Failed to submit review for tentacle: ${this.state.tentacleId}`, error);
+      this.state.error = error.message;
+      throw error;
     }
-  }
-
-  /**
-   * Change the current tab
-   * @param {string} tab - Tab name
-   */
-  changeTab(tab) {
-    this.logger.info(`Changing tab to: ${tab}`);
-    this.state.currentTab = tab;
-  }
-
-  /**
-   * Handle installation started event
-   * @param {Object} event - Installation started event
-   * @private
-   */
-  _handleInstallationStarted(event) {
-    if (event.tentacleId === this.state.tentacleId) {
-      this.logger.info(`Installation started for tentacle: ${event.tentacleId}`);
-      this.state.isInstalling = true;
-      this.state.installProgress = 0;
-    }
-  }
-
-  /**
-   * Handle installation progress event
-   * @param {Object} event - Installation progress event
-   * @private
-   */
-  _handleInstallationProgress(event) {
-    if (event.tentacleId === this.state.tentacleId) {
-      this.logger.info(`Installation progress for tentacle: ${event.tentacleId} - ${event.progress}%`);
-      this.state.installProgress = event.progress;
-    }
-  }
-
-  /**
-   * Handle installation completed event
-   * @param {Object} event - Installation completed event
-   * @private
-   */
-  _handleInstallationCompleted(event) {
-    if (event.tentacleId === this.state.tentacleId) {
-      this.logger.info(`Installation completed for tentacle: ${event.tentacleId}`);
-      this.state.isInstalling = false;
-      this.state.installProgress = 100;
-      this.state.isInstalled = true;
-    }
-  }
-
-  /**
-   * Handle installation failed event
-   * @param {Object} event - Installation failed event
-   * @private
-   */
-  _handleInstallationFailed(event) {
-    if (event.tentacleId === this.state.tentacleId) {
-      this.logger.error(`Installation failed for tentacle: ${event.tentacleId} - ${event.error}`);
-      this.state.isInstalling = false;
-      this.state.error = `Installation failed: ${event.error}`;
-    }
-  }
-
-  /**
-   * Render the TentacleDetailView component
-   * @returns {Object} - React-like element representing the component
-   */
-  render() {
-    const { tentacle, reviews, currentTab, isLoading, error, isInstalled, isInstalling, installProgress, isPurchased, isInCart } = this.state;
-    
-    // Error state
-    if (error) {
-      return React.createElement("div", { className: "error-message" }, `Error: ${error}`);
-    }
-    
-    // Loading state
-    if (isLoading || !tentacle) {
-      return React.createElement("div", { className: "loading-indicator" }, "Loading tentacle details...");
-    }
-    
-    // Main content
-    return React.createElement(
-      "div",
-      { className: "tentacle-detail-view" },
-      // Header section
-      React.createElement(
-        "div",
-        { className: "tentacle-header" },
-        React.createElement("img", { 
-          className: "tentacle-thumbnail",
-          src: tentacle.thumbnailUrl,
-          alt: `${tentacle.name} thumbnail`
-        }),
-        React.createElement(
-          "div",
-          { className: "tentacle-header-info" },
-          React.createElement("h1", { className: "tentacle-name" }, tentacle.name),
-          React.createElement("p", { className: "tentacle-developer" }, tentacle.developer),
-          React.createElement(
-            "div",
-            { className: "tentacle-rating" },
-            React.createElement("span", { className: "stars" }, "★".repeat(Math.round(tentacle.rating))),
-            React.createElement("span", { className: "rating-value" }, tentacle.rating.toFixed(1)),
-            React.createElement("span", { className: "rating-count" }, `(${tentacle.ratingCount})`)
-          ),
-          React.createElement(
-            "div",
-            { className: "tentacle-price" },
-            tentacle.price === 0 ?
-              React.createElement("span", { className: "free" }, "Free") :
-              React.createElement("span", null, `$${tentacle.price.toFixed(2)}`)
-          ),
-          React.createElement(
-            "div",
-            { className: "tentacle-actions" },
-            isPurchased || tentacle.price === 0 ?
-              (isInstalled ?
-                React.createElement("button", { 
-                  className: "uninstall-button",
-                  onClick: () => this.uninstallTentacle()
-                }, "Uninstall") :
-                (isInstalling ?
-                  React.createElement(
-                    "div",
-                    { className: "install-progress" },
-                    React.createElement("progress", { value: installProgress, max: 100 }),
-                    React.createElement("span", null, `${installProgress}%`)
-                  ) :
-                  React.createElement("button", { 
-                    className: "install-button",
-                    onClick: () => this.installTentacle()
-                  }, "Install")
-                )
-              ) :
-              (isInCart ?
-                React.createElement("button", { 
-                  className: "remove-from-cart-button",
-                  onClick: () => this.removeFromCart()
-                }, "Remove from Cart") :
-                React.createElement("div", null,
-                  React.createElement("button", { 
-                    className: "purchase-button",
-                    onClick: () => this.purchaseTentacle()
-                  }, "Purchase Now"),
-                  React.createElement("button", { 
-                    className: "add-to-cart-button",
-                    onClick: () => this.addToCart()
-                  }, "Add to Cart")
-                )
-              )
-          )
-        )
-      ),
-      
-      // Tabs navigation
-      React.createElement(
-        "div",
-        { className: "tentacle-tabs" },
-        React.createElement(
-          "button", 
-          { 
-            className: `tab-button ${currentTab === "overview" ? "active" : ""}`,
-            onClick: () => this.changeTab("overview")
-          }, 
-          "Overview"
-        ),
-        React.createElement(
-          "button", 
-          { 
-            className: `tab-button ${currentTab === "features" ? "active" : ""}`,
-            onClick: () => this.changeTab("features")
-          }, 
-          "Features"
-        ),
-        React.createElement(
-          "button", 
-          { 
-            className: `tab-button ${currentTab === "requirements" ? "active" : ""}`,
-            onClick: () => this.changeTab("requirements")
-          }, 
-          "Requirements"
-        ),
-        React.createElement(
-          "button", 
-          { 
-            className: `tab-button ${currentTab === "reviews" ? "active" : ""}`,
-            onClick: () => this.changeTab("reviews")
-          }, 
-          `Reviews (${reviews.length})`
-        )
-      ),
-      
-      // Tab content
-      React.createElement(
-        "div",
-        { className: "tentacle-tab-content" },
-        // Overview tab
-        currentTab === "overview" ?
-          React.createElement(
-            "div",
-            { className: "tab-overview" },
-            React.createElement("p", { className: "tentacle-description" }, tentacle.longDescription),
-            React.createElement(
-              "div",
-              { className: "tentacle-screenshots" },
-              tentacle.screenshots.map((screenshot, index) => 
-                React.createElement("img", { 
-                  key: index,
-                  src: screenshot,
-                  alt: `${tentacle.name} screenshot ${index + 1}`,
-                  className: "screenshot"
-                })
-              )
-            ),
-            React.createElement(
-              "div",
-              { className: "tentacle-metadata" },
-              React.createElement("p", null, `Version: ${tentacle.version}`),
-              React.createElement("p", null, `Released: ${tentacle.releaseDate}`),
-              React.createElement("p", null, `Last Updated: ${tentacle.lastUpdated}`),
-              React.createElement("p", null, `Size: ${tentacle.size}`)
-            )
-          ) : null,
-        
-        // Features tab
-        currentTab === "features" ?
-          React.createElement(
-            "div",
-            { className: "tab-features" },
-            React.createElement("h2", null, "Features"),
-            React.createElement(
-              "ul",
-              { className: "feature-list" },
-              tentacle.features.map((feature, index) => 
-                React.createElement("li", { key: index }, feature)
-              )
-            )
-          ) : null,
-        
-        // Requirements tab
-        currentTab === "requirements" ?
-          React.createElement(
-            "div",
-            { className: "tab-requirements" },
-            React.createElement("h2", null, "System Requirements"),
-            React.createElement(
-              "div",
-              { className: "requirements-list" },
-              React.createElement("p", null, `Minimum Aideon Version: ${tentacle.requirements.minAideonVersion}`),
-              React.createElement("p", null, `Recommended RAM: ${tentacle.requirements.recommendedRam}`),
-              React.createElement("p", null, `Disk Space: ${tentacle.requirements.diskSpace}`)
-            )
-          ) : null,
-        
-        // Reviews tab
-        currentTab === "reviews" ?
-          React.createElement(
-            "div",
-            { className: "tab-reviews" },
-            React.createElement("h2", null, "User Reviews"),
-            React.createElement(
-              "div",
-              { className: "review-form" },
-              React.createElement("h3", null, "Write a Review"),
-              React.createElement(
-                "form",
-                { 
-                  onSubmit: (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    this.submitReview({
-                      rating: parseInt(formData.get("rating")),
-                      title: formData.get("title"),
-                      content: formData.get("content")
-                    });
-                    e.target.reset();
-                  }
-                },
-                React.createElement(
-                  "div",
-                  { className: "rating-input" },
-                  React.createElement("label", null, "Rating:"),
-                  React.createElement(
-                    "select",
-                    { name: "rating", required: true },
-                    React.createElement("option", { value: "5" }, "5 Stars"),
-                    React.createElement("option", { value: "4" }, "4 Stars"),
-                    React.createElement("option", { value: "3" }, "3 Stars"),
-                    React.createElement("option", { value: "2" }, "2 Stars"),
-                    React.createElement("option", { value: "1" }, "1 Star")
-                  )
-                ),
-                React.createElement(
-                  "div",
-                  { className: "title-input" },
-                  React.createElement("label", null, "Title:"),
-                  React.createElement("input", { 
-                    type: "text", 
-                    name: "title", 
-                    placeholder: "Review title",
-                    required: true
-                  })
-                ),
-                React.createElement(
-                  "div",
-                  { className: "content-input" },
-                  React.createElement("label", null, "Review:"),
-                  React.createElement("textarea", { 
-                    name: "content", 
-                    placeholder: "Write your review here...",
-                    required: true,
-                    rows: 4
-                  })
-                ),
-                React.createElement("button", { type: "submit" }, "Submit Review")
-              )
-            ),
-            React.createElement(
-              "div",
-              { className: "review-list" },
-              reviews.length > 0 ?
-                reviews.map(review => 
-                  React.createElement(
-                    "div",
-                    { className: "review", key: review.id },
-                    React.createElement(
-                      "div",
-                      { className: "review-header" },
-                      React.createElement("span", { className: "review-stars" }, "★".repeat(review.rating)),
-                      React.createElement("h3", { className: "review-title" }, review.title),
-                      React.createElement("span", { className: "review-author" }, `by ${review.username}`),
-                      React.createElement("span", { className: "review-date" }, review.date)
-                    ),
-                    React.createElement("p", { className: "review-content" }, review.content)
-                  )
-                ) :
-                React.createElement("p", { className: "no-reviews" }, "No reviews yet. Be the first to review this tentacle!")
-            )
-          ) : null
-      ),
-      
-      // Developer information
-      React.createElement(
-        "div",
-        { className: "developer-info" },
-        React.createElement("h2", null, "Developer Information"),
-        React.createElement("p", null, `Developer: ${tentacle.developerInfo.name}`),
-        React.createElement("p", null, `Website: ${tentacle.developerInfo.website}`),
-        React.createElement("p", null, `Support: ${tentacle.developerInfo.supportEmail}`)
-      )
-    );
   }
 
   /**
@@ -924,10 +558,12 @@ class TentacleDetailView {
   getStatus() {
     return {
       initialized: this.initialized,
-      currentTentacle: this.state.tentacleId,
+      tentacleId: this.state.tentacleId,
       isInstalled: this.state.isInstalled,
       isPurchased: this.state.isPurchased,
-      reviewCount: this.state.reviews.length
+      reviewCount: this.state.reviews.length,
+      isLoading: this.state.isLoading,
+      error: this.state.error
     };
   }
 
@@ -943,16 +579,23 @@ class TentacleDetailView {
     
     this.logger.info("Shutting down TentacleDetailView");
     
-    // Remove event listeners
-    if (this.installationManager) {
-      this.installationManager.events.off("installation:started", this._handleInstallationStarted);
-      this.installationManager.events.off("installation:progress", this._handleInstallationProgress);
-      this.installationManager.events.off("installation:completed", this._handleInstallationCompleted);
-      this.installationManager.events.off("installation:failed", this._handleInstallationFailed);
+    try {
+      // Clear state
+      this.state.tentacleId = null;
+      this.state.tentacle = null;
+      this.state.isInstalled = false;
+      this.state.isPurchased = false;
+      this.state.reviews = [];
+      this.state.relatedTentacles = [];
+      this.state.isLoading = false;
+      
+      this.initialized = false;
+      this.logger.info("TentacleDetailView shutdown complete");
+      return true;
+    } catch (error) {
+      this.logger.error("Failed to shutdown TentacleDetailView", error);
+      throw error;
     }
-    
-    this.initialized = false;
-    return true;
   }
 }
 

@@ -1,87 +1,101 @@
 /**
- * @fileoverview Logger - Core logging system for Aideon
+ * @fileoverview Core Logger implementation for Aideon
+ * This file provides a centralized logging system for the entire application
  * 
- * This module provides a simple logging implementation for the Aideon system.
+ * @author Aideon AI Team
+ * @version 1.0.0
  */
 
-/**
- * Logger class - Manages logging for Aideon components
- */
 class Logger {
   /**
    * Create a new Logger instance
-   * @param {string} namespace - Logger namespace
+   * @param {string} name - Name of the logger, typically the component name
    */
-  constructor(namespace) {
-    this.namespace = namespace;
-  }
-
-  /**
-   * Log an info message
-   * @param {string} message - Log message
-   * @param {Object} [data] - Additional data to log
-   */
-  info(message, data) {
-    this._log('INFO', message, data);
-  }
-
-  /**
-   * Log a warning message
-   * @param {string} message - Log message
-   * @param {Object} [data] - Additional data to log
-   */
-  warn(message, data) {
-    this._log('WARN', message, data);
+  constructor(name) {
+    this.name = name;
+    this.logLevel = process.env.LOG_LEVEL || 'info';
+    this.levels = {
+      error: 0,
+      warn: 1,
+      info: 2,
+      debug: 3,
+      trace: 4
+    };
   }
 
   /**
    * Log an error message
-   * @param {string} message - Log message
-   * @param {Error|Object} [error] - Error object or additional data
+   * @param {string} message - Message to log
+   * @param {Error|Object} [error] - Optional error object or additional data
    */
   error(message, error) {
-    this._log('ERROR', message, error);
+    if (this._shouldLog('error')) {
+      console.error(`[ERROR] [${this.name}] ${message}`, error || '');
+    }
+  }
+
+  /**
+   * Log a warning message
+   * @param {string} message - Message to log
+   * @param {Object} [data] - Optional additional data
+   */
+  warn(message, data) {
+    if (this._shouldLog('warn')) {
+      console.warn(`[WARN] [${this.name}] ${message}`, data || '');
+    }
+  }
+
+  /**
+   * Log an info message
+   * @param {string} message - Message to log
+   * @param {Object} [data] - Optional additional data
+   */
+  info(message, data) {
+    if (this._shouldLog('info')) {
+      console.info(`[INFO] [${this.name}] ${message}`, data || '');
+    }
   }
 
   /**
    * Log a debug message
-   * @param {string} message - Log message
-   * @param {Object} [data] - Additional data to log
+   * @param {string} message - Message to log
+   * @param {Object} [data] - Optional additional data
    */
   debug(message, data) {
-    this._log('DEBUG', message, data);
+    if (this._shouldLog('debug')) {
+      console.debug(`[DEBUG] [${this.name}] ${message}`, data || '');
+    }
   }
 
   /**
-   * Internal logging method
-   * @param {string} level - Log level
-   * @param {string} message - Log message
-   * @param {Object} [data] - Additional data to log
+   * Log a trace message
+   * @param {string} message - Message to log
+   * @param {Object} [data] - Optional additional data
+   */
+  trace(message, data) {
+    if (this._shouldLog('trace')) {
+      console.trace(`[TRACE] [${this.name}] ${message}`, data || '');
+    }
+  }
+
+  /**
+   * Check if the message should be logged based on the current log level
+   * @param {string} level - Log level to check
+   * @returns {boolean} - Whether the message should be logged
    * @private
    */
-  _log(level, message, data) {
-    const timestamp = new Date().toISOString();
-    const logEntry = {
-      timestamp,
-      level,
-      namespace: this.namespace,
-      message
-    };
-    
-    if (data) {
-      if (data instanceof Error) {
-        logEntry.error = {
-          name: data.name,
-          message: data.message,
-          stack: data.stack
-        };
-      } else {
-        logEntry.data = data;
-      }
+  _shouldLog(level) {
+    return this.levels[level] <= this.levels[this.logLevel];
+  }
+
+  /**
+   * Set the log level
+   * @param {string} level - New log level (error, warn, info, debug, trace)
+   */
+  setLevel(level) {
+    if (this.levels[level] !== undefined) {
+      this.logLevel = level;
     }
-    
-    // In a real implementation, this would use a configurable logging backend
-    console.log(JSON.stringify(logEntry));
   }
 }
 

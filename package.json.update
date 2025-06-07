@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "test": "mocha --require test/tentacles/contextual_intelligence/setup.js 'test/**/*.test.js'",
+    "test:analytics": "jest --config jest.config.js"
+  }
+}

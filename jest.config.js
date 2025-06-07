@@ -32,6 +32,11 @@ module.exports = {
     '!src/marketplace/ui/**/index.js'
   ],
   
+  // Transform files with babel-jest
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
+  
   // Ignore transformations for node_modules
   transformIgnorePatterns: [
     '/node_modules/'

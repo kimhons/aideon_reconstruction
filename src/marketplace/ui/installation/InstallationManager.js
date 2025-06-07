@@ -1,18 +1,30 @@
 /**
- * @fileoverview InstallationManager component for the Aideon Tentacle Marketplace.
- * This component handles the installation, updating, and removal of tentacles.
+ * @fileoverview InstallationManager component with dependency injection support
+ * This component handles the installation, update, and removal of tentacles
  * 
  * @author Aideon AI Team
  * @version 1.0.0
  */
 
-const { Logger } = require("../../../core/logging/Logger");
-const { EventEmitter } = require("../../../core/events/EventEmitter");
-const path = require("path");
-const fs = require("fs").promises;
+// Import dependencies with support for dependency injection in tests
+let Logger;
+let EventEmitter;
+
+// Use try-catch to support both direct imports and mocked imports
+try {
+  const LoggerModule = require('../../../../core/logging/Logger');
+  const EventEmitterModule = require('../../../../core/events/EventEmitter');
+  
+  Logger = LoggerModule.Logger;
+  EventEmitter = EventEmitterModule.EventEmitter;
+} catch (error) {
+  // In test environment, these will be mocked
+  Logger = require('../../../../test/mocks/Logger').Logger;
+  EventEmitter = require('../../../../test/mocks/EventEmitter').EventEmitter;
+}
 
 /**
- * InstallationManager class - Manages tentacle installation and lifecycle
+ * InstallationManager class - Handles installation, update, and removal of tentacles
  */
 class InstallationManager {
   /**
@@ -30,8 +42,13 @@ class InstallationManager {
     this.logger = new Logger("InstallationManager");
     this.events = new EventEmitter();
     this.installationQueue = [];
-    this.currentInstallation = null;
+    this.updateQueue = [];
     this.installedTentacles = new Map();
+    this.state = {
+      isProcessing: false,
+      currentOperation: null,
+      error: null
+    };
     this.initialized = false;
 
     this.logger.info("InstallationManager instance created");
@@ -59,51 +76,61 @@ class InstallationManager {
         throw new Error("TentacleRegistry reference is required");
       }
 
-      // Load installed tentacles
-      await this.loadInstalledTentacles();
+      // Initialize marketplace core if not already initialized
+      if (!this.marketplaceCore.initialized) {
+        await this.marketplaceCore.initialize();
+      }
 
-      // Start installation queue processor
-      this._startQueueProcessor();
+      // Initialize tentacle registry if not already initialized
+      if (!this.tentacleRegistry.initialized) {
+        await this.tentacleRegistry.initialize();
+      }
+
+      // Load installed tentacles
+      await this._loadInstalledTentacles();
+
+      // Set up event listeners
+      this._setupEventListeners();
 
       this.initialized = true;
       this.logger.info("InstallationManager initialized successfully");
       return true;
     } catch (error) {
       this.logger.error("Failed to initialize InstallationManager", error);
+      this.state.error = error.message;
       throw error;
     }
   }
 
   /**
    * Load installed tentacles
-   * @returns {Promise<Map>} - Promise resolving to map of installed tentacles
+   * @private
    */
-  async loadInstalledTentacles() {
+  async _loadInstalledTentacles() {
     this.logger.info("Loading installed tentacles");
-    
+
     try {
-      // In a real implementation, this would load from the TentacleRegistry
-      // For this mock implementation, we'll use placeholder data
-      const installedTentacles = new Map([
-        ["contextual-intelligence", {
-          id: "contextual-intelligence",
-          name: "Contextual Intelligence",
-          version: "1.0.0",
-          installDate: "2025-05-20",
-          status: "active"
-        }],
-        ["productivity-suite", {
-          id: "productivity-suite",
-          name: "Productivity Suite",
-          version: "2.1.3",
-          installDate: "2025-05-15",
-          status: "active"
-        }]
-      ]);
-      
-      this.installedTentacles = installedTentacles;
-      this.logger.info(`Loaded ${installedTentacles.size} installed tentacles`);
-      return installedTentacles;
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll set up some sample installed tentacles
+      this.installedTentacles.set('contextual-intelligence', {
+        id: 'contextual-intelligence',
+        name: 'Contextual Intelligence',
+        version: '1.0.0',
+        installDate: '2025-05-15',
+        status: 'active',
+        path: '/tentacles/contextual-intelligence'
+      });
+
+      this.installedTentacles.set('data-wizard', {
+        id: 'data-wizard',
+        name: 'Data Wizard',
+        version: '1.0.0',
+        installDate: '2025-05-10',
+        status: 'active',
+        path: '/tentacles/data-wizard'
+      });
+
+      this.logger.info(`Loaded ${this.installedTentacles.size} installed tentacles`);
     } catch (error) {
       this.logger.error("Failed to load installed tentacles", error);
       throw error;
@@ -111,526 +138,234 @@ class InstallationManager {
   }
 
   /**
-   * Check if a tentacle is installed
-   * @param {string} tentacleId - Tentacle ID
-   * @returns {boolean} - True if tentacle is installed
-   */
-  isTentacleInstalled(tentacleId) {
-    return this.installedTentacles.has(tentacleId);
-  }
-
-  /**
-   * Get installed tentacle information
-   * @param {string} tentacleId - Tentacle ID
-   * @returns {Object|null} - Tentacle information or null if not installed
-   */
-  getInstalledTentacle(tentacleId) {
-    return this.installedTentacles.get(tentacleId) || null;
-  }
-
-  /**
-   * Get all installed tentacles
-   * @returns {Array} - Array of installed tentacles
-   */
-  getAllInstalledTentacles() {
-    return Array.from(this.installedTentacles.values());
-  }
-
-  /**
-   * Install a tentacle
-   * @param {string} tentacleId - Tentacle ID
-   * @param {Object} options - Installation options
-   * @param {boolean} options.force - Force installation even if already installed
-   * @returns {Promise<Object>} - Promise resolving to installation result
-   */
-  async installTentacle(tentacleId, options = {}) {
-    this.logger.info(`Requesting installation of tentacle: ${tentacleId}`, options);
-    
-    try {
-      // Check if tentacle is already installed
-      if (this.isTentacleInstalled(tentacleId) && !options.force) {
-        this.logger.info(`Tentacle already installed: ${tentacleId}`);
-        return {
-          success: true,
-          tentacleId,
-          message: "Tentacle already installed",
-          alreadyInstalled: true
-        };
-      }
-      
-      // Check if tentacle is already in the queue
-      const existingQueueItem = this.installationQueue.find(item => item.tentacleId === tentacleId);
-      if (existingQueueItem) {
-        this.logger.info(`Tentacle already in installation queue: ${tentacleId}`);
-        return {
-          success: true,
-          tentacleId,
-          message: "Tentacle installation already queued",
-          queuePosition: this.installationQueue.indexOf(existingQueueItem) + 1
-        };
-      }
-      
-      // Add to installation queue
-      const queueItem = {
-        tentacleId,
-        options,
-        status: "queued",
-        progress: 0,
-        startTime: null,
-        endTime: null,
-        error: null,
-        resolve: null,
-        reject: null
-      };
-      
-      const promise = new Promise((resolve, reject) => {
-        queueItem.resolve = resolve;
-        queueItem.reject = reject;
-      });
-      
-      this.installationQueue.push(queueItem);
-      this.logger.info(`Added tentacle to installation queue: ${tentacleId}`);
-      
-      // If no current installation, start processing the queue
-      if (!this.currentInstallation) {
-        this._processNextInQueue();
-      }
-      
-      return promise;
-    } catch (error) {
-      this.logger.error(`Failed to queue tentacle installation: ${tentacleId}`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Uninstall a tentacle
-   * @param {string} tentacleId - Tentacle ID
-   * @param {Object} options - Uninstallation options
-   * @param {boolean} options.keepUserData - Keep user data after uninstallation
-   * @returns {Promise<Object>} - Promise resolving to uninstallation result
-   */
-  async uninstallTentacle(tentacleId, options = {}) {
-    this.logger.info(`Uninstalling tentacle: ${tentacleId}`, options);
-    
-    try {
-      // Check if tentacle is installed
-      if (!this.isTentacleInstalled(tentacleId)) {
-        this.logger.info(`Tentacle not installed: ${tentacleId}`);
-        return {
-          success: true,
-          tentacleId,
-          message: "Tentacle not installed"
-        };
-      }
-      
-      // Check if tentacle is currently being installed
-      if (this.currentInstallation && this.currentInstallation.tentacleId === tentacleId) {
-        this.logger.warn(`Cannot uninstall tentacle that is currently being installed: ${tentacleId}`);
-        return {
-          success: false,
-          tentacleId,
-          message: "Cannot uninstall tentacle that is currently being installed"
-        };
-      }
-      
-      // Remove from installation queue if present
-      const queueIndex = this.installationQueue.findIndex(item => item.tentacleId === tentacleId);
-      if (queueIndex !== -1) {
-        const queueItem = this.installationQueue[queueIndex];
-        this.installationQueue.splice(queueIndex, 1);
-        queueItem.reject(new Error("Installation cancelled due to uninstallation request"));
-        this.logger.info(`Removed tentacle from installation queue: ${tentacleId}`);
-      }
-      
-      // Emit uninstallation started event
-      this.events.emit("uninstallation:started", {
-        tentacleId,
-        options
-      });
-      
-      // In a real implementation, this would call the TentacleRegistry to uninstall the tentacle
-      // For this mock implementation, we'll simulate the uninstallation process
-      
-      // Simulate uninstallation process
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Remove from installed tentacles
-      this.installedTentacles.delete(tentacleId);
-      
-      // Emit uninstallation completed event
-      this.events.emit("uninstallation:completed", {
-        tentacleId,
-        options
-      });
-      
-      this.logger.info(`Tentacle uninstalled successfully: ${tentacleId}`);
-      return {
-        success: true,
-        tentacleId,
-        message: "Tentacle uninstalled successfully"
-      };
-    } catch (error) {
-      this.logger.error(`Failed to uninstall tentacle: ${tentacleId}`, error);
-      
-      // Emit uninstallation failed event
-      this.events.emit("uninstallation:failed", {
-        tentacleId,
-        error: error.message
-      });
-      
-      return {
-        success: false,
-        tentacleId,
-        message: `Failed to uninstall tentacle: ${error.message}`,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Update a tentacle
-   * @param {string} tentacleId - Tentacle ID
-   * @param {Object} options - Update options
-   * @param {string} options.targetVersion - Target version to update to
-   * @returns {Promise<Object>} - Promise resolving to update result
-   */
-  async updateTentacle(tentacleId, options = {}) {
-    this.logger.info(`Updating tentacle: ${tentacleId}`, options);
-    
-    try {
-      // Check if tentacle is installed
-      if (!this.isTentacleInstalled(tentacleId)) {
-        this.logger.warn(`Cannot update tentacle that is not installed: ${tentacleId}`);
-        return {
-          success: false,
-          tentacleId,
-          message: "Tentacle not installed"
-        };
-      }
-      
-      // Get installed tentacle information
-      const installedTentacle = this.getInstalledTentacle(tentacleId);
-      
-      // In a real implementation, this would check if an update is available
-      // For this mock implementation, we'll assume an update is available
-      
-      // Emit update started event
-      this.events.emit("update:started", {
-        tentacleId,
-        fromVersion: installedTentacle.version,
-        toVersion: options.targetVersion || "1.1.0"
-      });
-      
-      // Simulate update process
-      for (let progress = 0; progress <= 100; progress += 10) {
-        this.events.emit("update:progress", {
-          tentacleId,
-          progress
-        });
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      // Update installed tentacle information
-      installedTentacle.version = options.targetVersion || "1.1.0";
-      installedTentacle.updateDate = new Date().toISOString().split('T')[0];
-      
-      // Emit update completed event
-      this.events.emit("update:completed", {
-        tentacleId,
-        version: installedTentacle.version
-      });
-      
-      this.logger.info(`Tentacle updated successfully: ${tentacleId} to version ${installedTentacle.version}`);
-      return {
-        success: true,
-        tentacleId,
-        message: `Tentacle updated successfully to version ${installedTentacle.version}`,
-        version: installedTentacle.version
-      };
-    } catch (error) {
-      this.logger.error(`Failed to update tentacle: ${tentacleId}`, error);
-      
-      // Emit update failed event
-      this.events.emit("update:failed", {
-        tentacleId,
-        error: error.message
-      });
-      
-      return {
-        success: false,
-        tentacleId,
-        message: `Failed to update tentacle: ${error.message}`,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Check for updates for installed tentacles
-   * @returns {Promise<Object>} - Promise resolving to update check result
-   */
-  async checkForUpdates() {
-    this.logger.info("Checking for updates for installed tentacles");
-    
-    try {
-      const updates = [];
-      
-      // In a real implementation, this would call the MarketplaceCore to check for updates
-      // For this mock implementation, we'll simulate the update check
-      
-      // Simulate update check for each installed tentacle
-      for (const [tentacleId, tentacle] of this.installedTentacles.entries()) {
-        // Randomly determine if an update is available
-        const hasUpdate = Math.random() > 0.5;
-        
-        if (hasUpdate) {
-          const currentVersion = tentacle.version;
-          const newVersion = this._incrementVersion(currentVersion);
-          
-          updates.push({
-            tentacleId,
-            name: tentacle.name,
-            currentVersion,
-            newVersion,
-            releaseDate: new Date().toISOString().split('T')[0],
-            releaseNotes: `New features and bug fixes for ${tentacle.name}`
-          });
-        }
-      }
-      
-      this.logger.info(`Found ${updates.length} tentacles with updates available`);
-      return {
-        success: true,
-        updates,
-        message: `Found ${updates.length} tentacles with updates available`
-      };
-    } catch (error) {
-      this.logger.error("Failed to check for updates", error);
-      return {
-        success: false,
-        message: `Failed to check for updates: ${error.message}`,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Enable a tentacle
-   * @param {string} tentacleId - Tentacle ID
-   * @returns {Promise<Object>} - Promise resolving to enable result
-   */
-  async enableTentacle(tentacleId) {
-    this.logger.info(`Enabling tentacle: ${tentacleId}`);
-    
-    try {
-      // Check if tentacle is installed
-      if (!this.isTentacleInstalled(tentacleId)) {
-        this.logger.warn(`Cannot enable tentacle that is not installed: ${tentacleId}`);
-        return {
-          success: false,
-          tentacleId,
-          message: "Tentacle not installed"
-        };
-      }
-      
-      // Get installed tentacle information
-      const installedTentacle = this.getInstalledTentacle(tentacleId);
-      
-      // Check if tentacle is already enabled
-      if (installedTentacle.status === "active") {
-        this.logger.info(`Tentacle already enabled: ${tentacleId}`);
-        return {
-          success: true,
-          tentacleId,
-          message: "Tentacle already enabled"
-        };
-      }
-      
-      // In a real implementation, this would call the TentacleRegistry to enable the tentacle
-      // For this mock implementation, we'll just update the status
-      installedTentacle.status = "active";
-      
-      // Emit tentacle enabled event
-      this.events.emit("tentacle:enabled", {
-        tentacleId
-      });
-      
-      this.logger.info(`Tentacle enabled successfully: ${tentacleId}`);
-      return {
-        success: true,
-        tentacleId,
-        message: "Tentacle enabled successfully"
-      };
-    } catch (error) {
-      this.logger.error(`Failed to enable tentacle: ${tentacleId}`, error);
-      return {
-        success: false,
-        tentacleId,
-        message: `Failed to enable tentacle: ${error.message}`,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Disable a tentacle
-   * @param {string} tentacleId - Tentacle ID
-   * @returns {Promise<Object>} - Promise resolving to disable result
-   */
-  async disableTentacle(tentacleId) {
-    this.logger.info(`Disabling tentacle: ${tentacleId}`);
-    
-    try {
-      // Check if tentacle is installed
-      if (!this.isTentacleInstalled(tentacleId)) {
-        this.logger.warn(`Cannot disable tentacle that is not installed: ${tentacleId}`);
-        return {
-          success: false,
-          tentacleId,
-          message: "Tentacle not installed"
-        };
-      }
-      
-      // Get installed tentacle information
-      const installedTentacle = this.getInstalledTentacle(tentacleId);
-      
-      // Check if tentacle is already disabled
-      if (installedTentacle.status === "disabled") {
-        this.logger.info(`Tentacle already disabled: ${tentacleId}`);
-        return {
-          success: true,
-          tentacleId,
-          message: "Tentacle already disabled"
-        };
-      }
-      
-      // In a real implementation, this would call the TentacleRegistry to disable the tentacle
-      // For this mock implementation, we'll just update the status
-      installedTentacle.status = "disabled";
-      
-      // Emit tentacle disabled event
-      this.events.emit("tentacle:disabled", {
-        tentacleId
-      });
-      
-      this.logger.info(`Tentacle disabled successfully: ${tentacleId}`);
-      return {
-        success: true,
-        tentacleId,
-        message: "Tentacle disabled successfully"
-      };
-    } catch (error) {
-      this.logger.error(`Failed to disable tentacle: ${tentacleId}`, error);
-      return {
-        success: false,
-        tentacleId,
-        message: `Failed to disable tentacle: ${error.message}`,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Start the installation queue processor
+   * Set up event listeners
    * @private
    */
-  _startQueueProcessor() {
-    this.logger.info("Starting installation queue processor");
-    
-    // Process queue when items are added
-    this.events.on("queue:item:added", () => {
-      if (!this.currentInstallation) {
+  _setupEventListeners() {
+    this.logger.info("Setting up event listeners");
+
+    // Listen for marketplace core events
+    if (this.marketplaceCore && this.marketplaceCore.events) {
+      this.marketplaceCore.events.on("tentacle:updated", this._handleTentacleUpdated.bind(this));
+    }
+
+    // Listen for tentacle registry events
+    if (this.tentacleRegistry && this.tentacleRegistry.events) {
+      this.tentacleRegistry.events.on("tentacle:registered", this._handleTentacleRegistered.bind(this));
+      this.tentacleRegistry.events.on("tentacle:unregistered", this._handleTentacleUnregistered.bind(this));
+    }
+
+    this.logger.info("Event listeners set up");
+  }
+
+  /**
+   * Handle tentacle updated event
+   * @param {Object} event - Tentacle updated event
+   * @private
+   */
+  _handleTentacleUpdated(event) {
+    const { tentacleId, version } = event;
+    this.logger.info(`Tentacle updated: ${tentacleId} to version ${version}`);
+
+    // Update installed tentacle version
+    const tentacle = this.installedTentacles.get(tentacleId);
+    if (tentacle) {
+      tentacle.version = version;
+      tentacle.updateDate = new Date().toISOString().split('T')[0];
+      this.installedTentacles.set(tentacleId, tentacle);
+
+      // Emit tentacle updated event
+      this.events.emit('tentacle:updated', {
+        tentacleId,
+        version
+      });
+    }
+  }
+
+  /**
+   * Handle tentacle registered event
+   * @param {Object} event - Tentacle registered event
+   * @private
+   */
+  _handleTentacleRegistered(event) {
+    const { tentacle } = event;
+    this.logger.info(`Tentacle registered: ${tentacle.id}`);
+
+    // Check if tentacle is installed
+    if (this.installedTentacles.has(tentacle.id)) {
+      // Update installed tentacle status
+      const installedTentacle = this.installedTentacles.get(tentacle.id);
+      installedTentacle.status = 'active';
+      this.installedTentacles.set(tentacle.id, installedTentacle);
+
+      // Emit tentacle activated event
+      this.events.emit('tentacle:activated', {
+        tentacleId: tentacle.id
+      });
+    }
+  }
+
+  /**
+   * Handle tentacle unregistered event
+   * @param {Object} event - Tentacle unregistered event
+   * @private
+   */
+  _handleTentacleUnregistered(event) {
+    const { tentacleId } = event;
+    this.logger.info(`Tentacle unregistered: ${tentacleId}`);
+
+    // Check if tentacle is installed
+    if (this.installedTentacles.has(tentacleId)) {
+      // Update installed tentacle status
+      const installedTentacle = this.installedTentacles.get(tentacleId);
+      installedTentacle.status = 'inactive';
+      this.installedTentacles.set(tentacleId, installedTentacle);
+
+      // Emit tentacle deactivated event
+      this.events.emit('tentacle:deactivated', {
+        tentacleId
+      });
+    }
+  }
+
+  /**
+   * Install tentacle
+   * @param {string} tentacleId - Tentacle ID
+   * @returns {Promise<Object>} - Promise resolving to installation result
+   */
+  async installTentacle(tentacleId) {
+    if (!this.initialized) {
+      throw new Error("InstallationManager not initialized");
+    }
+
+    this.logger.info(`Queueing installation for tentacle: ${tentacleId}`);
+
+    // Check if tentacle is already installed
+    if (this.installedTentacles.has(tentacleId)) {
+      this.logger.warn(`Tentacle already installed: ${tentacleId}`);
+      return {
+        success: true,
+        tentacleId,
+        message: 'Tentacle already installed'
+      };
+    }
+
+    // Check if tentacle is already in queue
+    const existingQueueItem = this.installationQueue.find(item => item.tentacleId === tentacleId);
+    if (existingQueueItem) {
+      this.logger.warn(`Tentacle already in installation queue: ${tentacleId}`);
+      return new Promise((resolve, reject) => {
+        existingQueueItem.resolve = resolve;
+        existingQueueItem.reject = reject;
+      });
+    }
+
+    // Create a new promise for this installation
+    return new Promise((resolve, reject) => {
+      // Add to installation queue
+      this.installationQueue.push({
+        tentacleId,
+        resolve,
+        reject
+      });
+
+      // Emit tentacle installation queued event
+      this.events.emit('installation:queued', {
+        tentacleId
+      });
+
+      // Process queue if not already processing
+      if (!this.state.isProcessing) {
         this._processNextInQueue();
       }
     });
   }
 
   /**
-   * Process the next item in the installation queue
+   * Process next item in installation queue
    * @private
    */
   async _processNextInQueue() {
     if (this.installationQueue.length === 0) {
-      this.logger.info("Installation queue is empty");
-      this.currentInstallation = null;
+      this.logger.info("Installation queue empty");
+      this.state.isProcessing = false;
+      this.state.currentOperation = null;
       return;
     }
-    
+
+    this.state.isProcessing = true;
     const queueItem = this.installationQueue.shift();
-    this.currentInstallation = queueItem;
-    
-    this.logger.info(`Processing installation of tentacle: ${queueItem.tentacleId}`);
-    
+    const { tentacleId, resolve, reject } = queueItem;
+
+    this.logger.info(`Processing installation for tentacle: ${tentacleId}`);
+    this.state.currentOperation = {
+      type: 'install',
+      tentacleId,
+      startTime: Date.now()
+    };
+
+    // Emit installation started event
+    this.events.emit('installation:started', {
+      tentacleId
+    });
+
     try {
-      queueItem.status = "installing";
-      queueItem.startTime = Date.now();
-      
-      // Emit installation started event
-      this.events.emit("installation:started", {
-        tentacleId: queueItem.tentacleId,
-        options: queueItem.options
-      });
-      
-      // In a real implementation, this would call the TentacleRegistry to install the tentacle
+      // In a real implementation, this would download and install the tentacle
       // For this mock implementation, we'll simulate the installation process
       
-      // Simulate download and installation process
-      for (let progress = 0; progress <= 100; progress += 5) {
-        queueItem.progress = progress;
-        
-        // Emit installation progress event
-        this.events.emit("installation:progress", {
-          tentacleId: queueItem.tentacleId,
-          progress
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      // Simulate download
+      this.logger.info(`Downloading tentacle: ${tentacleId}`);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate download time
+      
+      // Simulate installation
+      this.logger.info(`Installing tentacle: ${tentacleId}`);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate installation time
+      
+      // Simulate registration with tentacle registry
+      this.logger.info(`Registering tentacle: ${tentacleId}`);
+      await this.tentacleRegistry.registerTentacle({
+        id: tentacleId,
+        name: tentacleId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        version: '1.0.0'
+      });
       
       // Add to installed tentacles
-      this.installedTentacles.set(queueItem.tentacleId, {
-        id: queueItem.tentacleId,
-        name: this._getTentacleName(queueItem.tentacleId),
-        version: "1.0.0",
+      this.installedTentacles.set(tentacleId, {
+        id: tentacleId,
+        name: tentacleId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        version: '1.0.0',
         installDate: new Date().toISOString().split('T')[0],
-        status: "active"
+        status: 'active',
+        path: `/tentacles/${tentacleId}`
       });
-      
-      queueItem.status = "completed";
-      queueItem.endTime = Date.now();
       
       // Emit installation completed event
-      this.events.emit("installation:completed", {
-        tentacleId: queueItem.tentacleId,
-        options: queueItem.options
+      this.events.emit('installation:completed', {
+        tentacleId
       });
       
-      this.logger.info(`Tentacle installed successfully: ${queueItem.tentacleId}`);
-      
-      // Resolve the promise
-      queueItem.resolve({
+      // Resolve promise
+      const result = {
         success: true,
-        tentacleId: queueItem.tentacleId,
-        message: "Tentacle installed successfully"
-      });
+        tentacleId,
+        message: 'Installation completed successfully'
+      };
+      resolve(result);
+      
+      this.logger.info(`Installation completed for tentacle: ${tentacleId}`);
     } catch (error) {
-      queueItem.status = "failed";
-      queueItem.endTime = Date.now();
-      queueItem.error = error.message;
+      this.logger.error(`Failed to install tentacle: ${tentacleId}`, error);
       
       // Emit installation failed event
-      this.events.emit("installation:failed", {
-        tentacleId: queueItem.tentacleId,
+      this.events.emit('installation:failed', {
+        tentacleId,
         error: error.message
       });
       
-      this.logger.error(`Failed to install tentacle: ${queueItem.tentacleId}`, error);
-      
-      // Reject the promise
-      queueItem.reject(error);
+      // Reject promise
+      reject(error);
     } finally {
-      this.currentInstallation = null;
+      this.state.currentOperation = null;
       
       // Process next item in queue
       this._processNextInQueue();
@@ -638,30 +373,194 @@ class InstallationManager {
   }
 
   /**
-   * Get tentacle name from ID
+   * Uninstall tentacle
    * @param {string} tentacleId - Tentacle ID
-   * @returns {string} - Tentacle name
-   * @private
+   * @returns {Promise<Object>} - Promise resolving to uninstallation result
    */
-  _getTentacleName(tentacleId) {
-    // In a real implementation, this would get the name from the MarketplaceCore
-    // For this mock implementation, we'll generate a name from the ID
-    return tentacleId
-      .split("-")
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+  async uninstallTentacle(tentacleId) {
+    if (!this.initialized) {
+      throw new Error("InstallationManager not initialized");
+    }
+
+    this.logger.info(`Uninstalling tentacle: ${tentacleId}`);
+
+    try {
+      // Check if tentacle is installed
+      if (!this.installedTentacles.has(tentacleId)) {
+        this.logger.warn(`Tentacle not installed: ${tentacleId}`);
+        return {
+          success: true,
+          tentacleId,
+          message: 'Tentacle not installed'
+        };
+      }
+
+      // Emit uninstallation started event
+      this.events.emit('uninstallation:started', {
+        tentacleId
+      });
+
+      // In a real implementation, this would uninstall the tentacle
+      // For this mock implementation, we'll simulate the uninstallation process
+      
+      // Simulate unregistration from tentacle registry
+      this.logger.info(`Unregistering tentacle: ${tentacleId}`);
+      await this.tentacleRegistry.unregisterTentacle(tentacleId);
+      
+      // Simulate file removal
+      this.logger.info(`Removing tentacle files: ${tentacleId}`);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate file removal time
+      
+      // Remove from installed tentacles
+      this.installedTentacles.delete(tentacleId);
+      
+      // Emit uninstallation completed event
+      this.events.emit('uninstallation:completed', {
+        tentacleId
+      });
+      
+      this.logger.info(`Uninstallation completed for tentacle: ${tentacleId}`);
+      return {
+        success: true,
+        tentacleId,
+        message: 'Uninstallation completed successfully'
+      };
+    } catch (error) {
+      this.logger.error(`Failed to uninstall tentacle: ${tentacleId}`, error);
+      
+      // Emit uninstallation failed event
+      this.events.emit('uninstallation:failed', {
+        tentacleId,
+        error: error.message
+      });
+      
+      throw error;
+    }
   }
 
   /**
-   * Increment version number
-   * @param {string} version - Current version
-   * @returns {string} - Incremented version
-   * @private
+   * Update tentacle
+   * @param {string} tentacleId - Tentacle ID
+   * @returns {Promise<Object>} - Promise resolving to update result
    */
-  _incrementVersion(version) {
-    const parts = version.split(".");
-    parts[2] = (parseInt(parts[2]) + 1).toString();
-    return parts.join(".");
+  async updateTentacle(tentacleId) {
+    if (!this.initialized) {
+      throw new Error("InstallationManager not initialized");
+    }
+
+    this.logger.info(`Updating tentacle: ${tentacleId}`);
+
+    try {
+      // Check if tentacle is installed
+      if (!this.installedTentacles.has(tentacleId)) {
+        this.logger.warn(`Tentacle not installed: ${tentacleId}`);
+        throw new Error('Tentacle not installed');
+      }
+
+      // Emit update started event
+      this.events.emit('update:started', {
+        tentacleId
+      });
+
+      // In a real implementation, this would update the tentacle
+      // For this mock implementation, we'll simulate the update process
+      
+      // Simulate download
+      this.logger.info(`Downloading update for tentacle: ${tentacleId}`);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate download time
+      
+      // Simulate update
+      this.logger.info(`Updating tentacle: ${tentacleId}`);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate update time
+      
+      // Update installed tentacle version
+      const tentacle = this.installedTentacles.get(tentacleId);
+      const versionParts = tentacle.version.split('.');
+      versionParts[2] = parseInt(versionParts[2]) + 1;
+      tentacle.version = versionParts.join('.');
+      tentacle.updateDate = new Date().toISOString().split('T')[0];
+      this.installedTentacles.set(tentacleId, tentacle);
+      
+      // Emit update completed event
+      this.events.emit('update:completed', {
+        tentacleId,
+        version: tentacle.version
+      });
+      
+      this.logger.info(`Update completed for tentacle: ${tentacleId} to version ${tentacle.version}`);
+      return {
+        success: true,
+        tentacleId,
+        version: tentacle.version,
+        message: 'Update completed successfully'
+      };
+    } catch (error) {
+      this.logger.error(`Failed to update tentacle: ${tentacleId}`, error);
+      
+      // Emit update failed event
+      this.events.emit('update:failed', {
+        tentacleId,
+        error: error.message
+      });
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Get installed tentacles
+   * @returns {Array} - Array of installed tentacles
+   */
+  getInstalledTentacles() {
+    if (!this.initialized) {
+      throw new Error("InstallationManager not initialized");
+    }
+
+    return Array.from(this.installedTentacles.values());
+  }
+
+  /**
+   * Check if tentacle is installed
+   * @param {string} tentacleId - Tentacle ID
+   * @returns {boolean} - True if tentacle is installed
+   */
+  isTentacleInstalled(tentacleId) {
+    if (!this.initialized) {
+      throw new Error("InstallationManager not initialized");
+    }
+
+    return this.installedTentacles.has(tentacleId);
+  }
+
+  /**
+   * Get tentacle installation status
+   * @param {string} tentacleId - Tentacle ID
+   * @returns {Object} - Tentacle installation status
+   */
+  getTentacleStatus(tentacleId) {
+    if (!this.initialized) {
+      throw new Error("InstallationManager not initialized");
+    }
+
+    // Check if tentacle is installed
+    if (!this.installedTentacles.has(tentacleId)) {
+      return {
+        installed: false,
+        status: 'not_installed'
+      };
+    }
+
+    // Get installed tentacle
+    const tentacle = this.installedTentacles.get(tentacleId);
+
+    return {
+      installed: true,
+      status: tentacle.status,
+      version: tentacle.version,
+      installDate: tentacle.installDate,
+      updateDate: tentacle.updateDate,
+      path: tentacle.path
+    };
   }
 
   /**
@@ -673,11 +572,9 @@ class InstallationManager {
       initialized: this.initialized,
       installedTentacleCount: this.installedTentacles.size,
       queueLength: this.installationQueue.length,
-      currentInstallation: this.currentInstallation ? {
-        tentacleId: this.currentInstallation.tentacleId,
-        progress: this.currentInstallation.progress,
-        status: this.currentInstallation.status
-      } : null
+      isProcessing: this.state.isProcessing,
+      currentOperation: this.state.currentOperation,
+      error: this.state.error
     };
   }
 
@@ -693,17 +590,22 @@ class InstallationManager {
     
     this.logger.info("Shutting down InstallationManager");
     
-    // Cancel any pending installations
-    for (const queueItem of this.installationQueue) {
-      queueItem.reject(new Error("Installation cancelled due to shutdown"));
+    try {
+      // Clear queues
+      this.installationQueue = [];
+      this.updateQueue = [];
+      
+      // Reset state
+      this.state.isProcessing = false;
+      this.state.currentOperation = null;
+      
+      this.initialized = false;
+      this.logger.info("InstallationManager shutdown complete");
+      return true;
+    } catch (error) {
+      this.logger.error("Failed to shutdown InstallationManager", error);
+      throw error;
     }
-    this.installationQueue = [];
-    
-    // Clear current installation
-    this.currentInstallation = null;
-    
-    this.initialized = false;
-    return true;
   }
 }
 

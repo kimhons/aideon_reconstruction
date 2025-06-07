@@ -1,21 +1,30 @@
 /**
- * @fileoverview MarketplaceBrowser component for the Aideon Tentacle Marketplace.
- * This component provides the main browsing experience for discovering tentacles.
+ * @fileoverview MarketplaceBrowser component with dependency injection support
+ * This component handles browsing and discovering tentacles in the marketplace
  * 
  * @author Aideon AI Team
  * @version 1.0.0
  */
 
-const { Logger } = require("../../../core/logging/Logger");
-const { EventEmitter } = require("../../../core/events/EventEmitter");
-const path = require("path");
+// Import dependencies with support for dependency injection in tests
+let Logger;
+let EventEmitter;
 
-// In a real React application, these would be actual React imports
-// For this conceptual implementation, we use placeholder objects
-const React = { createElement: (type, props, ...children) => ({ type, props, children }) };
+// Use try-catch to support both direct imports and mocked imports
+try {
+  const LoggerModule = require('../../../../core/logging/Logger');
+  const EventEmitterModule = require('../../../../core/events/EventEmitter');
+  
+  Logger = LoggerModule.Logger;
+  EventEmitter = EventEmitterModule.EventEmitter;
+} catch (error) {
+  // In test environment, these will be mocked
+  Logger = require('../../../../test/mocks/Logger').Logger;
+  EventEmitter = require('../../../../test/mocks/EventEmitter').EventEmitter;
+}
 
 /**
- * MarketplaceBrowser class - Provides tentacle browsing functionality
+ * MarketplaceBrowser class - Handles browsing and discovering tentacles
  */
 class MarketplaceBrowser {
   /**
@@ -33,18 +42,19 @@ class MarketplaceBrowser {
     this.state = {
       tentacles: [],
       categories: [],
-      featuredTentacles: [],
-      searchQuery: "",
+      featured: [],
+      searchQuery: '',
       filters: {
         category: null,
-        price: null, // free, paid, all
-        rating: null, // minimum rating (1-5)
-        sortBy: "popularity" // popularity, newest, rating, price
+        price: null,
+        rating: null,
+        sortBy: 'popularity'
       },
       pagination: {
         page: 1,
         pageSize: this.config.defaultPageSize || 12,
-        totalPages: 1
+        totalItems: 0,
+        totalPages: 0
       },
       isLoading: false,
       error: null
@@ -72,14 +82,13 @@ class MarketplaceBrowser {
         throw new Error("MarketplaceCore reference is required");
       }
 
-      // Load categories
-      await this.loadCategories();
+      // Initialize marketplace core if not already initialized
+      if (!this.marketplaceCore.initialized) {
+        await this.marketplaceCore.initialize();
+      }
 
-      // Load featured tentacles
-      await this.loadFeaturedTentacles();
-
-      // Load initial tentacles
-      await this.loadTentacles();
+      // Load initial data
+      await this._loadInitialData();
 
       this.initialized = true;
       this.logger.info("MarketplaceBrowser initialized successfully");
@@ -92,36 +101,53 @@ class MarketplaceBrowser {
   }
 
   /**
-   * Load tentacle categories
-   * @returns {Promise<Array>} - Promise resolving to array of categories
+   * Load initial data
+   * @private
    */
-  async loadCategories() {
-    this.logger.info("Loading tentacle categories");
-    
+  async _loadInitialData() {
+    this.logger.info("Loading initial data");
+
     try {
       this.state.isLoading = true;
-      
-      // In a real implementation, this would call the MarketplaceCore API
-      // For this mock implementation, we'll use placeholder data
-      const categories = [
-        { id: "productivity", name: "Productivity", count: 42 },
-        { id: "development", name: "Development", count: 37 },
-        { id: "ai", name: "Artificial Intelligence", count: 28 },
-        { id: "data", name: "Data Processing", count: 23 },
-        { id: "automation", name: "Automation", count: 19 },
-        { id: "security", name: "Security", count: 15 },
-        { id: "communication", name: "Communication", count: 12 },
-        { id: "utilities", name: "Utilities", count: 31 }
-      ];
-      
-      this.state.categories = categories;
-      this.state.isLoading = false;
-      
-      this.logger.info(`Loaded ${categories.length} categories`);
-      return categories;
+
+      // Load categories
+      this.state.categories = await this._loadCategories();
+
+      // Load featured tentacles
+      this.state.featured = await this._loadFeatured();
+
+      // Load tentacles with default filters
+      await this.loadTentacles();
+
+      this.logger.info("Initial data loaded successfully");
     } catch (error) {
+      this.logger.error("Failed to load initial data", error);
+      this.state.error = error.message;
+      throw error;
+    } finally {
       this.state.isLoading = false;
-      this.state.error = `Failed to load categories: ${error.message}`;
+    }
+  }
+
+  /**
+   * Load categories
+   * @returns {Promise<Array>} - Promise resolving to array of categories
+   * @private
+   */
+  async _loadCategories() {
+    this.logger.info("Loading categories");
+
+    try {
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll return some sample categories
+      return [
+        { id: 'development', name: 'Development', count: 42 },
+        { id: 'productivity', name: 'Productivity', count: 38 },
+        { id: 'ai', name: 'Artificial Intelligence', count: 27 },
+        { id: 'data', name: 'Data Processing', count: 19 },
+        { id: 'security', name: 'Security', count: 15 }
+      ];
+    } catch (error) {
       this.logger.error("Failed to load categories", error);
       throw error;
     }
@@ -130,299 +156,193 @@ class MarketplaceBrowser {
   /**
    * Load featured tentacles
    * @returns {Promise<Array>} - Promise resolving to array of featured tentacles
+   * @private
    */
-  async loadFeaturedTentacles() {
+  async _loadFeatured() {
     this.logger.info("Loading featured tentacles");
-    
+
     try {
-      this.state.isLoading = true;
-      
-      // In a real implementation, this would call the MarketplaceCore API
-      // For this mock implementation, we'll use placeholder data
-      const featuredTentacles = [
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll return some sample featured tentacles
+      return [
         {
-          id: "devmaster",
-          name: "DevMaster",
-          description: "Transform Aideon into a world-class software architect, developer, and deployment specialist.",
-          category: "development",
-          developer: "Aideon Systems",
-          rating: 4.9,
-          ratingCount: 128,
-          price: 49.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/devmaster.png",
-          featured: true
-        },
-        {
-          id: "contextual-intelligence",
-          name: "Contextual Intelligence",
-          description: "Enhance Aideon's ability to understand and maintain context across different domains and operations.",
-          category: "ai",
-          developer: "Aideon Systems",
+          id: 'devmaster',
+          name: 'DevMaster',
+          description: 'Complete development environment with AI assistance',
+          category: 'development',
           rating: 4.8,
-          ratingCount: 96,
-          price: 39.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/contextual-intelligence.png",
-          featured: true
+          downloads: 12500,
+          price: 49.99
         },
         {
-          id: "productivity-suite",
-          name: "Productivity Suite",
-          description: "Comprehensive suite of productivity tools to streamline your workflow.",
-          category: "productivity",
-          developer: "Efficiency Labs",
+          id: 'contextual-intelligence',
+          name: 'Contextual Intelligence',
+          description: 'Advanced context awareness for all your tasks',
+          category: 'ai',
+          rating: 4.9,
+          downloads: 9800,
+          price: 39.99
+        },
+        {
+          id: 'data-wizard',
+          name: 'Data Wizard',
+          description: 'Powerful data processing and visualization',
+          category: 'data',
           rating: 4.7,
-          ratingCount: 215,
-          price: 29.99,
-          pricingModel: "subscription",
-          thumbnailUrl: "https://example.com/thumbnails/productivity-suite.png",
-          featured: true
+          downloads: 8200,
+          price: 29.99
         }
       ];
-      
-      this.state.featuredTentacles = featuredTentacles;
-      this.state.isLoading = false;
-      
-      this.logger.info(`Loaded ${featuredTentacles.length} featured tentacles`);
-      return featuredTentacles;
     } catch (error) {
-      this.state.isLoading = false;
-      this.state.error = `Failed to load featured tentacles: ${error.message}`;
       this.logger.error("Failed to load featured tentacles", error);
       throw error;
     }
   }
 
   /**
-   * Load tentacles based on current search and filters
+   * Load tentacles based on current search query and filters
    * @returns {Promise<Array>} - Promise resolving to array of tentacles
    */
   async loadTentacles() {
-    const { searchQuery, filters, pagination } = this.state;
-    this.logger.info("Loading tentacles", { searchQuery, filters, page: pagination.page });
-    
+    this.logger.info("Loading tentacles", {
+      searchQuery: this.state.searchQuery,
+      filters: this.state.filters,
+      pagination: this.state.pagination
+    });
+
     try {
       this.state.isLoading = true;
-      
-      // In a real implementation, this would call the MarketplaceCore API
-      // For this mock implementation, we'll use placeholder data
+
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll return some sample tentacles
       const tentacles = [
         {
-          id: "devmaster",
-          name: "DevMaster",
-          description: "Transform Aideon into a world-class software architect, developer, and deployment specialist.",
-          category: "development",
-          developer: "Aideon Systems",
+          id: 'devmaster',
+          name: 'DevMaster',
+          description: 'Complete development environment with AI assistance',
+          category: 'development',
+          rating: 4.8,
+          downloads: 12500,
+          price: 49.99
+        },
+        {
+          id: 'contextual-intelligence',
+          name: 'Contextual Intelligence',
+          description: 'Advanced context awareness for all your tasks',
+          category: 'ai',
           rating: 4.9,
-          ratingCount: 128,
-          price: 49.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/devmaster.png"
+          downloads: 9800,
+          price: 39.99
         },
         {
-          id: "contextual-intelligence",
-          name: "Contextual Intelligence",
-          description: "Enhance Aideon's ability to understand and maintain context across different domains and operations.",
-          category: "ai",
-          developer: "Aideon Systems",
-          rating: 4.8,
-          ratingCount: 96,
-          price: 39.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/contextual-intelligence.png"
-        },
-        {
-          id: "productivity-suite",
-          name: "Productivity Suite",
-          description: "Comprehensive suite of productivity tools to streamline your workflow.",
-          category: "productivity",
-          developer: "Efficiency Labs",
+          id: 'data-wizard',
+          name: 'Data Wizard',
+          description: 'Powerful data processing and visualization',
+          category: 'data',
           rating: 4.7,
-          ratingCount: 215,
-          price: 29.99,
-          pricingModel: "subscription",
-          thumbnailUrl: "https://example.com/thumbnails/productivity-suite.png"
+          downloads: 8200,
+          price: 29.99
         },
         {
-          id: "data-analyzer",
-          name: "Data Analyzer",
-          description: "Advanced data analysis and visualization tools.",
-          category: "data",
-          developer: "DataViz Inc.",
+          id: 'security-guardian',
+          name: 'Security Guardian',
+          description: 'Comprehensive security monitoring and protection',
+          category: 'security',
           rating: 4.6,
-          ratingCount: 178,
-          price: 34.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/data-analyzer.png"
+          downloads: 7500,
+          price: 34.99
         },
         {
-          id: "security-guardian",
-          name: "Security Guardian",
-          description: "Comprehensive security monitoring and protection.",
-          category: "security",
-          developer: "SecureTech",
-          rating: 4.8,
-          ratingCount: 142,
-          price: 44.99,
-          pricingModel: "subscription",
-          thumbnailUrl: "https://example.com/thumbnails/security-guardian.png"
-        },
-        {
-          id: "automation-wizard",
-          name: "Automation Wizard",
-          description: "Automate repetitive tasks with ease.",
-          category: "automation",
-          developer: "AutoSoft",
+          id: 'productivity-boost',
+          name: 'Productivity Boost',
+          description: 'Streamline your workflow and boost productivity',
+          category: 'productivity',
           rating: 4.5,
-          ratingCount: 89,
-          price: 19.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/automation-wizard.png"
-        },
-        {
-          id: "file-master",
-          name: "File Master",
-          description: "Advanced file management and organization.",
-          category: "utilities",
-          developer: "FileTools Inc.",
-          rating: 4.4,
-          ratingCount: 112,
-          price: 0,
-          pricingModel: "free",
-          thumbnailUrl: "https://example.com/thumbnails/file-master.png"
-        },
-        {
-          id: "communication-hub",
-          name: "Communication Hub",
-          description: "Centralized communication and collaboration platform.",
-          category: "communication",
-          developer: "ConnectTech",
-          rating: 4.7,
-          ratingCount: 156,
-          price: 24.99,
-          pricingModel: "subscription",
-          thumbnailUrl: "https://example.com/thumbnails/communication-hub.png"
-        },
-        {
-          id: "ai-assistant",
-          name: "AI Assistant",
-          description: "Intelligent assistant for everyday tasks.",
-          category: "ai",
-          developer: "AI Solutions",
-          rating: 4.6,
-          ratingCount: 203,
-          price: 29.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/ai-assistant.png"
-        },
-        {
-          id: "code-companion",
-          name: "Code Companion",
-          description: "Smart coding assistant and code analyzer.",
-          category: "development",
-          developer: "DevTools Co.",
-          rating: 4.8,
-          ratingCount: 167,
-          price: 39.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/code-companion.png"
-        },
-        {
-          id: "task-manager",
-          name: "Task Manager",
-          description: "Efficient task and project management.",
-          category: "productivity",
-          developer: "TaskMaster Inc.",
-          rating: 4.5,
-          ratingCount: 189,
-          price: 0,
-          pricingModel: "free",
-          thumbnailUrl: "https://example.com/thumbnails/task-manager.png"
-        },
-        {
-          id: "data-visualizer",
-          name: "Data Visualizer",
-          description: "Create stunning visualizations from your data.",
-          category: "data",
-          developer: "VisualData",
-          rating: 4.7,
-          ratingCount: 134,
-          price: 24.99,
-          pricingModel: "one_time",
-          thumbnailUrl: "https://example.com/thumbnails/data-visualizer.png"
+          downloads: 15000,
+          price: 0
         }
       ];
-      
-      // Apply filters (in a real implementation, this would be done server-side)
-      let filteredTentacles = [...tentacles];
-      
-      // Apply category filter
-      if (filters.category) {
-        filteredTentacles = filteredTentacles.filter(t => t.category === filters.category);
-      }
-      
-      // Apply price filter
-      if (filters.price === "free") {
-        filteredTentacles = filteredTentacles.filter(t => t.price === 0);
-      } else if (filters.price === "paid") {
-        filteredTentacles = filteredTentacles.filter(t => t.price > 0);
-      }
-      
-      // Apply rating filter
-      if (filters.rating) {
-        filteredTentacles = filteredTentacles.filter(t => t.rating >= filters.rating);
-      }
-      
-      // Apply search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filteredTentacles = filteredTentacles.filter(t => 
-          t.name.toLowerCase().includes(query) || 
-          t.description.toLowerCase().includes(query) ||
-          t.developer.toLowerCase().includes(query)
+
+      // Apply search filter
+      let filteredTentacles = tentacles;
+      if (this.state.searchQuery) {
+        const query = this.state.searchQuery.toLowerCase();
+        filteredTentacles = tentacles.filter(tentacle => 
+          tentacle.name.toLowerCase().includes(query) || 
+          tentacle.description.toLowerCase().includes(query)
         );
       }
-      
+
+      // Apply category filter
+      if (this.state.filters.category) {
+        filteredTentacles = filteredTentacles.filter(tentacle => 
+          tentacle.category === this.state.filters.category
+        );
+      }
+
+      // Apply price filter
+      if (this.state.filters.price) {
+        switch (this.state.filters.price) {
+          case 'free':
+            filteredTentacles = filteredTentacles.filter(tentacle => tentacle.price === 0);
+            break;
+          case 'paid':
+            filteredTentacles = filteredTentacles.filter(tentacle => tentacle.price > 0);
+            break;
+        }
+      }
+
+      // Apply rating filter
+      if (this.state.filters.rating) {
+        const minRating = parseFloat(this.state.filters.rating);
+        filteredTentacles = filteredTentacles.filter(tentacle => tentacle.rating >= minRating);
+      }
+
       // Apply sorting
-      switch (filters.sortBy) {
-        case "newest":
-          // In a real implementation, we would sort by creation date
-          // For this mock, we'll just reverse the array as a placeholder
-          filteredTentacles.reverse();
+      switch (this.state.filters.sortBy) {
+        case 'popularity':
+          filteredTentacles.sort((a, b) => b.downloads - a.downloads);
           break;
-        case "rating":
+        case 'rating':
           filteredTentacles.sort((a, b) => b.rating - a.rating);
           break;
-        case "price":
+        case 'price_low':
           filteredTentacles.sort((a, b) => a.price - b.price);
           break;
-        case "popularity":
-        default:
-          // In a real implementation, we would sort by download count or similar metric
-          // For this mock, we'll sort by rating count as a placeholder for popularity
-          filteredTentacles.sort((a, b) => b.ratingCount - a.ratingCount);
+        case 'price_high':
+          filteredTentacles.sort((a, b) => b.price - a.price);
+          break;
+        case 'name':
+          filteredTentacles.sort((a, b) => a.name.localeCompare(b.name));
+          break;
       }
-      
+
       // Apply pagination
-      const totalTentacles = filteredTentacles.length;
-      const totalPages = Math.ceil(totalTentacles / pagination.pageSize);
-      const startIndex = (pagination.page - 1) * pagination.pageSize;
-      const endIndex = startIndex + pagination.pageSize;
+      const { page, pageSize } = this.state.pagination;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
       const paginatedTentacles = filteredTentacles.slice(startIndex, endIndex);
-      
+
       // Update state
       this.state.tentacles = paginatedTentacles;
-      this.state.pagination.totalPages = totalPages;
-      this.state.isLoading = false;
+      this.state.pagination.totalItems = filteredTentacles.length;
+      this.state.pagination.totalPages = Math.ceil(filteredTentacles.length / pageSize);
+
+      this.logger.info(`Loaded ${paginatedTentacles.length} tentacles`);
       
-      this.logger.info(`Loaded ${paginatedTentacles.length} tentacles (${totalTentacles} total)`);
+      // Emit tentacles loaded event
+      this.events.emit('tentacles:loaded', {
+        tentacles: paginatedTentacles,
+        pagination: this.state.pagination
+      });
+
       return paginatedTentacles;
     } catch (error) {
-      this.state.isLoading = false;
-      this.state.error = `Failed to load tentacles: ${error.message}`;
       this.logger.error("Failed to load tentacles", error);
+      this.state.error = error.message;
       throw error;
+    } finally {
+      this.state.isLoading = false;
     }
   }
 
@@ -432,38 +352,48 @@ class MarketplaceBrowser {
    * @returns {Promise<Array>} - Promise resolving to array of tentacles
    */
   async search(query) {
-    this.logger.info(`Searching for tentacles: "${query}"`);
+    this.logger.info(`Searching for tentacles with query: ${query}`);
+    
     this.state.searchQuery = query;
     this.state.pagination.page = 1; // Reset to first page
-    return this.loadTentacles();
+    
+    return await this.loadTentacles();
   }
 
   /**
-   * Apply filters to tentacle search
+   * Apply filters
    * @param {Object} filters - Filter options
    * @returns {Promise<Array>} - Promise resolving to array of tentacles
    */
   async applyFilters(filters) {
     this.logger.info("Applying filters", filters);
-    this.state.filters = { ...this.state.filters, ...filters };
+    
+    // Update filters
+    this.state.filters = {
+      ...this.state.filters,
+      ...filters
+    };
+    
     this.state.pagination.page = 1; // Reset to first page
-    return this.loadTentacles();
+    
+    return await this.loadTentacles();
   }
 
   /**
-   * Navigate to a specific page
-   * @param {number} page - Page number
+   * Set pagination
+   * @param {Object} pagination - Pagination options
    * @returns {Promise<Array>} - Promise resolving to array of tentacles
    */
-  async goToPage(page) {
-    if (page < 1 || page > this.state.pagination.totalPages) {
-      this.logger.warn(`Invalid page number: ${page}`);
-      return this.state.tentacles;
-    }
+  async setPagination(pagination) {
+    this.logger.info("Setting pagination", pagination);
     
-    this.logger.info(`Navigating to page ${page}`);
-    this.state.pagination.page = page;
-    return this.loadTentacles();
+    // Update pagination
+    this.state.pagination = {
+      ...this.state.pagination,
+      ...pagination
+    };
+    
+    return await this.loadTentacles();
   }
 
   /**
@@ -475,243 +405,53 @@ class MarketplaceBrowser {
     this.logger.info(`Getting details for tentacle: ${tentacleId}`);
     
     try {
-      // In a real implementation, this would call the MarketplaceCore API
-      // For this mock implementation, we'll find the tentacle in our local data
-      const tentacle = this.state.tentacles.find(t => t.id === tentacleId) || 
-                       this.state.featuredTentacles.find(t => t.id === tentacleId);
-      
-      if (!tentacle) {
-        throw new Error(`Tentacle not found: ${tentacleId}`);
-      }
-      
-      // In a real implementation, we would fetch additional details
-      // For this mock, we'll add some placeholder additional details
-      const tentacleDetails = {
-        ...tentacle,
-        version: "1.0.0",
-        releaseDate: "2025-05-15",
-        lastUpdated: "2025-06-01",
-        size: "42.5 MB",
+      // In a real implementation, this would call the marketplace core API
+      // For this mock implementation, we'll return a sample tentacle
+      const tentacle = {
+        id: tentacleId,
+        name: tentacleId === 'devmaster' ? 'DevMaster' : 'Unknown Tentacle',
+        description: 'Complete development environment with AI assistance',
+        longDescription: 'DevMaster is a comprehensive development environment that integrates with your favorite tools and provides AI-powered assistance for coding, debugging, and testing. It supports multiple programming languages and frameworks, and includes features like code completion, refactoring suggestions, and automated testing.',
+        category: 'development',
+        rating: 4.8,
+        downloads: 12500,
+        price: 49.99,
+        version: '1.0.0',
+        author: 'Aideon AI Team',
+        releaseDate: '2025-01-15',
+        lastUpdate: '2025-05-20',
         requirements: {
-          minAideonVersion: "2.0.0",
-          recommendedRam: "4 GB",
-          diskSpace: "100 MB"
+          minCpu: '2 GHz dual-core',
+          minRam: '4 GB',
+          minDisk: '500 MB',
+          supportedOs: ['Windows', 'macOS', 'Linux']
         },
         screenshots: [
-          "https://example.com/screenshots/tentacle1_1.png",
-          "https://example.com/screenshots/tentacle1_2.png",
-          "https://example.com/screenshots/tentacle1_3.png"
+          'devmaster_screenshot_1.png',
+          'devmaster_screenshot_2.png',
+          'devmaster_screenshot_3.png'
         ],
-        longDescription: "This is a longer description of the tentacle that would include more details about features, benefits, and use cases.",
         features: [
-          "Feature 1: Description of feature 1",
-          "Feature 2: Description of feature 2",
-          "Feature 3: Description of feature 3"
-        ],
-        developerInfo: {
-          name: tentacle.developer,
-          website: "https://example.com/developer",
-          supportEmail: "support@example.com"
-        },
-        reviews: [
-          {
-            id: "review1",
-            userId: "user1",
-            username: "JohnDoe",
-            rating: 5,
-            title: "Excellent tentacle!",
-            content: "This tentacle has greatly improved my productivity.",
-            date: "2025-05-20"
-          },
-          {
-            id: "review2",
-            userId: "user2",
-            username: "JaneSmith",
-            rating: 4,
-            title: "Very good, but could be better",
-            content: "I like this tentacle, but it's missing a few features I need.",
-            date: "2025-05-18"
-          }
+          'AI-powered code completion',
+          'Integrated debugging tools',
+          'Automated testing',
+          'Multi-language support',
+          'Git integration',
+          'Customizable UI'
         ]
       };
       
-      this.logger.info(`Retrieved details for tentacle: ${tentacleId}`);
-      return tentacleDetails;
+      // Emit tentacle selected event
+      this.events.emit('tentacle:selected', {
+        tentacleId,
+        tentacle
+      });
+      
+      return tentacle;
     } catch (error) {
-      this.state.error = `Failed to get tentacle details: ${error.message}`;
       this.logger.error(`Failed to get details for tentacle: ${tentacleId}`, error);
       throw error;
     }
-  }
-
-  /**
-   * Render the MarketplaceBrowser component
-   * @returns {Object} - React-like element representing the component
-   */
-  render() {
-    const { tentacles, categories, featuredTentacles, searchQuery, filters, pagination, isLoading, error } = this.state;
-    
-    // Error state
-    if (error) {
-      return React.createElement("div", { className: "error-message" }, `Error: ${error}`);
-    }
-    
-    // Loading state
-    if (isLoading) {
-      return React.createElement("div", { className: "loading-indicator" }, "Loading tentacles...");
-    }
-    
-    // Main content
-    return React.createElement(
-      "div",
-      { className: "marketplace-browser" },
-      // Search bar
-      React.createElement(
-        "div",
-        { className: "search-bar" },
-        React.createElement("input", { 
-          type: "text", 
-          placeholder: "Search tentacles...", 
-          value: searchQuery,
-          onChange: (e) => this.search(e.target.value)
-        }),
-        React.createElement("button", { onClick: () => this.search(searchQuery) }, "Search")
-      ),
-      
-      // Filters
-      React.createElement(
-        "div",
-        { className: "filters" },
-        // Category filter
-        React.createElement(
-          "select",
-          { 
-            value: filters.category || "",
-            onChange: (e) => this.applyFilters({ category: e.target.value || null })
-          },
-          React.createElement("option", { value: "" }, "All Categories"),
-          categories.map(category => 
-            React.createElement("option", { value: category.id, key: category.id }, `${category.name} (${category.count})`)
-          )
-        ),
-        
-        // Price filter
-        React.createElement(
-          "select",
-          { 
-            value: filters.price || "",
-            onChange: (e) => this.applyFilters({ price: e.target.value || null })
-          },
-          React.createElement("option", { value: "" }, "All Prices"),
-          React.createElement("option", { value: "free" }, "Free"),
-          React.createElement("option", { value: "paid" }, "Paid")
-        ),
-        
-        // Rating filter
-        React.createElement(
-          "select",
-          { 
-            value: filters.rating || "",
-            onChange: (e) => this.applyFilters({ rating: parseInt(e.target.value) || null })
-          },
-          React.createElement("option", { value: "" }, "All Ratings"),
-          React.createElement("option", { value: "4" }, "4+ Stars"),
-          React.createElement("option", { value: "3" }, "3+ Stars"),
-          React.createElement("option", { value: "2" }, "2+ Stars"),
-          React.createElement("option", { value: "1" }, "1+ Stars")
-        ),
-        
-        // Sort by
-        React.createElement(
-          "select",
-          { 
-            value: filters.sortBy,
-            onChange: (e) => this.applyFilters({ sortBy: e.target.value })
-          },
-          React.createElement("option", { value: "popularity" }, "Sort by Popularity"),
-          React.createElement("option", { value: "newest" }, "Sort by Newest"),
-          React.createElement("option", { value: "rating" }, "Sort by Rating"),
-          React.createElement("option", { value: "price" }, "Sort by Price")
-        )
-      ),
-      
-      // Featured tentacles (only shown on first page with no search/filters)
-      (pagination.page === 1 && !searchQuery && !filters.category && !filters.price && !filters.rating) ?
-        React.createElement(
-          "div",
-          { className: "featured-tentacles" },
-          React.createElement("h2", null, "Featured Tentacles"),
-          React.createElement(
-            "div",
-            { className: "tentacle-grid featured" },
-            featuredTentacles.map(tentacle => this._renderTentacleCard(tentacle, true))
-          )
-        ) : null,
-      
-      // Tentacle grid
-      React.createElement(
-        "div",
-        { className: "tentacle-grid" },
-        tentacles.length > 0 ?
-          tentacles.map(tentacle => this._renderTentacleCard(tentacle)) :
-          React.createElement("div", { className: "no-results" }, "No tentacles found matching your criteria.")
-      ),
-      
-      // Pagination
-      React.createElement(
-        "div",
-        { className: "pagination" },
-        React.createElement("button", { 
-          disabled: pagination.page === 1,
-          onClick: () => this.goToPage(pagination.page - 1)
-        }, "Previous"),
-        React.createElement("span", null, `Page ${pagination.page} of ${pagination.totalPages}`),
-        React.createElement("button", { 
-          disabled: pagination.page === pagination.totalPages,
-          onClick: () => this.goToPage(pagination.page + 1)
-        }, "Next")
-      )
-    );
-  }
-
-  /**
-   * Render a tentacle card
-   * @param {Object} tentacle - Tentacle data
-   * @param {boolean} featured - Whether this is a featured tentacle
-   * @returns {Object} - React-like element representing the tentacle card
-   * @private
-   */
-  _renderTentacleCard(tentacle, featured = false) {
-    return React.createElement(
-      "div",
-      { 
-        className: `tentacle-card ${featured ? 'featured' : ''}`,
-        key: tentacle.id,
-        onClick: () => this.events.emit("tentacle:selected", tentacle.id)
-      },
-      React.createElement("img", { 
-        className: "tentacle-thumbnail",
-        src: tentacle.thumbnailUrl,
-        alt: `${tentacle.name} thumbnail`
-      }),
-      React.createElement("h3", { className: "tentacle-name" }, tentacle.name),
-      React.createElement("p", { className: "tentacle-developer" }, tentacle.developer),
-      React.createElement(
-        "div",
-        { className: "tentacle-rating" },
-        React.createElement("span", { className: "stars" }, "★".repeat(Math.round(tentacle.rating))),
-        React.createElement("span", { className: "rating-value" }, tentacle.rating.toFixed(1)),
-        React.createElement("span", { className: "rating-count" }, `(${tentacle.ratingCount})`)
-      ),
-      React.createElement(
-        "div",
-        { className: "tentacle-price" },
-        tentacle.price === 0 ?
-          React.createElement("span", { className: "free" }, "Free") :
-          React.createElement("span", null, `$${tentacle.price.toFixed(2)}`)
-      ),
-      React.createElement("p", { className: "tentacle-description" }, tentacle.description)
-    );
   }
 
   /**
@@ -723,8 +463,8 @@ class MarketplaceBrowser {
       initialized: this.initialized,
       tentacleCount: this.state.tentacles.length,
       categoryCount: this.state.categories.length,
-      currentPage: this.state.pagination.page,
-      totalPages: this.state.pagination.totalPages
+      isLoading: this.state.isLoading,
+      error: this.state.error
     };
   }
 
@@ -740,8 +480,20 @@ class MarketplaceBrowser {
     
     this.logger.info("Shutting down MarketplaceBrowser");
     
-    this.initialized = false;
-    return true;
+    try {
+      // Clear state
+      this.state.tentacles = [];
+      this.state.categories = [];
+      this.state.featured = [];
+      this.state.isLoading = false;
+      
+      this.initialized = false;
+      this.logger.info("MarketplaceBrowser shutdown complete");
+      return true;
+    } catch (error) {
+      this.logger.error("Failed to shutdown MarketplaceBrowser", error);
+      throw error;
+    }
   }
 }
 
