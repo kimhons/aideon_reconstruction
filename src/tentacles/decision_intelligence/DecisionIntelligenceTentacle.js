@@ -11,9 +11,10 @@ const { EventEmitter } = require('../../core/events/EventEmitter');
 const { Logger } = require('../../core/logging/Logger');
 const { DataAnalyzer } = require('./data_analyzer/DataAnalyzer');
 const { OptionEvaluator } = require('./option_evaluator/OptionEvaluator');
-const { RecommendationGenerator } = require('./recommendation_generator/RecommendationGenerator');
-const { ExplanationEngine } = require('./explanation_engine/ExplanationEngine');
+const { RecommendationGenerator } = require('./recommendation/RecommendationGenerator');
+const { ExplanationEngine } = require('./explanation/ExplanationEngine');
 const { DecisionModelRepository } = require('./model_repository/DecisionModelRepository');
+const { DecisionIntelligencePipeline } = require('./DecisionIntelligencePipeline');
 const { AccessControlService } = require('../../core/security/AccessControlService');
 
 /**
@@ -38,6 +39,7 @@ class DecisionIntelligenceTentacle {
     this.recommendationGenerator = null;
     this.explanationEngine = null;
     this.decisionModelRepository = null;
+    this.decisionIntelligencePipeline = null;
     this.accessControlService = null;
     
     // Aideon core services (will be injected)
@@ -140,14 +142,28 @@ class DecisionIntelligenceTentacle {
     this.explanationEngine = new ExplanationEngine(this.aideon);
     this.decisionModelRepository = new DecisionModelRepository(this.aideon);
     
+    // Create and initialize the Decision Intelligence Pipeline
+    this.decisionIntelligencePipeline = new DecisionIntelligencePipeline(this.aideon, {
+      enabledComponents: ['dataAnalyzer', 'optionEvaluator', 'recommendationGenerator', 'explanationEngine'],
+      pipelineTimeout: 60000, // 1 minute default timeout
+      cacheResults: true
+    });
+    
     // Initialize components in parallel
     await Promise.all([
       this.dataAnalyzer.initialize(),
       this.optionEvaluator.initialize(),
       this.recommendationGenerator.initialize(),
       this.explanationEngine.initialize(),
-      this.decisionModelRepository.initialize()
+      this.decisionModelRepository.initialize(),
+      this.decisionIntelligencePipeline.initialize()
     ]);
+    
+    // Set pipeline components to use our initialized instances
+    this.decisionIntelligencePipeline.dataAnalyzer = this.dataAnalyzer;
+    this.decisionIntelligencePipeline.optionEvaluator = this.optionEvaluator;
+    this.decisionIntelligencePipeline.recommendationGenerator = this.recommendationGenerator;
+    this.decisionIntelligencePipeline.explanationEngine = this.explanationEngine;
     
     this.logger.info('All components initialized successfully');
   }
@@ -163,12 +179,36 @@ class DecisionIntelligenceTentacle {
     this.api.register(`${this.name}/status`, this.getStatus);
     this.api.register(`${this.name}/task/execute`, this.executeTask);
     
+    // Register pipeline endpoint
+    this.api.register(`${this.name}/pipeline/process`, async (req, res) => {
+      try {
+        const { data, context, options } = req.body;
+        
+        if (!data) {
+          return res.status(400).json({
+            error: 'Data is required'
+          });
+        }
+        
+        const result = await this.decisionIntelligencePipeline.processPipeline(data, context || {}, options || {});
+        
+        return res.json(result);
+      } catch (error) {
+        this.logger.error('API error in pipeline process endpoint', error);
+        
+        return res.status(500).json({
+          error: error.message
+        });
+      }
+    });
+    
     // Register component-specific endpoints
     this.dataAnalyzer.registerApiEndpoints(this.api, this.name);
     this.optionEvaluator.registerApiEndpoints(this.api, this.name);
     this.recommendationGenerator.registerApiEndpoints(this.api, this.name);
     this.explanationEngine.registerApiEndpoints(this.api, this.name);
     this.decisionModelRepository.registerApiEndpoints(this.api, this.name);
+    this.decisionIntelligencePipeline.registerApiEndpoints(this.api, this.name);
     
     this.logger.info('API endpoints registered successfully');
   }
@@ -188,7 +228,8 @@ class DecisionIntelligenceTentacle {
           'optionEvaluator',
           'recommendationGenerator',
           'explanationEngine',
-          'decisionModelRepository'
+          'decisionModelRepository',
+          'decisionIntelligencePipeline'
         ]
       });
       
@@ -217,7 +258,8 @@ class DecisionIntelligenceTentacle {
         this.optionEvaluator.shutdown(),
         this.recommendationGenerator.shutdown(),
         this.explanationEngine.shutdown(),
-        this.decisionModelRepository.shutdown()
+        this.decisionModelRepository.shutdown(),
+        this.decisionIntelligencePipeline.shutdown()
       ]);
       
       // Reset state
@@ -248,7 +290,8 @@ class DecisionIntelligenceTentacle {
         optionEvaluator: this.optionEvaluator ? this.optionEvaluator.getStatus() : { initialized: false },
         recommendationGenerator: this.recommendationGenerator ? this.recommendationGenerator.getStatus() : { initialized: false },
         explanationEngine: this.explanationEngine ? this.explanationEngine.getStatus() : { initialized: false },
-        decisionModelRepository: this.decisionModelRepository ? this.decisionModelRepository.getStatus() : { initialized: false }
+        decisionModelRepository: this.decisionModelRepository ? this.decisionModelRepository.getStatus() : { initialized: false },
+        decisionIntelligencePipeline: this.decisionIntelligencePipeline ? this.decisionIntelligencePipeline.getStatus() : { initialized: false }
       }
     };
   }
@@ -421,48 +464,40 @@ class DecisionIntelligenceTentacle {
   async _processBinaryDecision(task, context) {
     this.logger.info(`Processing binary decision: ${task.id}`);
     
-    // Analyze data
-    const analysisResult = await this.dataAnalyzer.analyzeData(task.data, {
-      decisionType: 'binary',
-      framework: task.options.framework
-    });
-    
-    // Evaluate options
-    const evaluationResult = await this.optionEvaluator.evaluateOptions(
-      task.data.options,
-      task.data.preferences,
+    // Use the pipeline for processing
+    const pipelineResult = await this.decisionIntelligencePipeline.processPipeline(
+      task.data,
       {
-        analysisResult,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate recommendation
-    const recommendation = await this.recommendationGenerator.generateRecommendation(
-      evaluationResult,
-      {
-        userId: context.userId,
+        ...context,
         decisionType: 'binary',
         framework: task.options.framework
+      },
+      {
+        explanationLevel: task.options.explanationLevel,
+        timeout: task.options.timeout
       }
     );
     
-    // Generate explanation
-    const explanation = await this.explanationEngine.explainRecommendation(
-      recommendation,
-      evaluationResult,
-      {
-        level: task.options.explanationLevel,
-        userId: context.userId
-      }
-    );
+    // Extract the top recommendation
+    const topRecommendation = pipelineResult.recommendations[0] || null;
+    
+    // Find corresponding explanation
+    const explanation = topRecommendation && pipelineResult.explanations
+      ? pipelineResult.explanations.find(exp => exp.optionId === topRecommendation.optionId)
+      : null;
     
     return {
-      recommendation: recommendation.choice,
-      confidence: recommendation.confidence,
-      explanation: explanation,
-      factors: recommendation.factors,
-      alternatives: recommendation.alternatives
+      recommendation: topRecommendation ? topRecommendation.optionId : null,
+      confidence: topRecommendation ? topRecommendation.confidence : 0,
+      explanation: explanation ? explanation.explanation : null,
+      factors: topRecommendation ? topRecommendation.factors : [],
+      alternatives: pipelineResult.recommendations.slice(1).map(rec => ({
+        id: rec.optionId,
+        rank: rec.rank,
+        score: rec.score,
+        confidence: rec.confidence
+      })),
+      metadata: pipelineResult.metadata
     };
   }
   
@@ -476,125 +511,85 @@ class DecisionIntelligenceTentacle {
   async _processMultiOptionDecision(task, context) {
     this.logger.info(`Processing multi-option decision: ${task.id}`);
     
-    // Analyze data
-    const analysisResult = await this.dataAnalyzer.analyzeData(task.data, {
-      decisionType: 'multi-option',
-      framework: task.options.framework
+    // Use the pipeline for processing
+    const pipelineResult = await this.decisionIntelligencePipeline.processPipeline(
+      task.data,
+      {
+        ...context,
+        decisionType: 'multi-option',
+        framework: task.options.framework
+      },
+      {
+        explanationLevel: task.options.explanationLevel,
+        timeout: task.options.timeout
+      }
+    );
+    
+    // Map recommendations to result format
+    const recommendations = pipelineResult.recommendations.map(rec => {
+      // Find corresponding explanation
+      const explanation = pipelineResult.explanations
+        ? pipelineResult.explanations.find(exp => exp.optionId === rec.optionId)
+        : null;
+      
+      return {
+        id: rec.optionId,
+        rank: rec.rank,
+        score: rec.score,
+        confidence: rec.confidence,
+        recommendation: rec.recommendation,
+        explanation: explanation ? explanation.explanation : null,
+        factors: rec.factors || []
+      };
     });
     
-    // Evaluate options
-    const evaluationResult = await this.optionEvaluator.evaluateOptions(
-      task.data.options,
-      task.data.preferences,
-      {
-        analysisResult,
-        constraints: task.data.constraints,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate recommendations
-    const recommendations = await this.recommendationGenerator.generateRecommendations(
-      evaluationResult,
-      {
-        userId: context.userId,
-        decisionType: 'multi-option',
-        framework: task.options.framework,
-        maxRecommendations: task.data.maxRecommendations || 3
-      }
-    );
-    
-    // Generate explanation
-    const explanation = await this.explanationEngine.explainRecommendations(
-      recommendations,
-      evaluationResult,
-      {
-        level: task.options.explanationLevel,
-        userId: context.userId
-      }
-    );
-    
     return {
-      recommendations: recommendations.choices,
-      topChoice: recommendations.choices[0],
-      confidence: recommendations.confidence,
-      explanation: explanation,
-      factors: recommendations.factors,
-      tradeoffs: recommendations.tradeoffs
+      recommendations,
+      metadata: pipelineResult.metadata
     };
   }
   
   /**
-   * Processes a resource allocation task
+   * Processes a resource allocation decision task
    * @private
    * @param {Object} task The normalized task
    * @param {Object} context The execution context
    * @returns {Promise<Object>} A promise that resolves with the decision result
    */
   async _processResourceAllocation(task, context) {
-    this.logger.info(`Processing resource allocation: ${task.id}`);
+    this.logger.info(`Processing resource allocation decision: ${task.id}`);
     
-    // Analyze data
-    const analysisResult = await this.dataAnalyzer.analyzeData(task.data, {
-      decisionType: 'resource-allocation',
-      framework: task.options.framework
+    // Use the pipeline for processing
+    const pipelineResult = await this.decisionIntelligencePipeline.processPipeline(
+      task.data,
+      {
+        ...context,
+        decisionType: 'resource-allocation',
+        framework: task.options.framework
+      },
+      {
+        explanationLevel: task.options.explanationLevel,
+        timeout: task.options.timeout
+      }
+    );
+    
+    // Extract allocation from recommendations
+    const allocation = {};
+    pipelineResult.recommendations.forEach(rec => {
+      allocation[rec.optionId] = rec.allocation || 0;
     });
     
-    // Evaluate allocation options
-    const evaluationResult = await this.optionEvaluator.evaluateResourceAllocation(
-      task.data.totalResource,
-      task.data.categories,
-      task.data.preferences,
-      {
-        analysisResult,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate allocation recommendation
-    const recommendation = await this.recommendationGenerator.generateAllocation(
-      evaluationResult,
-      {
-        userId: context.userId,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate explanation
-    const explanation = await this.explanationEngine.explainAllocation(
-      recommendation,
-      evaluationResult,
-      {
-        level: task.options.explanationLevel,
-        userId: context.userId
-      }
-    );
-    
-    // Generate visualization if requested
-    let visualization = null;
-    if (task.data.generateVisualization) {
-      visualization = await this.explanationEngine.generateAllocationVisualization(
-        recommendation,
-        {
-          type: task.data.visualizationType || 'pie',
-          colorScheme: task.data.colorScheme || 'default'
-        }
-      );
-    }
-    
     return {
-      allocation: recommendation.allocation,
-      totalAllocated: recommendation.totalAllocated,
-      unallocated: recommendation.unallocated,
-      confidence: recommendation.confidence,
-      explanation: explanation,
-      visualization: visualization,
-      constraints: recommendation.constraints
+      allocation,
+      totalValue: pipelineResult.steps.evaluation?.totalValue || 0,
+      constraints: pipelineResult.steps.evaluation?.constraints || [],
+      explanation: pipelineResult.explanations[0]?.explanation || null,
+      metadata: pipelineResult.metadata
     };
   }
   
   /**
-   * Processes a sequencing task
+   * Processes a sequencing decision task
    * @private
    * @param {Object} task The normalized task
    * @param {Object} context The execution context
@@ -603,171 +598,107 @@ class DecisionIntelligenceTentacle {
   async _processSequencing(task, context) {
     this.logger.info(`Processing sequencing decision: ${task.id}`);
     
-    // Analyze data
-    const analysisResult = await this.dataAnalyzer.analyzeData(task.data, {
-      decisionType: 'sequencing',
-      framework: task.options.framework
-    });
-    
-    // Evaluate sequence options
-    const evaluationResult = await this.optionEvaluator.evaluateSequence(
-      task.data.items,
-      task.data.constraints,
-      task.data.preferences,
+    // Use the pipeline for processing
+    const pipelineResult = await this.decisionIntelligencePipeline.processPipeline(
+      task.data,
       {
-        analysisResult,
+        ...context,
+        decisionType: 'sequencing',
         framework: task.options.framework
+      },
+      {
+        explanationLevel: task.options.explanationLevel,
+        timeout: task.options.timeout
       }
     );
     
-    // Generate sequence recommendation
-    const recommendation = await this.recommendationGenerator.generateSequence(
-      evaluationResult,
-      {
-        userId: context.userId,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate explanation
-    const explanation = await this.explanationEngine.explainSequence(
-      recommendation,
-      evaluationResult,
-      {
-        level: task.options.explanationLevel,
-        userId: context.userId
-      }
-    );
+    // Extract sequence from recommendations
+    const sequence = pipelineResult.recommendations.map(rec => rec.optionId);
     
     return {
-      sequence: recommendation.sequence,
-      confidence: recommendation.confidence,
-      explanation: explanation,
-      alternatives: recommendation.alternatives,
-      metrics: recommendation.metrics
+      sequence,
+      score: pipelineResult.steps.evaluation?.totalScore || 0,
+      explanation: pipelineResult.explanations[0]?.explanation || null,
+      metadata: pipelineResult.metadata
     };
   }
   
   /**
-   * Processes a portfolio optimization task
+   * Processes a portfolio optimization decision task
    * @private
    * @param {Object} task The normalized task
    * @param {Object} context The execution context
    * @returns {Promise<Object>} A promise that resolves with the decision result
    */
   async _processPortfolioOptimization(task, context) {
-    this.logger.info(`Processing portfolio optimization: ${task.id}`);
+    this.logger.info(`Processing portfolio optimization decision: ${task.id}`);
     
-    // Analyze data
-    const analysisResult = await this.dataAnalyzer.analyzeData(task.data, {
-      decisionType: 'portfolio',
-      framework: task.options.framework
+    // Use the pipeline for processing
+    const pipelineResult = await this.decisionIntelligencePipeline.processPipeline(
+      task.data,
+      {
+        ...context,
+        decisionType: 'portfolio',
+        framework: task.options.framework
+      },
+      {
+        explanationLevel: task.options.explanationLevel,
+        timeout: task.options.timeout
+      }
+    );
+    
+    // Extract portfolio from recommendations
+    const portfolio = {};
+    pipelineResult.recommendations.forEach(rec => {
+      portfolio[rec.optionId] = rec.weight || 0;
     });
     
-    // Evaluate portfolio options
-    const evaluationResult = await this.optionEvaluator.evaluatePortfolio(
-      task.data.items,
-      task.data.constraints,
-      task.data.preferences,
-      {
-        analysisResult,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate portfolio recommendation
-    const recommendation = await this.recommendationGenerator.generatePortfolio(
-      evaluationResult,
-      {
-        userId: context.userId,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate explanation
-    const explanation = await this.explanationEngine.explainPortfolio(
-      recommendation,
-      evaluationResult,
-      {
-        level: task.options.explanationLevel,
-        userId: context.userId
-      }
-    );
-    
-    // Generate visualization if requested
-    let visualization = null;
-    if (task.data.generateVisualization) {
-      visualization = await this.explanationEngine.generatePortfolioVisualization(
-        recommendation,
-        {
-          type: task.data.visualizationType || 'bubble',
-          dimensions: task.data.visualizationDimensions || ['risk', 'return', 'size']
-        }
-      );
-    }
-    
     return {
-      portfolio: recommendation.portfolio,
-      metrics: recommendation.metrics,
-      confidence: recommendation.confidence,
-      explanation: explanation,
-      visualization: visualization,
-      alternatives: recommendation.alternatives
+      portfolio,
+      expectedReturn: pipelineResult.steps.evaluation?.expectedReturn || 0,
+      risk: pipelineResult.steps.evaluation?.risk || 0,
+      sharpeRatio: pipelineResult.steps.evaluation?.sharpeRatio || 0,
+      explanation: pipelineResult.explanations[0]?.explanation || null,
+      metadata: pipelineResult.metadata
     };
   }
   
   /**
-   * Processes a parameter optimization task
+   * Processes a parameter optimization decision task
    * @private
    * @param {Object} task The normalized task
    * @param {Object} context The execution context
    * @returns {Promise<Object>} A promise that resolves with the decision result
    */
   async _processParameterOptimization(task, context) {
-    this.logger.info(`Processing parameter optimization: ${task.id}`);
+    this.logger.info(`Processing parameter optimization decision: ${task.id}`);
     
-    // Analyze data
-    const analysisResult = await this.dataAnalyzer.analyzeData(task.data, {
-      decisionType: 'parameter',
-      framework: task.options.framework
+    // Use the pipeline for processing
+    const pipelineResult = await this.decisionIntelligencePipeline.processPipeline(
+      task.data,
+      {
+        ...context,
+        decisionType: 'parameter',
+        framework: task.options.framework
+      },
+      {
+        explanationLevel: task.options.explanationLevel,
+        timeout: task.options.timeout
+      }
+    );
+    
+    // Extract parameters from recommendations
+    const parameters = {};
+    pipelineResult.recommendations.forEach(rec => {
+      parameters[rec.optionId] = rec.value || 0;
     });
     
-    // Evaluate parameter options
-    const evaluationResult = await this.optionEvaluator.evaluateParameters(
-      task.data.parameters,
-      task.data.constraints,
-      task.data.objectives,
-      {
-        analysisResult,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate parameter recommendation
-    const recommendation = await this.recommendationGenerator.generateParameterValues(
-      evaluationResult,
-      {
-        userId: context.userId,
-        framework: task.options.framework
-      }
-    );
-    
-    // Generate explanation
-    const explanation = await this.explanationEngine.explainParameterValues(
-      recommendation,
-      evaluationResult,
-      {
-        level: task.options.explanationLevel,
-        userId: context.userId
-      }
-    );
-    
     return {
-      parameters: recommendation.parameters,
-      objectiveValues: recommendation.objectiveValues,
-      confidence: recommendation.confidence,
-      explanation: explanation,
-      sensitivityAnalysis: recommendation.sensitivityAnalysis
+      parameters,
+      objectiveValue: pipelineResult.steps.evaluation?.objectiveValue || 0,
+      constraints: pipelineResult.steps.evaluation?.constraints || [],
+      explanation: pipelineResult.explanations[0]?.explanation || null,
+      metadata: pipelineResult.metadata
     };
   }
   
@@ -781,47 +712,23 @@ class DecisionIntelligenceTentacle {
   async _processCustomDecision(task, context) {
     this.logger.info(`Processing custom decision: ${task.id}`);
     
-    // Get custom model
-    const customModel = await this.decisionModelRepository.getCustomModel(
-      task.data.modelId,
-      {
-        userId: context.userId
-      }
-    );
-    
-    if (!customModel) {
-      throw new Error(`Custom model not found: ${task.data.modelId}`);
-    }
-    
-    // Execute custom model
-    const result = await this.decisionModelRepository.executeCustomModel(
-      customModel,
+    // Use the pipeline for processing
+    const pipelineResult = await this.decisionIntelligencePipeline.processPipeline(
       task.data,
       {
-        userId: context.userId
+        ...context,
+        decisionType: 'custom',
+        framework: task.options.framework
+      },
+      {
+        explanationLevel: task.options.explanationLevel,
+        timeout: task.options.timeout
       }
     );
     
-    // Generate explanation if possible
-    let explanation = null;
-    if (customModel.supportsExplanation) {
-      explanation = await this.explanationEngine.explainCustomDecision(
-        result,
-        customModel,
-        {
-          level: task.options.explanationLevel,
-          userId: context.userId
-        }
-      );
-    }
-    
-    return {
-      ...result,
-      explanation: explanation
-    };
+    // Return the raw pipeline result for custom processing
+    return pipelineResult;
   }
 }
 
-module.exports = {
-  DecisionIntelligenceTentacle
-};
+module.exports = { DecisionIntelligenceTentacle };
