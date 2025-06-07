@@ -1,6 +1,6 @@
 /**
- * @fileoverview Main UI controller for the Aideon Tentacle Marketplace
- * This component orchestrates all UI components and their interactions
+ * @fileoverview Integration of FeaturedTentaclesShowcase with MarketplaceUI
+ * This file updates the MarketplaceUI to integrate the FeaturedTentaclesShowcase component
  * 
  * @author Aideon AI Team
  * @version 1.0.0
@@ -28,6 +28,7 @@ const { MarketplaceBrowser } = require('./browser/MarketplaceBrowser');
 const { TentacleDetailView } = require('./browser/TentacleDetailView');
 const { InstallationManager } = require('./installation/InstallationManager');
 const { UserDashboard } = require('./dashboard/UserDashboard');
+const { FeaturedTentaclesShowcase } = require('./showcase/FeaturedTentaclesShowcase');
 
 /**
  * MarketplaceUI class - Main UI controller for the Aideon Tentacle Marketplace
@@ -182,6 +183,13 @@ class MarketplaceUI {
         config: this.config.dashboard
       });
       await this.dashboard.initialize();
+      
+      // Create and initialize FeaturedTentaclesShowcase
+      this.featuredShowcase = new FeaturedTentaclesShowcase({
+        marketplaceCore: this.marketplaceCore,
+        config: this.config.featuredShowcase
+      });
+      await this.featuredShowcase.initialize();
 
       this.logger.info("UI components initialized successfully");
     } catch (error) {
@@ -218,6 +226,13 @@ class MarketplaceUI {
     if (this.dashboard && this.dashboard.events) {
       this.dashboard.events.on("user:data:loaded", this._handleUserDataLoaded.bind(this));
     }
+    
+    // Listen for featured showcase events
+    if (this.featuredShowcase && this.featuredShowcase.events) {
+      this.featuredShowcase.events.on("tentacle:selected", this._handleTentacleSelected.bind(this));
+      this.featuredShowcase.events.on("featured:loaded", this._handleFeaturedLoaded.bind(this));
+      this.featuredShowcase.events.on("recommended:loaded", this._handleRecommendedLoaded.bind(this));
+    }
 
     this.logger.info("Event listeners set up");
   }
@@ -229,9 +244,113 @@ class MarketplaceUI {
   _setupUILayout() {
     this.logger.info("Setting up UI layout");
 
-    // In a real implementation, this would set up the UI layout
-    // For this mock implementation, we'll just log the action
+    // Create main container
+    const mainContainer = document.createElement('div');
+    mainContainer.className = 'marketplace-ui-container';
+    
+    // Create featured showcase container
+    const featuredContainer = document.createElement('div');
+    featuredContainer.className = 'marketplace-featured-container';
+    
+    // Create browser container
+    const browserContainer = document.createElement('div');
+    browserContainer.className = 'marketplace-browser-container';
+    
+    // Create detail container
+    const detailContainer = document.createElement('div');
+    detailContainer.className = 'marketplace-detail-container';
+    
+    // Create dashboard container
+    const dashboardContainer = document.createElement('div');
+    dashboardContainer.className = 'marketplace-dashboard-container';
+    
+    // Add containers to main container
+    mainContainer.appendChild(featuredContainer);
+    mainContainer.appendChild(browserContainer);
+    mainContainer.appendChild(detailContainer);
+    mainContainer.appendChild(dashboardContainer);
+    
+    // Add main container to container
+    this.container.appendChild(mainContainer);
+    
+    // Initialize featured showcase with its container
+    if (this.featuredShowcase) {
+      this.featuredShowcase.container = featuredContainer;
+      this._renderFeaturedShowcase();
+    }
+    
+    // Initialize browser with its container
+    if (this.browser) {
+      this.browser.container = browserContainer;
+      this._renderBrowser();
+    }
+    
+    // Initialize detail view with its container
+    if (this.browser.detailView) {
+      this.browser.detailView.container = detailContainer;
+      this._renderDetailView();
+    }
+    
+    // Initialize dashboard with its container
+    if (this.dashboard) {
+      this.dashboard.container = dashboardContainer;
+      this._renderDashboard();
+    }
+    
+    // Set initial view
+    this.navigateTo('browse').catch(error => {
+      this.logger.error("Failed to navigate to initial view", error);
+    });
+
     this.logger.info("UI layout set up");
+  }
+  
+  /**
+   * Render featured showcase
+   * @private
+   */
+  _renderFeaturedShowcase() {
+    this.logger.info("Rendering featured showcase");
+    
+    // In a real implementation, this would render the featured showcase
+    // For this mock implementation, we'll just log the action
+    this.logger.info("Featured showcase rendered");
+  }
+  
+  /**
+   * Render browser
+   * @private
+   */
+  _renderBrowser() {
+    this.logger.info("Rendering browser");
+    
+    // In a real implementation, this would render the browser
+    // For this mock implementation, we'll just log the action
+    this.logger.info("Browser rendered");
+  }
+  
+  /**
+   * Render detail view
+   * @private
+   */
+  _renderDetailView() {
+    this.logger.info("Rendering detail view");
+    
+    // In a real implementation, this would render the detail view
+    // For this mock implementation, we'll just log the action
+    this.logger.info("Detail view rendered");
+  }
+  
+  /**
+   * Render dashboard
+   * @private
+   */
+  _renderDashboard() {
+    this.logger.info("Rendering dashboard");
+    
+    // In a real implementation, this would render the dashboard
+    // For this mock implementation, we'll just log the action
+    this.logger.info("Dashboard rendered");
   }
 
   /**
@@ -250,6 +369,11 @@ class MarketplaceUI {
     this.events.emit('tentacle:selected', {
       tentacleId,
       tentacle
+    });
+    
+    // Navigate to detail view
+    this.navigateTo('detail', { tentacleId }).catch(error => {
+      this.logger.error(`Failed to navigate to detail view for tentacle ${tentacleId}`, error);
     });
   }
 
@@ -327,6 +451,32 @@ class MarketplaceUI {
     // Emit user data loaded event
     this.events.emit('user:data:loaded', event);
   }
+  
+  /**
+   * Handle featured loaded event
+   * @param {Object} event - Featured loaded event
+   * @private
+   */
+  _handleFeaturedLoaded(event) {
+    const { tentacles } = event;
+    this.logger.info(`Featured tentacles loaded: ${tentacles.length} tentacles`);
+    
+    // Emit featured loaded event
+    this.events.emit('featured:loaded', event);
+  }
+  
+  /**
+   * Handle recommended loaded event
+   * @param {Object} event - Recommended loaded event
+   * @private
+   */
+  _handleRecommendedLoaded(event) {
+    const { tentacles } = event;
+    this.logger.info(`Recommended tentacles loaded: ${tentacles.length} tentacles`);
+    
+    // Emit recommended loaded event
+    this.events.emit('recommended:loaded', event);
+  }
 
   /**
    * Navigate to a specific view
@@ -392,7 +542,8 @@ class MarketplaceUI {
       error: this.state.error,
       browser: this.browser ? this.browser.getStatus() : null,
       installationManager: this.installationManager ? this.installationManager.getStatus() : null,
-      dashboard: this.dashboard ? this.dashboard.getStatus() : null
+      dashboard: this.dashboard ? this.dashboard.getStatus() : null,
+      featuredShowcase: this.featuredShowcase ? this.featuredShowcase.getStatus() : null
     };
   }
 
@@ -424,6 +575,10 @@ class MarketplaceUI {
       
       if (this.dashboard) {
         await this.dashboard.shutdown();
+      }
+      
+      if (this.featuredShowcase) {
+        await this.featuredShowcase.shutdown();
       }
       
       this.initialized = false;
